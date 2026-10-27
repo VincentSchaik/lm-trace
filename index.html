@@ -1,0 +1,1412 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Token Viewer</title>
+<style>
+  /* LM Studio look: system font, white panels, light grey lines, blue accent.
+     --red/--red-rgb carry the accent (token shading, chips); the name is historical. */
+  :root {
+    color-scheme: light;
+    --paper: #f5f5f7;
+    --field: #ffffff;
+    --paper-2: #eeeef1;
+    --line: #e1e1e6;
+    --stone-2: #c7c7cc;
+    --ink: #1d1d1f;
+    --ink-2: #4b4b52;
+    --ink-3: #8e8e93;
+    --red: #1f6ff2;
+    --red-rgb: 31, 111, 242;
+    --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, monospace;
+    --input-bg: #ffffff;
+    --shadow-rgb: 0, 0, 0;
+    --primary: #1f6ff2;
+    --primary-hover: #185ed6;
+    --on-primary: #ffffff;
+    --danger: #d93025;
+    --tip-bg: #1d1d1f;
+    --tip-fg: #f5f5f7;
+    --tip-sub: #c7c7cc;
+    --tip-code: #8ab4ff;
+    --r: 10px;
+    --lift: 0 1px 2px rgba(0, 0, 0, .04), 0 2px 8px -4px rgba(0, 0, 0, .08);
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --paper: #161618;
+    --field: #1f1f22;
+    --paper-2: #2a2a2e;
+    --line: #333338;
+    --stone-2: #4a4a50;
+    --ink: #ececf0;
+    --ink-2: #b9b9c0;
+    --ink-3: #85858c;
+    --red: #4c8dff;
+    --red-rgb: 76, 141, 255;
+    --input-bg: #18181a;
+    --primary: #3b7cf5;
+    --primary-hover: #5a90f7;
+    --danger: #ff6b5e;
+    --tip-bg: #f0f0f3;
+    --tip-fg: #1d1d1f;
+    --tip-sub: #4b4b52;
+    --tip-code: #185ed6;
+    --lift: 0 1px 2px rgba(0, 0, 0, .3), 0 2px 10px -4px rgba(0, 0, 0, .5);
+  }
+  /* Show tokens exactly: some code fonts would draw "<|" and "|>" as triangle ligatures. */
+  * { font-variant-ligatures: none !important; font-feature-settings: "calt" 0, "liga" 0 !important; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--paper); color: var(--ink);
+    font: 14px/1.5 var(--sans); -webkit-font-smoothing: antialiased;
+  }
+  .app {
+    height: 100vh; max-width: 1280px; margin: 0 auto; padding: 0 24px 20px;
+    display: grid; grid-template-rows: auto auto 1fr; gap: 16px;
+  }
+
+  /* Top bar */
+  .top { display: flex; align-items: center; gap: 16px; height: 64px; border-bottom: 1px solid var(--line); }
+  h1 { font-size: 17px; font-weight: 600; margin: 0; display: flex; align-items: center; gap: 10px; white-space: nowrap; }
+  h1::before { content: ""; width: 14px; height: 14px; background: var(--red); }
+  .top .spacer { flex: 1; }
+
+  /* Shared field look: clearly an input */
+  .field {
+    font: 15px var(--sans); color: var(--ink);
+    background: var(--field); border: 1px solid var(--line); border-radius: 8px;
+    height: 40px; padding: 0 12px; outline: none;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .field:hover { border-color: var(--stone-2); }
+  .field:focus { border-color: var(--ink); box-shadow: 0 0 0 3px rgba(var(--red-rgb), .18); }
+  select.field {
+    appearance: none; cursor: pointer; padding-right: 34px; min-width: 240px; font-weight: 500;
+    background: var(--field) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%232a2927' stroke-width='1.6'/%3E%3C/svg%3E") no-repeat right 12px center;
+  }
+
+  /* Main: output + candidates */
+  .main { display: grid; grid-template-columns: 1fr 420px; gap: 16px; min-height: 0; }
+  .panel { background: var(--field); border: 1px solid var(--line); border-radius: var(--r); display: flex; flex-direction: column; min-height: 0; box-shadow: var(--lift); }
+  .panel-head {
+    display: flex; align-items: center; gap: 20px; padding: 12px 18px; border-bottom: 1px solid var(--paper-2);
+    font-size: 13px; color: var(--ink-3); min-height: 46px; flex-wrap: wrap;
+  }
+  .panel-head h2 { font-size: 13px; font-weight: 600; color: var(--ink); margin: 0; margin-right: auto; }
+  .stats b { color: var(--ink); font-weight: 600; font-family: var(--mono); }
+  .minput-body .sp {
+    display: inline-block; line-height: 1.5; padding: 0 6px; margin-right: 2px; border-radius: 5px;
+    color: var(--red); background: rgba(var(--red-rgb), .08); box-shadow: inset 0 0 0 1px rgba(var(--red-rgb), .55);
+  }
+  [data-tip] { cursor: help; }
+  #tip {
+    position: fixed; z-index: 50; max-width: 300px; padding: 10px 12px; border-radius: 8px; pointer-events: none;
+    background: var(--tip-bg); color: var(--tip-fg); font: 13px/1.45 var(--sans); box-shadow: 0 8px 24px -6px rgba(0,0,0,.35);
+    opacity: 0; transform: translateY(2px); transition: opacity .12s, transform .12s;
+  }
+  #tip.show { opacity: 1; transform: none; }
+  #tip b { display: block; font-weight: 600; margin-bottom: 4px; }
+  #tip code { display: inline-block; font: 12px var(--mono); color: var(--tip-code); margin-bottom: 6px; }
+  #tip span { display: block; color: var(--tip-sub); }
+  .minput-body .sp.bos { color: var(--ink-2); background: var(--paper-2); box-shadow: inset 0 0 0 1px var(--stone-2); }
+  .minput-body .role { color: var(--red); font-weight: 600; }
+  .minput-body .nl { color: var(--stone-2); }
+  .minput-body .hint { font-family: var(--sans); }
+  /* Output: ONE scroll area with three collapsible sections. Headers stick to the top while you scroll. */
+  .output { flex: 1; overflow-y: auto; }
+  .sec { border-bottom: 1px solid var(--paper-2); }
+  .sec > summary {
+    position: sticky; top: 0; z-index: 2; list-style: none; cursor: pointer; user-select: none;
+    display: flex; align-items: center; gap: 8px; min-height: 46px; padding: 8px 18px 8px 16px;
+    background: var(--field); border-bottom: 1px solid transparent;
+    font: 600 13px var(--sans); color: var(--ink);
+  }
+  .sec[open] > summary { border-bottom-color: var(--paper-2); }
+  .sec > summary:hover { background: color-mix(in srgb, var(--field) 94%, var(--ink)); }
+  .sec > summary::-webkit-details-marker { display: none; }
+  .sec > summary .sub { font: 400 12px var(--sans); color: var(--ink-3); }
+  .chev { width: 16px; height: 16px; flex: none; display: grid; place-items: center; color: var(--ink-3); transition: transform .15s; }
+  .chev::before { content: ""; width: 6px; height: 6px; border: solid currentColor; border-width: 0 1.6px 1.6px 0; transform: rotate(-45deg); }
+  .sec[open] > summary .chev { transform: rotate(90deg); }
+  .sec-body { padding: 14px 22px 18px; }
+  .sec-input .sec-body { background: rgba(var(--shadow-rgb), .025); }
+  .minput-body { font: 14px/1.9 var(--mono); white-space: pre-wrap; word-break: break-word; color: var(--ink); }
+  .reason-body { font: 14px/1.6 var(--sans); color: var(--ink-3); white-space: pre-wrap; word-break: break-word; }
+  .tokens { font: 18px/2.1 var(--mono); word-break: break-word; }
+  .empty { display: block; font: 15px/1.6 var(--sans); color: var(--ink-3); }
+  .tok { display: inline; white-space: pre-wrap; cursor: pointer; padding: 3px 1px; border-radius: 3px; }
+  .tok:hover { outline: 1px solid var(--ink-3); }
+  .tok.sel { outline: 2px solid var(--ink); }
+  .tok.new { animation: pop .35s ease-out; }
+  @keyframes pop { from { outline: 2px solid var(--red); outline-offset: 3px; } to { outline: 2px solid transparent; outline-offset: 0; } }
+  .ws { color: var(--ink-3); }
+  .tok.end { display: inline-block; margin-left: 6px; padding: 0 8px; line-height: 26px; border-radius: 6px; font-size: 14px; vertical-align: 1px; }
+  .tok.end.stop { color: var(--red); background: rgba(var(--red-rgb), .08); box-shadow: inset 0 0 0 1px rgba(var(--red-rgb), .55); }
+  .tok.end.length { color: var(--ink-2); font-family: var(--sans); background: var(--paper-2); box-shadow: inset 0 0 0 1px var(--line); }
+  .end-info .tag { display: inline-block; font: 600 16px var(--mono); color: var(--red); padding: 4px 10px; border-radius: 6px; background: rgba(var(--red-rgb), .08); box-shadow: inset 0 0 0 1px rgba(var(--red-rgb), .55); margin: 6px 0 14px; }
+  .end-info p { margin: 0 0 10px; color: var(--ink-2); line-height: 1.55; }
+  .tokens.has-next::after {
+    content: ""; display: inline-block; width: 11px; height: 22px; vertical-align: -4px; margin-left: 2px;
+    border: 2px dashed var(--red); border-radius: 3px; animation: blink 1.1s steps(2) infinite;
+  }
+  @keyframes blink { 50% { opacity: .25; } }
+  .wsname { font-family: var(--sans); font-style: italic; color: var(--ink-3); }
+  .cand.hit .wsname, .pick .wsname { color: var(--red); }
+  .pick { color: var(--red); font-weight: 600; white-space: pre; }
+
+  .legend { display: flex; align-items: center; gap: 8px; font: 12px var(--mono); color: var(--ink-3); }
+  .legend .ramp { width: 90px; height: 8px; border-radius: 4px; background: linear-gradient(90deg, rgba(var(--red-rgb), .1), rgba(var(--red-rgb), .9)); border: 1px solid var(--paper-2); }
+
+  #detail { padding: 18px; overflow-y: auto; flex: 1; }
+  .hint { color: var(--ink-3); margin: 0; }
+  .chosen { font: 500 26px var(--mono); white-space: pre; overflow: hidden; text-overflow: ellipsis; }
+  .meta { font: 13px/1.6 var(--mono); color: var(--ink-3); margin: 4px 0 20px; }
+  .cand { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; margin-bottom: 14px; font: 14px var(--mono); }
+  .cand .wsname { font-size: 12px; }
+  .stats > span + span { margin-left: 12px; }
+  #detail { overflow-x: hidden; padding: 12px; }
+  .dist { display: flex; flex-direction: column; gap: 1px; font: 15px var(--mono); }
+  .dist .row {
+    display: grid; grid-template-columns: 22px 130px 1fr 72px; column-gap: 12px; align-items: center;
+    height: 32px; padding: 0 12px 0 8px; border-radius: 8px; position: relative;
+    transition: background .12s;
+  }
+  .dist .row:hover { background: rgba(var(--shadow-rgb), .045); }
+  .dist .rk { font-size: 11px; color: var(--stone-2); text-align: right; }
+  .dist .tk { text-align: right; color: var(--ink); white-space: pre; overflow: hidden; }
+  .dist .tk.long { font-size: 11px; white-space: normal; word-break: break-all; line-height: 1.15; }
+  .dist .track { height: 10px; border-radius: 5px; background: var(--paper-2); overflow: hidden; box-shadow: inset 0 1px 1px rgba(var(--shadow-rgb), .08); }
+  .dist .track i { display: block; height: 100%; border-radius: 5px; background: linear-gradient(180deg, #8f877a, #7a7266); }
+  .dist .pc { text-align: right; color: var(--ink-2); font-size: 14px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .dist .hit { background: rgba(var(--red-rgb), .08); box-shadow: inset 3px 0 0 var(--red); }
+  .dist .hit:hover { background: rgba(var(--red-rgb), .11); }
+  .dist .hit .tk, .dist .hit .pc { color: var(--red); font-weight: 600; }
+  .dist .hit .track i { background: var(--red); }
+  .dist .out .tk, .dist .out .pc { color: var(--stone-2); }
+  .dist .out .track { background: transparent; box-shadow: inset 0 0 0 1px var(--paper-2); }
+  .dist .cut {
+    display: flex; align-items: center; gap: 10px; margin: 5px 12px 4px;
+    font: 500 11px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3);
+  }
+  .dist .cut::before, .dist .cut::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+  .dist .cols { display: grid; grid-template-columns: 22px 130px 1fr 72px; column-gap: 12px; padding: 0 12px 6px 8px;
+    font: 500 11px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
+  .dist .cols span:nth-child(2) { text-align: right; }
+  .dist .cols span:last-child { text-align: right; }
+  .panel-foot {
+    margin-top: auto; min-height: 69px; padding: 12px 18px; border-top: 1px solid var(--paper-2);
+    display: flex; align-items: center; font-size: 12px; line-height: 1.45; color: var(--ink-3);
+  }
+  .panel-foot:empty { visibility: hidden; }
+  .panel-head .sub { font: 13px var(--mono); color: var(--ink-3); }
+  .cand-head { display: flex; justify-content: space-between; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-3); margin-bottom: 10px; }
+  .cand .t { white-space: pre; overflow: hidden; text-overflow: ellipsis; }
+  .cand .v { color: var(--ink-3); text-align: right; font-size: 13px; }
+  .cand .bar { grid-column: 1 / -1; height: 8px; border-radius: 4px; background: var(--paper-2); overflow: hidden; }
+  .cand .bar i { display: block; height: 100%; background: var(--stone-2); }
+  .cand.hit .t { color: var(--red); font-weight: 600; }
+  .cand.hit .bar i { background: var(--red); }
+
+  .stepbar { display: none; align-items: center; justify-content: center; gap: 14px; padding: 12px 18px; border-top: 1px solid var(--paper-2); }
+  .stepping .stepbar { display: flex; }
+  .stepbar .pos { font: 600 15px var(--mono); min-width: 90px; text-align: center; }
+  .stepbar .keyhint { position: absolute; right: 18px; font-size: 12px; color: var(--ink-3); }
+  .stepbar { position: relative; }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .btn:disabled:hover { background: var(--ink); border-color: var(--ink); }
+
+  /* Composer */
+  .composer { background: var(--field); border: 1px solid var(--line); border-radius: var(--r); padding: 16px 18px; box-shadow: var(--lift); }
+  .prompt-grid { display: grid; grid-template-columns: 260px 1fr auto; gap: 8px 12px; align-items: start; }
+  /* Optional parts: one compact row each; open to edit. Same columns as the prompt grid. */
+  .opts { margin-top: 12px; border-top: 1px solid var(--paper-2); }
+  .opt { border-bottom: 1px solid var(--paper-2); }
+  .opt:last-child { border-bottom: 0; }  /* the settings row below has its own line */
+  .opt > summary {
+    list-style: none; cursor: pointer; user-select: none; display: flex; align-items: center; gap: 8px;
+    height: 40px; padding: 0; font-size: 14px;
+  }
+  .opt > summary::-webkit-details-marker { display: none; }
+  .opt > summary:hover .opt-title, .opt > summary:hover .chev { color: var(--red); }
+  .opt[open] > summary .chev { transform: rotate(90deg); }
+  .opt-title { font-weight: 600; color: var(--ink); }
+  .opt-state { color: var(--ink-3); font-size: 13px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .opt-state.on { color: var(--red); }
+  .opt-state.bad { color: var(--danger); }
+  .opt-body { display: grid; grid-template-columns: 260px 1fr 124px; gap: 6px 12px; padding: 0 0 14px; align-items: start; }
+  .lbl-s { font-size: 12px; color: var(--ink-3); }
+  .lbl-s a { color: var(--red); }
+  .lbl .opt { font-weight: 400; color: var(--ink-3); margin-left: 4px; }
+  .input.mono { font: 13px/1.5 var(--mono); }
+  .input.invalid, .input.invalid:focus { border-color: var(--danger); box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 18%, transparent); }
+  .field-err { font-size: 12px; color: var(--danger); margin-top: 4px; }
+  .field-err:empty { display: none; }
+  .hdr-lbl { font-size: 15px; font-weight: 600; margin-left: 12px; }
+  .top .copy { margin-left: 0; }
+  .top .copy[hidden] { display: none; }
+  #preset { min-width: 240px; }
+  .hdr-btn {
+    height: 32px; padding: 0 14px; border-radius: 8px; cursor: pointer; margin-right: 4px;
+    border: 1px solid var(--line); background: var(--field); color: var(--ink-2); font: 500 13px var(--sans);
+  }
+  .hdr-btn:hover { color: var(--ink); border-color: var(--stone-2); }
+
+  /* In-context examples: one bordered box like the other fields, with the same icons at top right. */
+  .shots {
+    position: relative; display: flex; flex-direction: column; gap: 8px; min-height: 48px;
+    padding: 7px 9px; border: 1px solid var(--stone-2); border-radius: 8px;
+    background: var(--input-bg); box-shadow: inset 0 1px 2px rgba(var(--shadow-rgb), .06);
+  }
+  .shots .input-tools { top: 8px; right: 8px; }  /* 8 + 1px border = same spot as the other boxes */
+  .shots .input-tools .copy { margin: 0; }
+  .shots .input-tools .copy[hidden] { display: none; }
+  .shot-head, .shot { display: grid; grid-template-columns: 1fr 1fr 30px; gap: 8px; align-items: start; }
+  .shot-head[hidden] { display: none; }
+  .shot-head span { font-size: 12px; color: var(--ink-3); line-height: 32px; }
+  .shot .input { width: 100%; }
+  .shot .copy { margin: 9px 0 0; }
+  .shot .copy:hover { color: var(--danger); }
+  #shotList { display: flex; flex-direction: column; gap: 8px; }
+  #shotList:empty { display: none; }
+  .add-shot {
+    align-self: flex-start; height: 32px; padding: 0 12px; border-radius: 7px; cursor: pointer;
+    border: 1px dashed var(--stone-2); background: transparent; color: var(--ink-2); font: 500 13px var(--sans);
+  }
+  .add-shot:hover { border-style: solid; color: var(--ink); background: var(--field); }
+  .lbl { font-size: 14px; font-weight: 600; color: var(--ink); }
+  /* Copy buttons: one icon style everywhere */
+  .copy {
+    flex: none; display: inline-grid; place-items: center; width: 30px; height: 30px; margin-left: auto; padding: 0;
+    border: 1px solid var(--line); border-radius: 7px; cursor: pointer; color: var(--ink-2);
+    background: var(--field); box-shadow: 0 1px 0 rgba(var(--shadow-rgb), .06);
+    transition: color .15s, background .15s, border-color .15s;
+  }
+  .copy svg { width: 15px; height: 15px; }
+  .copy:hover { color: var(--ink); border-color: var(--stone-2); background: var(--input-bg); }
+  .copy:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+  .copy.done { color: var(--on-primary); background: var(--primary); border-color: var(--primary); }
+  .input-wrap { position: relative; min-width: 0; }
+  .input-wrap .input { width: 100%; padding-right: 128px; }
+  .input-tools { position: absolute; top: 9px; right: 9px; display: flex; gap: 6px; }
+  .input-tools .copy { margin: 0; }
+  .input-tools .copy[hidden] { display: none; }
+  #delPrompt:hover { color: var(--danger); }
+  select.field.ex { height: 48px; min-width: 0; width: 100%; font-weight: 400; }
+  .input {
+    flex: 1; min-width: 0; resize: none; display: block;
+    font: 16px/1.5 var(--sans); color: var(--ink);
+    background: var(--input-bg); border: 1px solid var(--stone-2); border-radius: 8px;
+    padding: 11px 14px; min-height: 48px; outline: none;
+    box-shadow: inset 0 1px 2px rgba(var(--shadow-rgb), .06);
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .input:hover { border-color: var(--ink-3); }
+  .input:focus { border-color: var(--ink); box-shadow: 0 0 0 3px rgba(var(--red-rgb), .18); }
+  .input::placeholder { color: var(--ink-3); }
+  .btn.primary { height: 48px; padding: 0 26px; flex: none; }
+  .settings { display: flex; align-items: flex-start; gap: 10px; flex-wrap: wrap; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--paper-2); }
+  .settings .push { margin-left: auto; align-self: flex-end; height: 36px; }
+  #run, #replay { width: 124px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }  /* one column: same width, same right edge */
+  .param { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; color: var(--ink-2); }
+  .param .field { width: 72px; height: 36px; padding: 0 10px; font-family: var(--mono); font-size: 14px; background: var(--paper); }
+  .ctl { display: flex; flex-direction: column; gap: 4px; margin-right: 8px; flex: 1 1 150px; min-width: min-content; }
+  .ctl-seg { flex: none; }
+  .ctl-seg .seg button { height: 28px; }
+  .ctl-row input[type=range] { flex: 1; width: 0; min-width: 70px; }
+  .ctl-label { display: flex; align-items: center; gap: 12px; white-space: nowrap; height: 22px; font-size: 14px; font-weight: 500; color: var(--ink-2); }
+  .ctl-row { display: flex; align-items: center; gap: 12px; height: 36px; }  /* same height as the Thinking/Mode switches */
+  .ctl output { font: 500 15px var(--mono); color: var(--ink); min-width: 44px; }
+  .radio { display: inline-flex; align-items: center; gap: 5px; font-weight: 500; color: var(--ink); cursor: pointer; }
+  .radio input { accent-color: var(--red); width: 15px; height: 15px; margin: 0; cursor: pointer; }
+  input[type=range] { -webkit-appearance: none; appearance: none; width: 150px; height: 22px; background: transparent; cursor: pointer; margin: 0; }
+  input[type=range]::-webkit-slider-runnable-track { height: 6px; border-radius: 3px; background: linear-gradient(var(--primary), var(--primary)) 0 / var(--fill, 50%) 100% no-repeat, var(--paper-2); }
+  input[type=range]::-moz-range-track { height: 6px; border-radius: 3px; background: var(--paper-2); }
+  input[type=range]::-moz-range-progress { height: 6px; border-radius: 3px; background: var(--primary); }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; margin-top: -7px; border-radius: 50%; background: var(--field); border: 2px solid var(--primary); box-shadow: 0 1px 3px rgba(0,0,0,.15); }
+  input[type=range]::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: var(--field); border: 2px solid var(--primary); }
+  input[type=range]:focus-visible { outline: 2px solid rgba(var(--red-rgb), .4); outline-offset: 2px; border-radius: 4px; }
+  .sep { width: 1px; height: 24px; background: var(--line); margin: 0 4px; }
+  .seg { display: inline-flex; background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 3px; }
+  .seg button {
+    font: 500 13px var(--sans); color: var(--ink-2); background: transparent; border: 0;
+    height: 30px; padding: 0 10px; border-radius: 6px; cursor: pointer;
+  }
+  .seg button:hover { color: var(--ink); }
+  .seg button[aria-pressed="true"] { background: var(--primary); color: var(--on-primary); }
+  .seg button:disabled { cursor: default; color: var(--stone-2); }
+  .seg button:disabled[aria-pressed="true"] { background: var(--paper-2); color: var(--ink-3); }
+  .seg button:disabled { pointer-events: none; }  /* let hover reach the group, which holds the tooltip */
+  .btn {
+    font: 600 15px var(--sans); height: 44px; padding: 0 22px; border-radius: 8px; cursor: pointer;
+    border: 1px solid var(--primary); background: var(--primary); color: var(--on-primary);
+    display: inline-flex; align-items: center; gap: 8px; transition: background .15s;
+  }
+  .btn:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
+  .btn.ghost { background: transparent; color: var(--ink); border-color: var(--stone-2); }
+  .btn.ghost:hover { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
+  .btn.ghost:disabled { color: var(--stone-2); border-color: var(--line); background: transparent; cursor: default; }
+  .btn.stop { background: var(--danger); border-color: var(--danger); }
+  .btn.stop:hover { background: var(--ink); border-color: var(--ink); }
+  kbd { font: 11px var(--mono); opacity: .7; }
+  .error { color: var(--danger); font-size: 14px; padding: 8px 2px 0; }
+  .error:empty { display: none; }
+
+  @media (max-width: 860px) {
+    .app { height: auto; min-height: 100vh; padding: 0 16px 16px; }
+    .main { grid-template-columns: 1fr; }
+    .output { min-height: 40vh; }
+    select.field { min-width: 0; width: 100%; }
+    .top { flex-wrap: wrap; height: auto; padding: 12px 0; }
+    .sep { display: none; }
+    .settings .push { margin-left: 0; }
+    .prompt-grid { grid-template-columns: 1fr; }
+    .prompt-grid > span { display: none; }
+    .prompt-grid > :nth-child(4) { order: 1; margin-bottom: 6px; }
+    .prompt-grid > :nth-child(2) { order: 2; }
+    .prompt-grid > :nth-child(5) { order: 3; }
+    .prompt-grid > :nth-child(6) { order: 4; }
+  }
+</style>
+<script>
+  // Saved choice, else the system setting. Set before the page draws, so there is no flash.
+  let t = null;
+  try { t = localStorage.getItem("theme"); } catch {}
+  document.documentElement.dataset.theme = t || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+</script>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <h1><label for="model">Model</label></h1>
+    <select id="model" class="field" aria-label="Model"></select>
+    <label for="preset" class="hdr-lbl">Preset</label>
+    <select id="preset" class="field" aria-label="Preset"></select>
+    <button type="button" class="copy" id="delPreset" title="Delete saved preset" aria-label="Delete saved preset" hidden></button>
+    <button type="button" class="copy" id="savePreset" title="Save everything as a preset: prompt, system prompt, few-shot examples and settings" aria-label="Save preset"></button>
+    <span class="spacer"></span>
+    <button type="button" id="resetAll" class="hdr-btn" title="Clear the whole screen: prompt, system prompt, in-context examples, output and settings">Reset all</button>
+    <span class="seg" id="theme" role="group" aria-label="Theme">
+      <button data-theme="light" aria-pressed="false">Light</button>
+      <button data-theme="dark" aria-pressed="false">Dark</button>
+    </span>
+  </header>
+
+  <section class="composer" aria-label="Prompt and settings">
+    <div class="prompt-grid">
+      <label for="examples" class="lbl">Prompt examples</label>
+      <label for="prompt" class="lbl">Prompt</label>
+      <span></span>
+      <select id="examples" class="field ex">
+      </select>
+      <div class="input-wrap"><textarea id="prompt" class="input" rows="1" placeholder="Type a prompt, or choose an example…">The capital of France is</textarea><div class="input-tools"><button type="button" class="copy" id="delPrompt" title="Delete saved prompt" aria-label="Delete saved prompt" hidden></button><button type="button" class="copy" id="savePrompt" title="Save prompt to the list" aria-label="Save prompt to the list"></button><button type="button" class="copy" data-copy="prompt" title="Copy prompt" aria-label="Copy prompt"></button></div></div>
+      <button id="run" class="btn primary" title="Generate (⌘ + Enter)">Generate</button>
+    </div>
+    <!-- Optional parts of the request. Collapsed rows; each shows its state when closed. -->
+    <div class="opts">
+      <details class="opt" id="optSystem">
+        <summary><span class="chev"></span><span class="opt-title">System prompt</span><span class="opt-state" id="stSystem"></span></summary>
+        <div class="opt-body">
+          <label for="sysExamples" class="lbl-s">Examples</label>
+          <div class="lbl-s">Instructions for the model, sent before the conversation</div>
+          <span></span>
+          <select id="sysExamples" class="field ex"></select>
+          <div class="input-wrap"><textarea id="system" class="input" rows="1" placeholder="Instructions for the model, for example: Answer in one sentence."></textarea><div class="input-tools"><button type="button" class="copy" id="delSystem" title="Delete saved system prompt" aria-label="Delete saved system prompt" hidden></button><button type="button" class="copy" id="saveSystem" title="Save system prompt to the list" aria-label="Save system prompt to the list"></button><button type="button" class="copy" data-copy="system" title="Copy system prompt" aria-label="Copy system prompt"></button></div></div>
+          <span></span>
+        </div>
+      </details>
+      <details class="opt" id="optShots">
+        <summary><span class="chev"></span><span class="opt-title">In-context examples</span><span class="opt-state" id="stShots"></span></summary>
+        <div class="opt-body">
+          <label for="shotSets" class="lbl-s">Examples</label>
+          <div class="lbl-s">Example questions and answers, sent before your prompt · 1 = one-shot, 2 or more = few-shot</div>
+          <span></span>
+          <select id="shotSets" class="field ex"></select>
+          <div class="shots">
+            <div class="shot-head" id="shotHead" hidden><span>User (example question)</span><span>Assistant (example answer)</span><span></span></div>
+            <div id="shotList"></div>
+            <button type="button" class="add-shot" id="addShot">+ Add example</button>
+            <div class="input-tools">
+              <button type="button" class="copy" id="delShots" title="Delete saved in-context examples" aria-label="Delete saved in-context examples" hidden></button>
+              <button type="button" class="copy" id="saveShots" title="Save these in-context examples to the list" aria-label="Save in-context examples"></button>
+              <button type="button" class="copy" data-copy="shots" title="Copy in-context examples" aria-label="Copy in-context examples"></button>
+            </div>
+          </div>
+          <span></span>
+        </div>
+      </details>
+      <details class="opt" id="optSchema">
+        <summary><span class="chev"></span><span class="opt-title">Structured output</span><span class="opt-state" id="stSchema"></span></summary>
+        <div class="opt-body">
+          <label for="schemaExamples" class="lbl-s">Examples</label>
+          <div class="lbl-s">optional · a JSON schema the reply must follow · empty = off · <a href="https://lmstudio.ai/docs/developer/openai-compat/structured-output" target="_blank" rel="noopener">docs</a></div>
+          <span></span>
+          <select id="schemaExamples" class="field ex"></select>
+          <div class="input-wrap"><textarea id="schema" class="input mono" rows="1" spellcheck="false" placeholder='{ "type": "object", "properties": { … } }'></textarea><div class="input-tools"><button type="button" class="copy" id="delSchema" title="Delete saved schema" aria-label="Delete saved schema" hidden></button><button type="button" class="copy" id="saveSchema" title="Save schema to the list" aria-label="Save schema to the list"></button><button type="button" class="copy" data-copy="schema" title="Copy schema" aria-label="Copy schema"></button></div><div class="field-err" id="schemaErr"></div></div>
+          <span></span>
+        </div>
+      </details>
+    </div>
+    <div class="error" id="error"></div>
+    <div class="settings">
+      <div class="ctl">
+        <div class="ctl-label">Temperature</div>
+        <div class="ctl-row"><input id="temp" type="range" min="0" max="2" step="0.1" value="1"><output id="tempOut">1.0</output></div>
+      </div>
+      <div class="ctl">
+        <div class="ctl-label">Sampling
+          <label class="radio"><input type="radio" name="samp" value="k" checked> Top-k</label>
+          <label class="radio"><input type="radio" name="samp" value="p"> Top-p</label>
+        </div>
+        <div class="ctl-row"><input id="samp" type="range" min="1" max="10" step="1" value="10"><output id="sampOut">k=10</output></div>
+      </div>
+      <div class="ctl">
+        <div class="ctl-label">Max tokens</div>
+        <div class="ctl-row"><input id="max" type="range" min="8" max="4096" step="8" value="512"><output id="maxOut">512</output></div>
+      </div>
+      <div class="ctl ctl-seg" id="thinkCtl">
+        <div class="ctl-label">Thinking</div>
+        <span class="seg" id="think" role="group" aria-label="Thinking">
+          <button data-v="off" aria-pressed="false">Off</button>
+          <button data-v="on" aria-pressed="true">On</button>
+        </span>
+      </div>
+      <div class="ctl ctl-seg">
+        <div class="ctl-label">Mode</div>
+        <span class="seg" id="speed" role="group" aria-label="Mode">
+          <button data-ms="-1" aria-pressed="true">Step</button>
+          <button data-ms="0" aria-pressed="false">Live</button>
+        </span>
+      </div>
+      <button id="replay" class="btn ghost push" disabled>Replay</button>
+    </div>
+  </section>
+
+  <div class="main">
+    <section class="panel stepping" id="outpanel">
+      <div class="panel-head">
+        <h2>Output</h2>
+        <span class="stats" id="stats"></span>
+        <span class="legend"><span>low p</span><span class="ramp"></span><span>high p</span></span>
+      </div>
+      <div class="output" id="output">
+        <details class="sec sec-input" id="minput" open>
+          <summary><span class="chev"></span>Model input <span class="sub">the exact text the model received</span><button type="button" class="copy" data-copy="minput" title="Copy model input" aria-label="Copy model input"></button></summary>
+          <div class="sec-body minput-body" id="minputBody"><span class="hint">Press Generate to see what is sent to the model.</span></div>
+        </details>
+        <details class="sec" id="reason" open hidden>
+          <summary><span class="chev"></span>Reasoning <span class="sub" id="reasonCount"></span><button type="button" class="copy" data-copy="reason" title="Copy reasoning" aria-label="Copy reasoning"></button></summary>
+          <div class="sec-body reason-body" id="reasonBody"></div>
+        </details>
+        <details class="sec" id="answer" open>
+          <summary><span class="chev"></span>Answer <span class="sub" id="answerSub">tokens with probabilities</span><button type="button" class="copy" data-copy="output" title="Copy answer text" aria-label="Copy answer text"></button></summary>
+          <div class="sec-body"><div class="tokens" id="tokens"><span class="empty">Enter a prompt above and press Generate. Darker = the model was more sure of that token; click one to inspect it.</span></div></div>
+        </details>
+      </div>
+      <div class="stepbar">
+        <button class="btn ghost" id="back">← Back</button>
+        <span class="pos" id="pos">0 / 0</span>
+        <button class="btn" id="next">Next →</button>
+        <span class="keyhint">← → or Space</span>
+      </div>
+    </section>
+    <aside class="panel">
+      <div class="panel-head"><h2 id="candTitle">Next token</h2></div>
+      <div id="detail"><p class="hint">Click any token to see the alternatives the model considered.</p></div>
+      <div class="panel-foot" id="detailFoot"></div>
+    </aside>
+  </div>
+
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+let data = [], sel = -1, pinned = false, ctrl = null;
+let queue = [], streaming = false, playing = null, busy = false, speedMs = -1;
+
+const show = s => s.replace(/ /g, "·").replace(/\n/g, "↵").replace(/\t/g, "→");
+// Readable token label for the side panel: drop surrounding spaces; name whitespace-only tokens.
+function label(tok) {
+  if (tok.trim() !== "") return esc(tok.trim().replace(/\n/g, "↵").replace(/\t/g, "→"));
+  const n = (tok.match(/\n/g) || []).length;
+  const name = n ? (n > 1 ? `newline ×${n}` : "newline") : tok.includes("\t") ? "tab" : tok.length > 1 ? `space ×${tok.length}` : "space";
+  return `<span class="wsname">${name}</span>`;
+}
+// Shared colour scale for tokens and bars: darker red = more likely.
+const shade = p => `rgba(var(--red-rgb), ${(0.1 + 0.8 * p).toFixed(3)})`;
+const pct = p => p >= 0.0001 ? (p * 100).toFixed(p >= 0.1 ? 1 : 2) + "%" : p > 0 ? "<0.01%" : "0%";
+
+async function loadModels() {
+  try {
+    const r = await fetch("/v1/models");
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error?.message || r.status);
+    const ids = j.data.map(m => m.id).filter(id => !/embed/i.test(id));
+    $("model").innerHTML = ids.map(id => `<option>${id}</option>`).join("");
+    try {
+      const v1 = await fetch("/api/v1/models").then(r => r.json());
+      for (const m of v1.models || []) reasoningOpts[m.key] = m.capabilities?.reasoning || null;
+    } catch {}
+    syncThinking();
+  } catch (e) {
+    $("error").textContent = `LM Studio unreachable: ${e.message || e}`;
+  }
+}
+
+// Thinking: LM Studio reports per model whether reasoning can be switched (allowed_options).
+const reasoningOpts = {};
+let thinkOn = true;
+function syncThinking() {
+  const r = reasoningOpts[$("model").value];
+  const canOff = !!r?.allowed_options?.includes("off"), canOn = !!r?.allowed_options?.includes("on");
+  const on = canOff && canOn ? thinkOn : canOn;
+  document.querySelectorAll("#think button").forEach(b => {
+    b.disabled = !(canOff && canOn);
+    b.setAttribute("aria-pressed", (b.dataset.v === "on") === on);
+  });
+  const [tt, tb] = !r ? ["Thinking not available", "This model is not a reasoning model. It always answers directly."]
+    : canOff && canOn ? ["Thinking", "On: the model reasons first; the reasoning shows as text, without probabilities. Off: the model answers directly."]
+    : ["Thinking always on", "This model always reasons before it answers. It cannot be switched off."];
+  Object.assign($("think").dataset, { tipTitle: tt, tip: tb, tipPlain: "" });
+}
+document.querySelectorAll("#think button").forEach(b => b.onclick = () => { thinkOn = b.dataset.v === "on"; syncThinking(); });
+$("model").addEventListener("change", syncThinking);
+// Off = reasoning_effort "none": LM Studio then pre-fills an empty thought block, so the model answers directly.
+const thinkingOff = () => reasoningOpts[$("model").value]?.allowed_options?.includes("off") && !thinkOn;
+
+// The stop token's name differs per model (<end_of_turn>, <|im_end|>, <|eot_id|>…). Learn it from candidates.
+let stopName = null;
+const STOP_RE = /^(<\|?(end_of_turn|im_end|eot_id|end|eos|return|endoftext|end_of_text)\|?>|<\/s>|<turn\|>|<[|｜]end[ _▁]of[ _▁]sentence[|｜]>)$/;
+
+// Byte-level BPE models (Qwen, DeepSeek, GPT-2 family) send tokens in their internal alphabet:
+// "Ġ" = space, "Ċ" = newline. Map them back to real text.
+const BPE = (() => {
+  const keep = [];
+  for (let b = 33; b <= 126; b++) keep.push(b);
+  for (let b = 161; b <= 172; b++) keep.push(b);
+  for (let b = 174; b <= 255; b++) keep.push(b);
+  const map = new Map(); let n = 0;
+  for (let b = 0; b < 256; b++) map.set(String.fromCharCode(keep.includes(b) ? b : 256 + n++), b);
+  return map;
+})();
+let byteLevel = false;
+function bpeBytes(s) {
+  if (/^<.*>$/.test(s)) return null;  // special tokens are already plain text
+  const bytes = [];
+  for (const ch of s) { const b = BPE.get(ch); if (b === undefined) return null; bytes.push(b); }
+  return bytes;
+}
+function bpeText(s) {
+  const bytes = bpeBytes(s);
+  if (!bytes) return s;
+  const text = new TextDecoder().decode(new Uint8Array(bytes));
+  // Part of a multi-byte character (an emoji split over tokens): show the bytes, not "�".
+  return text.includes("\uFFFD") ? `‹${bytes.map(b => b.toString(16).toUpperCase().padStart(2, "0")).join(" ")}›` : text;
+}
+function decodeTok(t) {
+  if (!byteLevel) byteLevel = [t, ...t.top_logprobs].some(c => /[ĠĊ]/.test(c.token));
+  if (!byteLevel) return t;
+  t.raw = t.token;
+  t.token = bpeText(t.token);
+  for (const c of t.top_logprobs) c.token = bpeText(c.token);
+  return t;
+}
+function seenCands(t) {
+  if (stopName) return;
+  const hit = t.top_logprobs.find(c => STOP_RE.test(c.token));
+  if (hit) stopName = hit.token;
+}
+
+// Plain-language explanations for special tokens, shown as a tooltip on hover.
+const START = "Start of a turn. The word after it names the speaker: user, model or system.";
+const END = "End of a turn. Closes a message. When the model generates this token, it stops: it is the model's stop token.";
+const TOKEN_HELP = {
+  bos: ["Beginning of sequence", "Marks the start of the whole input. It is added once, before everything else."],
+  begin_of_sentence: ["Beginning of sequence (DeepSeek)", "Marks the start of the whole input. It is added once, before everything else."],
+  begin_of_text: ["Beginning of sequence", "Marks the start of the whole input. It is added once, before everything else."],
+  start_of_turn: ["Start of turn (Gemma 3)", START],
+  end_of_turn: ["End of turn (Gemma 3)", END],
+  "open:turn": ["Start of turn (Gemma 4)", START],
+  "close:turn": ["End of turn (Gemma 4)", END],
+  im_start: ["Start of turn (ChatML)", START],
+  im_end: ["End of turn (ChatML)", END],
+  eot_id: ["End of turn (Llama)", END],
+  start: ["Start of message (gpt-oss)", START],
+  end: ["End of message (gpt-oss)", "Closes a message."],
+  message: ["Message content (gpt-oss)", "The message text starts after this token."],
+  channel: ["Channel (gpt-oss)", "The word after it names the channel: 'analysis' is reasoning, 'final' is the answer."],
+  return: ["End of answer (gpt-oss)", "The model generates this token when its final answer is complete. It is the stop token."],
+  user: ["User turn (DeepSeek)", "Starts your message. Your prompt follows this token."],
+  assistant: ["Model turn (DeepSeek)", "Starts the model's reply. The model generates its text after this token."],
+  end_of_sentence: ["End of sequence (DeepSeek)", "The model generates this token when its reply is complete. It is the stop token."],
+  endoftext: ["End of text", "Marks the end of the text. The model stops here."],
+  eos: ["End of sequence", "The model generates this token when its reply is complete. It is the stop token."],
+  "</s>": ["End of sequence", "The model generates this token when its reply is complete. It is the stop token."],
+  think: ["Thinking on (Gemma 4)", "LM Studio adds this token to the system turn when Thinking is On. It tells the model to reason before it answers."],
+  "open:channel": ["Start of channel (Gemma 4)", "Opens a section. The word after it names the section: 'thought' is the model's reasoning."],
+  "close:channel": ["End of channel (Gemma 4)", "Closes the section. An empty thought section (Thinking Off) makes the model skip its reasoning and answer directly."],
+  "<think>": ["Start of reasoning (DeepSeek, Qwen)", "The model's reasoning follows, up to </think>."],
+  "</think>": ["End of reasoning (DeepSeek, Qwen)", "The reasoning is complete. The answer follows."],
+};
+const ROLE_HELP = {
+  user: ["Role: user", "This turn is your message."],
+  model: ["Role: model", "This turn is the model's reply. The model generates its text after this point."],
+  assistant: ["Role: assistant", "This turn is the model's reply. The model generates its text after this point."],
+  system: ["Role: system", "Instructions to the model. LM Studio adds this turn; here it carries the thinking switch."],
+};
+function tokenHelp(tok) {
+  if (TOKEN_HELP[tok]) return TOKEN_HELP[tok];
+  const open = /^<[|｜]/.test(tok), close = /[|｜]>$/.test(tok);
+  const name = tok.replace(/^<[|｜]?|[|｜]?>$/g, "").replace(/[\s▁]/g, "_").toLowerCase();
+  const side = open && !close ? "open:" : close && !open ? "close:" : "";
+  return TOKEN_HELP[side + name] || TOKEN_HELP[name]
+    || ["Special token", "A control marker from the model's vocabulary. It is one token, not text that the model reads letter by letter."];
+}
+const tipAttr = ([title, body]) => ` data-tip-title="${esc(title)}" data-tip="${esc(body)}"`;
+
+// One shared tooltip for every element with data-tip.
+const tip = Object.assign(document.createElement("div"), { id: "tip", role: "tooltip" });
+document.body.append(tip);
+document.addEventListener("mouseover", e => {
+  const el = e.target.closest("[data-tip]");
+  if (!el) return tip.classList.remove("show");
+  const code = "tipPlain" in el.dataset ? "" : `<code>${esc(el.textContent.replace(/↵/g, ""))}</code>`;
+  tip.innerHTML = `<b>${esc(el.dataset.tipTitle || "")}</b>${code}<span>${esc(el.dataset.tip)}</span>`;
+  tip.classList.add("show");
+  const r = el.getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight;
+  tip.style.left = Math.max(8, Math.min(r.left, innerWidth - w - 8)) + "px";
+  tip.style.top = (r.bottom + 8 + h > innerHeight ? r.top - h - 8 : r.bottom + 8) + "px";
+});
+document.addEventListener("scroll", () => tip.classList.remove("show"), true);
+
+// Render the formatted prompt: special tokens as chips, role names highlighted, newlines visible.
+function renderInput(str) {
+  // The template's turn-closing tag is also the model's stop token; use it to name the end marker.
+  const close = (str.match(/<[^<>\s]{1,40}>/g) || []).find(tag => STOP_RE.test(tag));
+  if (close) {
+    stopName = close;
+    const last = data.concat(queue).find(t => t.end === "stop");
+    if (last) { last.token = close; const el = [...$("tokens").children].find(e => e.classList.contains("stop")); if (el) el.textContent = close; }
+  }
+  const html = str.split(/(<[^<>\s]{1,40}>)/).map((part, i) => {
+    if (i % 2) return `<span class="sp${/bos|^<s>$/i.test(part) ? " bos" : ""}"${tipAttr(tokenHelp(part))}>${esc(part)}</span>`;
+    return esc(part)
+      .replace(/^(user|model|assistant|system|developer)(?=\n)/, (m, r) => ROLE_HELP[r] ? `<span class="role"${tipAttr(ROLE_HELP[r])}>${r}</span>` : `<span class="role">${r}</span>`)
+      .replace(/\n/g, '<span class="nl">↵</span>\n');
+  }).join("");
+  minputText = str;
+  $("minputBody").innerHTML = html;
+}
+
+async function loadModelInput(since) {
+  minputText = "";
+  $("minputBody").innerHTML = '<span class="hint">Waiting for LM Studio…</span>';
+  for (let i = 0; i < 20; i++) {
+    try {
+      const j = await (await fetch(`/model-input?since=${since}`)).json();
+      if (j.entry) return renderInput(j.entry.input);
+      if (!j.available) break;
+    } catch (e) { break; }
+    await new Promise(r => setTimeout(r, 300));
+  }
+  $("minputBody").innerHTML = '<span class="hint">Not available: the server could not read LM Studio\'s model log (needs the lms CLI).</span>';
+}
+
+function makeTok(t, i) {
+  const s = document.createElement("span");
+  if (t.end) {
+    s.className = "tok end " + t.end + (i === sel ? " sel" : "");
+    s.textContent = t.token;
+    const [tt, tb] = t.end === "stop" ? tokenHelp(t.token) : ["Max tokens reached", "Generation stopped because it reached the Max tokens limit. This is not a token from the model."];
+    s.dataset.tipTitle = tt; s.dataset.tip = tb;
+    s.onclick = () => { pinned = true; select(i); };
+    return s;
+  }
+  const p = Math.exp(t.logprob);
+  s.className = "tok" + (i === sel ? " sel" : "");
+  s.style.background = shade(p);
+  if (p > 0.55) s.style.color = "#fff";
+  const ws = txt => { const w = document.createElement("span"); w.className = "ws"; w.textContent = txt; return w; };
+  t.token.split(/(\n)/).forEach(part => part === "\n" ? s.append(ws("↵"), "\n") : s.append(part));
+  s.title = `p = ${pct(p)}`;
+  s.onclick = () => { pinned = true; select(i); };
+  return s;
+}
+
+function appendToken(t) {
+  const box = $("tokens");
+  if (!data.length) box.innerHTML = "";
+  data.push(t);
+  const el = makeTok(t, data.length - 1);
+  if (speedMs) el.classList.add("new");
+  const out = $("output");
+  const atBottom = out.scrollHeight - out.scrollTop - out.clientHeight < 60;
+  box.append(el);
+  if (atBottom) out.scrollTop = out.scrollHeight;
+  if (!pinned) select(data.length - 1);
+}
+
+function select(i) {
+  const toks = $("tokens").children;
+  toks[sel]?.classList.remove("sel");
+  sel = i;
+  if (speedMs >= 0 || pinned) toks[sel]?.classList.add("sel");
+  renderDetail();
+}
+
+// Sampling settings, read live so moving a slider re-renders the distribution.
+const samp = () => ({
+  temp: +$("temp").value,
+  mode: document.querySelector('input[name="samp"]:checked').value,
+  val: +$("samp").value,
+});
+
+// Apply temperature, then top-k / top-p, to the returned top-10 candidates and renormalise.
+// LM Studio returns raw model log probs, so this is computed here, over those 10 only.
+function sampled(cands) {
+  const { temp, mode, val } = samp();
+  const lps = cands.map(c => c.logprob);
+  let w;
+  if (temp === 0) w = lps.map((l, i) => (i === lps.indexOf(Math.max(...lps)) ? 1 : 0));
+  else { const m = Math.max(...lps); w = lps.map(l => Math.exp((l - m) / temp)); }
+  let z = w.reduce((a, b) => a + b, 0);
+  let probs = w.map(x => x / z);
+  const order = probs.map((p, i) => i).sort((a, b) => probs[b] - probs[a]);
+  const keep = new Set();
+  if (mode === "k") order.slice(0, val).forEach(i => keep.add(i));
+  else { let acc = 0; for (const i of order) { keep.add(i); acc += probs[i]; if (acc >= val) break; } }
+  probs = probs.map((p, i) => (keep.has(i) ? p : 0));
+  z = probs.reduce((a, b) => a + b, 0) || 1;
+  return probs.map(p => p / z);
+}
+
+function candRows(t) {
+  const seen = {};
+  t.top_logprobs.forEach(c => { const k = c.token.trim(); seen[k] = (seen[k] || 0) + 1; });
+  const probs = sampled(t.top_logprobs);
+  const { mode, val } = samp();
+  let cutShown = false;
+  const rows = t.top_logprobs.map((c, i) => {
+    const p = probs[i];
+    const dup = c.token.trim() !== "" && seen[c.token.trim()] > 1 && /^\s/.test(c.token);
+    const tip = `exact token: ${JSON.stringify(c.token)} · model p ${pct(Math.exp(c.logprob))} · log prob ${c.logprob.toFixed(2)}`;
+    const cls = (c.token === t.token ? " hit" : "") + (p === 0 ? " out" : "");
+    let divider = "";
+    if (p === 0 && !cutShown) {
+      cutShown = true;
+      divider = `<div class="cut">cut by ${mode === "k" ? `top-k (k=${val})` : `top-p (p=${val.toFixed(2)})`}</div>`;
+    }
+    return divider + `<div class="row${cls}" title="${esc(tip)}">
+      <span class="rk">${i + 1}</span>
+      <span class="tk${c.token.trim().length > 14 ? " long" : ""}">${label(c.token)}${dup ? ' <span class="wsname">(sp)</span>' : ""}</span>
+      <span class="track">${p > 0 ? `<i style="width:max(3px, ${(p * 100).toFixed(2)}%); background:${shade(p)}"></i>` : ""}</span>
+      <span class="pc">${pctS(p)}</span></div>`;
+  }).join("");
+  return `<div class="dist"><div class="cols"><span>#</span><span>token</span><span></span><span>chance</span></div>${rows}</div>`;
+}
+const pctS = p => (p === 0 ? "0%" : p < 0.0001 ? "<0.01%" : (p * 100).toFixed(2) + "%");
+
+function endInfo(t) {
+  return t.end === "stop"
+    ? `<div class="end-info"><span class="tag">${esc(t.token)}</span>
+        <p>The model picked its stop token here and ended its turn.</p>
+        <p>LM Studio does not return this step's candidates or probability, so none are shown.</p></div>`
+    : `<div class="end-info"><p>Generation stopped because it reached the max-tokens limit. The model did not choose to stop.</p></div>`;
+}
+
+function renderDetail() {
+  const note = `Chance after temperature and ${samp().mode === "k" ? "top-k" : "top-p"}, over the top 10 candidates. Hover a row for the raw probability.`;
+  // Step mode: show the choices for the token that comes next, unless the user clicked a token.
+  if (speedMs < 0 && !pinned) {
+    const t = queue[0];
+    $("candTitle").innerHTML = `Next token${t ? ` <span class="sub">· position ${data.length}</span>` : ""}`;
+    $("detail").innerHTML = t ? (t.end ? endInfo(t) : candRows(t))
+      : `<p class="hint">${streaming ? (reasonText ? "The model is reasoning. LM Studio sends no probabilities for reasoning, so it shows as text on the left. Answer tokens appear here when it finishes." : "Waiting for the model…") : data.length ? "End of output." : "Press Generate to start."}</p>`;
+    $("detailFoot").textContent = t ? note : "";
+    return;
+  }
+  const t = data[sel];
+  if (!t) {
+    $("candTitle").textContent = "Token";
+    $("detail").innerHTML = `<p class="hint">${streaming ? "Waiting for the model…" : "Press Generate, then click a token to see its candidates."}</p>`;
+    $("detailFoot").textContent = "";
+    return;
+  }
+  $("candTitle").innerHTML = `Token <span class="sub">· position ${sel}</span>`;
+  $("detail").innerHTML = t.end ? endInfo(t) : candRows(t);
+  $("detailFoot").textContent = speedMs < 0 ? "Viewing an added token. Press Next → to return to the upcoming one." : note;
+}
+
+const esc = s => s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+let lastHead = null;
+function renderStats() {
+  $("tokens").classList.toggle("has-next", speedMs < 0 && (queue.length > 0 || streaming));
+  // Refresh the upcoming candidates when a new head token arrives while streaming.
+  if (speedMs < 0 && !pinned && queue[0] !== lastHead) { lastHead = queue[0]; renderDetail(); }
+  $("pos").textContent = `${data.length} / ${data.length + queue.length}${streaming ? "+" : ""}`;
+  $("next").disabled = !queue.length;
+  $("back").disabled = !data.length;
+  const real = data.filter(t => !t.end);
+  if (!real.length) { $("stats").innerHTML = ""; return; }
+  const lps = real.map(t => t.logprob);
+  const mean = lps.reduce((a, b) => a + b, 0) / lps.length;
+  const low = lps.filter(l => Math.exp(l) < 0.5).length;
+  $("stats").innerHTML = `<span>tokens <b>${real.length}</b></span>
+    <span>mean p <b>${pct(lps.reduce((a, l) => a + Math.exp(l), 0) / lps.length)}</b></span>
+    <span>perplexity <b>${Math.exp(-mean).toFixed(3)}</b></span>
+    <span>p &lt; 50% <b>${low}</b></span>${queue.length ? `<span>${speedMs < 0 ? "remaining" : "buffered"} <b>${queue.length}</b></span>` : ""}`;
+}
+
+// Tokens arrive into `queue`; play() reveals them at the selected playback speed.
+function play() {
+  if (playing) return playing;
+  playing = new Promise(done => {
+    const step = () => {
+      if (speedMs < 0 || !queue.length) {
+        renderStats();
+        if (streaming) return setTimeout(step, 30);
+        playing = null; return done();
+      }
+      const delay = speedMs;
+      if (delay) appendToken(queue.shift());
+      else while (queue.length) appendToken(queue.shift());
+      renderStats();
+      setTimeout(step, delay || 30);
+    };
+    step();
+  });
+  return playing;
+}
+
+function reset(msg) {
+  data = []; sel = -1; pinned = false; lastHead = null;
+  $("tokens").innerHTML = `<span class="empty">${msg}</span>`;
+  if (!keepReason) { reasonText = ""; reasonChunks = 0; $("reason").hidden = true; $("reasonBody").textContent = ""; }
+  renderDetail();
+  renderStats();
+}
+
+let reasonText = "", reasonChunks = 0, keepReason = false, minputText = "";
+// Live count: one streamed chunk is one token. The exact count from LM Studio's usage replaces it at the end.
+const showReasonCount = (n, exact) => { $("reasonCount").textContent = `${exact ? "" : "~"}${n.toLocaleString()} token${n === 1 ? "" : "s"}`; };
+// Remove the thinking delimiters: <think>…</think> (DeepSeek, Qwen) and <|channel>thought … <channel|> (Gemma 4).
+const cleanReason = s => s.replace(/<\/?think>|<\|channel>thought|<channel\|>/g, "").trim();
+
+// Copy buttons: prompt, model input, reasoning, and the generated answer text.
+const ICON_COPY = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/></svg>';
+const ICON_DONE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>';
+const COPY = {
+  prompt: () => $("prompt").value,
+  system: () => $("system").value,
+  schema: () => $("schema").value,
+  shots: () => shots.filter(x => x.u.trim() || x.a.trim()).map(x => `User: ${x.u}\nAssistant: ${x.a}`).join("\n\n"),
+  minput: () => minputText,
+  reason: () => cleanReason(reasonText),
+  output: () => {
+    const toks = data.concat(queue).filter(t => !t.end);
+    if (!toks.some(t => t.raw)) return toks.map(t => t.token).join("");
+    // Byte-level models: join the bytes first, so characters split over tokens copy correctly.
+    const bytes = toks.flatMap(t => (t.raw != null && bpeBytes(t.raw)) || [...new TextEncoder().encode(t.token)]);
+    return new TextDecoder().decode(new Uint8Array(bytes));
+  },
+};
+document.querySelectorAll(".copy[data-copy]").forEach(b => {
+  b.innerHTML = ICON_COPY;
+  b.addEventListener("mousedown", e => e.preventDefault());  // keep Space/arrow keys for stepping
+  b.addEventListener("click", async e => {
+    e.preventDefault(); e.stopPropagation();  // a click inside <summary> must not fold the section
+    const text = COPY[b.dataset.copy]();
+    if (!text) return;
+    try { await navigator.clipboard.writeText(text); }
+    catch { const ta = Object.assign(document.createElement("textarea"), { value: text }); document.body.append(ta); ta.select(); document.execCommand("copy"); ta.remove(); }
+    b.innerHTML = ICON_DONE; b.classList.add("done"); b.title = "Copied";
+    clearTimeout(b._t); b._t = setTimeout(() => { b.innerHTML = ICON_COPY; b.classList.remove("done"); b.title = b.getAttribute("aria-label"); }, 1400);
+  });
+});
+function addReasoning(s) {
+  reasonText += s; reasonChunks++;
+  const body = $("reasonBody"), out = $("output"), atEnd = out.scrollHeight - out.scrollTop - out.clientHeight < 60;
+  body.textContent = cleanReason(reasonText);
+  $("reason").hidden = false;
+  showReasonCount(reasonChunks, false);
+  if (atEnd) out.scrollTop = out.scrollHeight;  // follow the stream only if you are at the bottom
+  if (speedMs < 0 && !pinned && !queue.length) renderDetail();
+}
+
+function setBusy(on) {
+  busy = on;
+  $("run").textContent = on ? "Stop" : "Generate";
+  $("run").classList.toggle("stop", on);
+  $("replay").disabled = on || !(data.length + queue.length);
+}
+
+function stop() {
+  ctrl?.abort();
+  streaming = false;
+  queue = [];
+}
+
+async function run() {
+  if (busy) return stop();  // button acts as Stop while streaming or playing
+  const schema = readSchema();
+  if (schema === undefined) { $("error").textContent = "Structured output: the schema is not valid JSON. Fix it or empty the box."; return; }
+  // LM Studio leaves out the tokens the schema forces (braces, key names) when it returns probabilities.
+  $("answerSub").textContent = schema ? "tokens with probabilities · keys and braces forced by the schema are not shown" : "tokens with probabilities";
+  document.activeElement?.blur();  // free the arrow keys / Space for stepping
+  $("error").textContent = "";
+  byteLevel = false;
+  queue = [];  // drop tokens of the previous run that were not stepped through
+  reset(speedMs < 0 ? "Press Next → (or Space) to add each token." : "Waiting for first token…");
+  ctrl = new AbortController();
+  stopName = null;
+  loadModelInput(Date.now() - 1000);
+  streaming = true;
+  renderDetail();
+  setBusy(true);
+  const shown = play();
+  try {
+    const r = await fetch("/v1/chat/completions", {
+      method: "POST", headers: { "Content-Type": "application/json" }, signal: ctrl.signal,
+      body: JSON.stringify({
+        model: $("model").value,
+        messages: [
+          ...($("system").value.trim() ? [{ role: "system", content: $("system").value }] : []),
+          ...shots.filter(x => x.u.trim() && x.a.trim())
+                  .flatMap(x => [{ role: "user", content: x.u }, { role: "assistant", content: x.a }]),
+          { role: "user", content: $("prompt").value },
+        ],
+        max_tokens: +$("max").value, temperature: samp().temp, stream: true,
+        ...(samp().mode === "k" ? { top_k: samp().val, top_p: 1 } : { top_p: samp().val }),
+        logprobs: true, top_logprobs: 10,  // LM Studio's maximum
+        stream_options: { include_usage: true },  // final chunk carries the reasoning token count
+        ...(thinkingOff() ? { reasoning_effort: "none" } : {}),
+        ...(schema ? { response_format: { type: "json_schema", json_schema: { name: "output", strict: true, schema } } } : {}),
+      }),
+    });
+    if (!r.ok) { const j = await r.json().catch(() => ({})); throw new Error(j.error?.message || j.error || r.status); }
+    const reader = r.body.pipeThrough(new TextDecoderStream()).getReader();
+    let buf = "", got = 0, finish = null;
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += value;
+      const lines = buf.split("\n");
+      buf = lines.pop();
+      for (const line of lines) {
+        if (!line.startsWith("data:")) continue;
+        const payload = line.slice(5).trim();
+        if (payload === "[DONE]") continue;
+        const j = JSON.parse(payload);
+        if (j.error) throw new Error(j.error.message || j.error);
+        const ch = j.choices?.[0], lp = ch?.logprobs?.content || [];
+        for (const t of lp) { queue.push(decodeTok(t)); got++; seenCands(t); }
+        // Reasoning has no logprobs: it comes as reasoning_content, or as <think>…</think> text in content.
+        const rtext = (ch?.delta?.reasoning_content || "") + (lp.length ? "" : ch?.delta?.content || "");
+        if (rtext) addReasoning(rtext);
+        const rt = j.usage?.completion_tokens_details?.reasoning_tokens;
+        if (rt != null && reasonText) showReasonCount(rt, true);
+        if (j.choices?.[0]?.finish_reason) finish = j.choices[0].finish_reason;
+      }
+    }
+    if (!got && reasonText && finish === "length")
+      throw new Error("Max tokens ran out while the model was reasoning, so there is no answer. Raise Max tokens.");
+    if (!got && !reasonText) throw new Error("The server returned no logprobs for this model.");
+    // LM Studio omits the final stop token from the stream; add a marker so the end is visible.
+    if (finish === "stop") queue.push({ token: stopName || "<end of turn>", end: "stop", top_logprobs: [] });
+    if (finish === "length") queue.push({ token: "max tokens reached", end: "length", top_logprobs: [] });
+  } catch (e) {
+    if (e.name !== "AbortError") $("error").textContent = String(e.message || e);
+  } finally {
+    ctrl = null;
+    streaming = false;
+  }
+  await shown;
+  setBusy(false);
+  renderStats();
+}
+
+async function replay() {
+  if (busy || !(data.length + queue.length)) return;
+  const tokens = data.concat(queue);
+  keepReason = true; reset(""); keepReason = false;
+  queue = tokens;
+  if (speedMs < 0) { renderStats(); renderDetail(); return; }
+  setBusy(true);
+  await play();
+  setBusy(false);
+  renderStats();
+}
+
+$("run").onclick = run;
+$("replay").onclick = replay;
+function next() {
+  if (!queue.length) return;
+  pinned = false;
+  appendToken(queue.shift());
+  renderStats();
+  renderDetail();
+}
+function back() {
+  if (!data.length) return;
+  queue.unshift(data.pop());
+  $("tokens").lastElementChild.remove();
+  if (!data.length) $("tokens").innerHTML = '<span class="empty">Press Next → (or Space) to add each token.</span>';
+  pinned = false;
+  sel = -1;
+  if (data.length) select(data.length - 1);
+  renderStats();
+  renderDetail();
+}
+// Clicking a button shouldn't focus it, so Space keeps meaning "next token".
+document.querySelectorAll("button").forEach(b => b.addEventListener("mousedown", e => e.preventDefault()));
+$("next").onclick = next;
+$("back").onclick = back;
+document.querySelectorAll("#speed button").forEach(b => b.onclick = () => {
+  document.querySelectorAll("#speed button").forEach(x => x.setAttribute("aria-pressed", x === b));
+  speedMs = +b.dataset.ms;
+  $("outpanel").classList.toggle("stepping", speedMs < 0);
+  if (speedMs >= 0 && queue.length && !playing) play().then(renderStats);
+  pinned = false;
+  renderStats();
+  renderDetail();
+});
+function syncSliders() {
+  const isK = samp().mode === "k";
+  const sl = $("samp");
+  if (isK && sl.step !== "1") { sl.min = 1; sl.max = 10; sl.step = 1; sl.value = 10; }
+  if (!isK && sl.step !== "0.05") { sl.min = 0.05; sl.max = 1; sl.step = 0.05; sl.value = 0.9; }
+  $("tempOut").textContent = (+$("temp").value).toFixed(1);
+  $("sampOut").textContent = isK ? `k=${sl.value}` : `p=${(+sl.value).toFixed(2)}`;
+  $("maxOut").textContent = $("max").value;
+  document.querySelectorAll('input[type=range]').forEach(r => r.style.setProperty("--fill", ((r.value - r.min) / (r.max - r.min) * 100) + "%"));
+}
+document.querySelectorAll('input[type=range], input[name="samp"]').forEach(el => el.addEventListener("input", () => { syncSliders(); renderDetail(); }));
+syncSliders();
+const fit = t => { t.style.height = "auto"; t.style.height = Math.min(t.scrollHeight + 2, t.classList.contains("mono") ? 280 : 140) + "px"; };
+const grow = () => fit($("prompt"));
+// [menu label, prompt]
+const EXAMPLES = [
+  ["The capital of France is", "The capital of France is"],
+  ["Poem: stone and fire", "Write a short poem about stone and fire."],
+  ["My favourite city is", "Complete the sentence: My favourite city is"],
+  ["Name a random fruit", "Name a random fruit."],
+  ["Story: the door creaked open", "Continue the story: The door creaked open and"],
+  ["What is 17 × 24?", "What is 17 × 24? Answer with the number only."],
+  ["Translate to French", "Translate to French: The cat sleeps on the warm windowsill."],
+  ["One word for the ocean", "Give me one word that describes the ocean."],
+  ["What is 3 + 2?", "What is 3 + 2?"],
+  ["1+1=", "1+1="],
+  ["Penguins", "I saw 9 penguins. 2 slid in the water and disappeared from sight while 4 waddled up from the shore. How many can I see?"],
+  ["Penguins · think step-by-step", "I saw 9 penguins. 2 slid in the water and disappeared from sight while 4 waddled up from the shore. How many can I see? Think step-by-step."],
+  ["Penguins · with worked example", "I saw 9 penguins. 2 slid in the water and disappeared from sight while 4 waddled up from the shore. How many can I see?\n\nExample: I saw 6 flamingos. 2 flew away. 1 hid behind a tree. How many can I see?\nAnswer: You saw 6 flamingos 2 flew away. 6 - 2 = 4. Then, 1 flamingo hid. You see now 4 - 1 = 3."],
+  ["Penguins · be concise", "I saw 9 penguins. 2 slid in the water and disappeared from sight while 4 waddled up from the shore. How many can I see? Be concise."],
+];
+// System prompt examples: [menu label, system prompt]
+const SYSTEM_EXAMPLES = [
+  ["Be concise", "Be concise. Answer in one sentence."],
+  ["One word only", "Answer with one word only."],
+  ["Think step-by-step", "Think step-by-step before you give the final answer."],
+  ["Math tutor", "You are a patient math tutor. Explain each step in simple words."],
+  ["Pirate", "Answer like a pirate."],
+  ["Reply in French", "Always reply in French."],
+  ["JSON only", "Respond only with valid JSON. Do not add any other text."],
+  ["Helpful assistant", "You are a helpful assistant."],
+];
+
+// A saved list in a <select>: your saved items (stored by the server) above built-in examples, plus save/delete.
+//   get(): current value, or null when there is nothing to save · apply(v): show a value (undefined = cleared)
+//   name(v): menu label for a new saved item · key: field that holds the value in the stored item
+const ICON_SAVE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21l-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/><path d="M12 7v6M9 10h6"/></svg>';
+const ICON_DEL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/></svg>';
+const flash = b => { b.classList.add("done"); setTimeout(() => b.classList.remove("done"), 900); };
+const short = (t, n = 40) => { t = t.replace(/\s+/g, " ").trim(); return t.length > n ? t.slice(0, n) + "…" : t; };
+function savedList({ select, saveBtn, delBtn, examples, url, placeholder, key, get, apply, name, clearOnEmpty = false }) {
+  let saved = [];
+  saveBtn.innerHTML = ICON_SAVE;
+  delBtn.innerHTML = ICON_DEL;
+  const fill = (value = "") => {
+    select.innerHTML = `<option value="">${placeholder}</option><option value="c" hidden>Custom</option>`;
+    if (saved.length) {
+      const g = Object.assign(document.createElement("optgroup"), { label: "Saved" });
+      saved.forEach((p, i) => g.append(new Option(p.name, "s" + i)));
+      select.append(g);
+    }
+    const g = Object.assign(document.createElement("optgroup"), { label: "Examples" });
+    examples.forEach(([lbl], i) => g.append(new Option(lbl, "e" + i)));
+    select.append(g);
+    select.value = value;
+    delBtn.hidden = !value.startsWith("s");
+  };
+  const store = async () => {
+    const r = await fetch(url, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(saved) });
+    if (!r.ok) throw new Error("Could not save the list.");
+  };
+  saveBtn.onclick = async () => {
+    const v = get();
+    if (v == null) return;
+    const same = JSON.stringify(v);
+    let i = saved.findIndex(p => JSON.stringify(p[key]) === same);
+    if (i < 0) {
+      saved.push({ name: name(v), [key]: v });
+      i = saved.length - 1;
+      try { await store(); } catch (e) { saved.pop(); $("error").textContent = e.message; return; }
+    }
+    fill("s" + i);
+    flash(saveBtn);
+  };
+  delBtn.onclick = async () => {
+    const v = select.value;
+    if (!v.startsWith("s")) return;
+    const [gone] = saved.splice(+v.slice(1), 1);
+    try { await store(); } catch (e) { saved.splice(+v.slice(1), 0, gone); $("error").textContent = e.message; return; }
+    fill("");
+  };
+  [saveBtn, delBtn].forEach(b => b.addEventListener("mousedown", e => e.preventDefault()));
+  let applying = false;
+  select.onchange = () => {
+    const v = select.value;
+    delBtn.hidden = !v.startsWith("s");
+    if (v === "" && !clearOnEmpty) return;
+    applying = true;
+    apply(v === "" ? undefined : v.startsWith("s") ? structuredClone(saved[+v.slice(1)][key]) : structuredClone(examples[+v.slice(1)][1]));
+    applying = false;
+  };
+  fill();
+  fetch(url).then(r => r.json()).then(list => { saved = list; fill(select.value); }).catch(() => {});
+  // Call when the content changes (typing, a preset): the menu shows the matching item, or "Custom".
+  return { edited() {
+    if (applying) return;
+    const v = get(), same = JSON.stringify(v);
+    const si = v == null ? -1 : saved.findIndex(p => JSON.stringify(p[key]) === same);
+    const ei = v == null || si >= 0 ? -1 : examples.findIndex(e => JSON.stringify(key === "text" ? e[1].trim() : e[1]) === same);
+    select.value = v == null ? "" : si >= 0 ? "s" + si : ei >= 0 ? "e" + ei : "c";
+    delBtn.hidden = si < 0;
+  } };
+}
+
+// Text boxes with a list: prompt and system prompt.
+function textList(box, opts) {
+  const list = savedList({ ...opts, key: "text",
+    get: () => box.value.trim() || null,
+    apply: v => { box.value = v ?? ""; box.dispatchEvent(new Event("input")); box.focus(); },
+    name: opts.name || (v => short(v)) });
+  box.addEventListener("input", () => { list.edited(); fit(box); });
+  box.addEventListener("keydown", e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) run(); });
+  return list;
+}
+textList($("prompt"), { select: $("examples"), saveBtn: $("savePrompt"), delBtn: $("delPrompt"),
+  examples: EXAMPLES, url: "/prompts", placeholder: "Choose a prompt example…" });
+textList($("system"), { select: $("sysExamples"), saveBtn: $("saveSystem"), delBtn: $("delSystem"),
+  examples: SYSTEM_EXAMPLES, url: "/system-prompts", placeholder: "No system prompt", clearOnEmpty: true });
+grow();
+// System prompt: sent as a system message when not empty. Starts empty on every page load.
+$("system").value = "";  // the browser may restore old text on reload
+try { localStorage.removeItem("system"); } catch {}  // drop the value older versions remembered
+
+// Few-shot examples: pairs of (user question, assistant answer) sent before the prompt.
+// A pair is sent only when both boxes have text. Starts empty on every page load.
+const FLAMINGO = { u: "I saw 6 flamingos. 2 flew away. 1 hid behind a tree. How many can I see?",
+                   a: "You saw 6 flamingos 2 flew away. 6 - 2 = 4. Then, 1 flamingo hid. You see now 4 - 1 = 3." };
+const CAPITALS = [
+  { u: "What is the capital of France?", a: "Mais c'est Paris, mon chéri." },
+  { u: "What is the capital of Germany?", a: "Natürlich ist es Berlin, mein Schatz." },
+  { u: "What is the capital of Italy?", a: "Ma è Roma, tesoro mio." },
+];
+const SHOT_SETS = [
+  ["One-shot · counting animals", [FLAMINGO]],
+  ["Few-shot (3) · capitals in the local language", CAPITALS],
+  ["Few-shot (3) · sentiment in one word", [
+    { u: "Review: The food was cold and the waiter was rude.", a: "negative" },
+    { u: "Review: Best concert I have been to in years!", a: "positive" },
+    { u: "Review: The hotel was fine. Nothing special.", a: "neutral" }]],
+  ["Few-shot (3) · English to French", [
+    { u: "cheese", a: "fromage" }, { u: "the red house", a: "la maison rouge" }, { u: "I am hungry", a: "J'ai faim" }]],
+  ["Few-shot (2) · answer with an emoji only", [
+    { u: "How is the weather today?", a: "☀️" }, { u: "How do you feel about Mondays?", a: "😩" }]],
+];
+let shots = [];
+try { localStorage.removeItem("shots"); } catch {}  // drop the list older versions remembered
+const shotList = savedList({ select: $("shotSets"), saveBtn: $("saveShots"), delBtn: $("delShots"),
+  examples: SHOT_SETS, url: "/few-shot", placeholder: "None (zero-shot)", key: "shots", clearOnEmpty: true,
+  get: () => { const v = shots.filter(x => x.u.trim() && x.a.trim()); return v.length ? v : null; },
+  apply: v => setShots(v ?? []),
+  name: v => `${v.length === 1 ? "One-shot" : `Few-shot (${v.length})`} · ${short(v[0].u, 28)}` });
+function setShots(v) { shots = v; renderShots(); }
+function renderShots() {
+  $("shotList").innerHTML = "";
+  shots.forEach((x, i) => {
+    const row = document.createElement("div");
+    row.className = "shot";
+    const box = (k, ph) => {
+      const t = Object.assign(document.createElement("textarea"), { className: "input", rows: 1, placeholder: ph, value: x[k] });
+      t.addEventListener("input", () => { x[k] = t.value; fit(t); shotList.edited(); });
+      t.addEventListener("keydown", e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) run(); });
+      return t;
+    };
+    const del = Object.assign(document.createElement("button"), { type: "button", className: "copy", title: "Remove example", innerHTML: ICON_DEL });
+    del.setAttribute("aria-label", "Remove example");
+    del.onmousedown = e => e.preventDefault();
+    del.onclick = () => { shots.splice(i, 1); renderShots(); shotList.edited(); };
+    row.append(box("u", `Example question ${i + 1}`), box("a", `Example answer ${i + 1}`), del);
+    $("shotList").append(row);
+  });
+  $("shotList").querySelectorAll("textarea").forEach(fit);
+  $("shotHead").hidden = !shots.length;
+  updateStates();
+}
+$("addShot").onclick = () => {
+  shots.push({ u: "", a: "" }); renderShots(); shotList.edited();
+  $("shotList").lastElementChild.querySelector("textarea").focus();
+};
+renderShots();
+
+// Structured output: a JSON schema in the box turns it on. readSchema(): null = off, undefined = invalid.
+// Pretty JSON, but short objects and lists stay on one line: { "type": "string" }.
+const js = o => {
+  let t = JSON.stringify(o, null, 2), prev;
+  do {
+    prev = t;
+    t = t.replace(/[{\[][^{}\[\]]*[}\]]/g, m => {
+      const one = m.replace(/\s*\n\s*/g, " ").replace(/\[ /g, "[").replace(/ \]/g, "]");
+      return one.length <= 70 ? one : m;
+    });
+  } while (t !== prev);
+  return t;
+};
+const obj = (props, req = Object.keys(props)) => ({ type: "object", properties: props, required: req, additionalProperties: false });
+const SCHEMA_EXAMPLES = [
+  ["City facts", js(obj({ city: { type: "string" }, country: { type: "string" }, population_millions: { type: "number" } }))],
+  ["Sentiment label", js(obj({ sentiment: { type: "string", enum: ["positive", "negative", "neutral"] }, confidence: { type: "number" } }))],
+  ["Yes or no, with a reason", js(obj({ answer: { type: "string", enum: ["yes", "no"] }, reason: { type: "string" } }))],
+  ["Math: steps and answer", js(obj({ steps: { type: "array", items: { type: "string" } }, answer: { type: "number" } }))],
+  ["Person details", js(obj({ name: { type: "string" }, age: { type: "integer" }, occupation: { type: "string" } }))],
+  // The schema blocks the model's own thinking section, so give it a place to think: a text field that comes first.
+  ["Reason first, then a number", js(obj({ reasoning: { type: "string" }, answer: { type: "number" } }))],
+  // For open questions: a number field would force a number even when there is none.
+  ["Reason first, then a text answer", js(obj({ reasoning: { type: "string" }, answer: { type: "string" } }))],
+];
+function readSchema() {
+  const t = $("schema").value.trim();
+  if (!t) return null;
+  try { const v = JSON.parse(t); return v && typeof v === "object" && !Array.isArray(v) ? v : undefined; } catch { return undefined; }
+}
+function checkSchema() {
+  const bad = readSchema() === undefined;
+  $("schema").classList.toggle("invalid", bad);
+  $("schemaErr").textContent = bad ? "Not valid JSON. The schema must be a JSON object." : "";
+}
+textList($("schema"), { select: $("schemaExamples"), saveBtn: $("saveSchema"), delBtn: $("delSchema"),
+  examples: SCHEMA_EXAMPLES, url: "/schemas", placeholder: "Off (free text)", clearOnEmpty: true,
+  // Name a saved schema by its fields, e.g. "Fields: answer, reason".
+  name: v => { try { const k = Object.keys(JSON.parse(v).properties || {}); if (k.length) return short("Fields: " + k.join(", ")); } catch {} return short(v); } });
+$("schema").addEventListener("input", checkSchema);
+$("schema").value = ""; fit($("schema"));
+
+// Collapsed rows show what each optional part will send.
+function updateStates() {
+  const st = (id, text, cls = "") => { $(id).textContent = text; $(id).className = "opt-state " + cls; };
+  const sys = $("system").value.trim();
+  st("stSystem", sys ? short(sys, 70) : "Off", sys ? "on" : "");
+  const n = shots.filter(x => x.u.trim() && x.a.trim()).length;
+  st("stShots", n ? `${n} example${n > 1 ? "s" : ""} · ${n > 1 ? "few-shot" : "one-shot"}` : "None · zero-shot", n ? "on" : "");
+  const sc = readSchema();
+  st("stSchema", sc === undefined ? "Invalid JSON" : sc ? short("On · fields: " + Object.keys(sc.properties || {}).join(", "), 70) : "Off",
+     sc === undefined ? "bad" : sc ? "on" : "");
+}
+$("system").addEventListener("input", updateStates);
+$("schema").addEventListener("input", updateStates);
+$("shotList").addEventListener("input", updateStates);
+updateStates();
+
+// Reset: empty text fields and menus, default settings, empty output.
+const EMPTY_OUTPUT = "Enter a prompt above and press Generate. Darker = the model was more sure of that token; click one to inspect it.";
+$("resetAll").onmousedown = e => e.preventDefault();
+$("resetAll").onclick = () => {
+  if (busy) stop();
+  for (const id of ["prompt", "system", "schema"]) { $(id).value = ""; fit($(id)); }
+  checkSchema(); $("answerSub").textContent = "tokens with probabilities";
+  setShots([]);
+  for (const id of ["examples", "sysExamples", "shotSets", "schemaExamples", "preset"]) $(id).value = "";
+  for (const id of ["delPrompt", "delSystem", "delShots", "delSchema", "delPreset"]) $(id).hidden = true;
+  $("temp").value = 1;
+  document.querySelector('input[name="samp"][value="k"]').checked = true;
+  syncSliders(); $("samp").value = 10;
+  $("max").value = 512;
+  thinkOn = true; syncThinking();
+  syncSliders();
+  queue = []; $("error").textContent = "";
+  minputText = ""; $("minputBody").innerHTML = '<span class="hint">Press Generate to see what is sent to the model.</span>';
+  reset(EMPTY_OUTPUT);
+  setBusy(false);
+  $("prompt").focus();
+};
+
+// Presets: the whole setup in one click. Built-in presets compare prompting methods on the same question.
+// A saved preset also keeps the settings: temperature, sampling, max tokens and thinking.
+const PENGUINS = "I saw 9 penguins. 2 slid in the water and disappeared from sight while 4 waddled up from the shore. How many can I see?";
+const PRESETS = [
+  ["Zero-shot: penguins", { prompt: PENGUINS, system: "", shots: [], schema: "" }],
+  ["One-shot: penguins + flamingo example", { prompt: PENGUINS, system: "", shots: [FLAMINGO], schema: "" }],
+  ["Chain-of-thought: penguins", { prompt: PENGUINS, system: "Think step-by-step before you give the final answer.", shots: [], schema: "" }],
+  ["Few-shot: capital of Mexico, local language", { prompt: "What is the capital of Mexico?", system: "", shots: CAPITALS, schema: "" }],
+  ["System prompt: pirate", { prompt: "What is the capital of France?", system: "Answer like a pirate.", shots: [], schema: "" }],
+  ["Structured output: city facts as JSON", { prompt: "Tell me about the capital of France.", system: "", shots: [], schema: SCHEMA_EXAMPLES[0][1] }],
+  // A clear question: the ambiguous penguin question makes the model argue with itself until max tokens.
+  ["Structured output: reason first, then a number", { prompt: "A pen costs $3. I buy 4 pens and pay with a $20 bill. How much change do I get?",
+    system: "", shots: [], schema: SCHEMA_EXAMPLES[5][1], max: 1024 }],
+  ["Structured output: reason first, then a text answer", { prompt: "Tell me about the capital of France.",
+    system: "Be concise. Answer in one sentence.", shots: [], schema: SCHEMA_EXAMPLES[6][1], max: 1024 }],
+  ["Structured output: sentiment label", { prompt: "Review: The battery died after two days and support never answered.", system: "", shots: [], schema: SCHEMA_EXAMPLES[1][1] }],
+];
+function setPreset(p) {
+  if (!p) return;
+  const set = (id, v) => { $(id).value = v; $(id).dispatchEvent(new Event("input")); };
+  if ("prompt" in p) set("prompt", p.prompt);
+  if ("system" in p) set("system", p.system);
+  if ("shots" in p) { setShots(structuredClone(p.shots)); shotList.edited(); }
+  if ("schema" in p) set("schema", p.schema);
+  if ("temp" in p) $("temp").value = p.temp;
+  if ("mode" in p) { document.querySelector(`input[name="samp"][value="${p.mode}"]`).checked = true; syncSliders(); $("samp").value = p.samp; }
+  if ("max" in p) $("max").value = p.max;
+  if ("think" in p) { thinkOn = p.think; syncThinking(); }
+  syncSliders(); renderDetail();
+}
+savedList({ select: $("preset"), saveBtn: $("savePreset"), delBtn: $("delPreset"),
+  examples: PRESETS, url: "/presets", placeholder: "Choose a preset…", key: "preset",
+  get: () => ({ prompt: $("prompt").value, system: $("system").value, shots: shots.filter(x => x.u.trim() && x.a.trim()), schema: $("schema").value,
+                temp: +$("temp").value, mode: samp().mode, samp: +$("samp").value, max: +$("max").value, think: thinkOn }),
+  apply: setPreset,
+  name: v => short(v.prompt, 28) + (v.shots.length ? ` · ${v.shots.length}-shot` : "") + (v.system.trim() ? " · system" : "") + (v.schema?.trim() ? " · JSON" : "") + ` · t=${v.temp}` });
+document.addEventListener("keydown", e => {
+  if (e.target.matches("textarea, input, select")) return;
+  if (speedMs < 0) {
+    if (e.key === "ArrowRight" || e.key === " ") { e.preventDefault(); next(); }
+    if (e.key === "ArrowLeft") { e.preventDefault(); back(); }
+    return;
+  }
+  if (!data.length) return;
+  if (e.key === "ArrowRight" && sel < data.length - 1) { pinned = true; select(sel + 1); }
+  if (e.key === "ArrowLeft" && sel > 0) { pinned = true; select(sel - 1); }
+});
+renderStats();
+loadModels();
+// Remember which output sections are open.
+["minput", "reason", "answer"].forEach(id => {
+  try { const v = localStorage.getItem("open:" + id); if (v !== null) $(id).open = v === "1"; } catch {}
+  $(id).addEventListener("toggle", () => { try { localStorage.setItem("open:" + id, $(id).open ? "1" : "0"); } catch {} });
+});
+// Light/Dark switch. Remembered per browser.
+function setTheme(v, save) {
+  document.documentElement.dataset.theme = v;
+  document.querySelectorAll("#theme button").forEach(b => b.setAttribute("aria-pressed", b.dataset.theme === v));
+  if (save) try { localStorage.setItem("theme", v); } catch {}
+}
+document.querySelectorAll("#theme button").forEach(b => { b.onmousedown = e => e.preventDefault(); b.onclick = () => setTheme(b.dataset.theme, true); });
+setTheme(document.documentElement.dataset.theme, false);
+</script>
+</body>
+</html>

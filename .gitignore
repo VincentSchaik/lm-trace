@@ -1,0 +1,9 @@
+# Saved lists are personal data, written by the server at run time.
+prompts.json
+system-prompts.json
+few-shot.json
+schemas.json
+presets.json
+*.tmp
+__pycache__/
+.DS_Store
