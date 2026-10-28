@@ -545,7 +545,7 @@ async function loadModels() {
     const j = await r.json();
     if (!r.ok) throw new Error(j.error?.message || r.status);
     const ids = j.data.map(m => m.id).filter(id => !/embed/i.test(id));
-    $("model").innerHTML = ids.map(id => `<option>${id}</option>`).join("");
+    $("model").replaceChildren(...ids.map(id => new Option(id)));  // plain text, never HTML
     try {
       const v1 = await fetch("/api/v1/models").then(r => r.json());
       for (const m of v1.models || []) reasoningOpts[m.key] = m.capabilities?.reasoning || null;

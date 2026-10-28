@@ -12,6 +12,10 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 # Saved lists: user prompts and system prompts, one JSON file each.
 LISTS = {k: os.path.join(ROOT, k.strip("/") + ".json") for k in ("/prompts", "/system-prompts", "/few-shot", "/schemas", "/presets")}
 LMS_CLI = shutil.which("lms") or os.path.expanduser("~/.lmstudio/bin/lms")
+# Only local names: a different Host means DNS rebinding; a different Origin means another website.
+LOCAL = ("localhost", "127.0.0.1", "[::1]")
+HOSTS = {h for n in LOCAL for h in (n, f"{n}:{PORT}")}
+ORIGINS = {f"http://{n}:{PORT}" for n in LOCAL}
 
 inputs = []  # [{"t": ms received, "input": str, "model": str}], newest last
 inputs_lock = threading.Lock()
@@ -93,7 +97,20 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
+    def _blocked(self, write=False):
+        """Send 403 and return True unless the request comes from the LM Trace page on this computer."""
+        ok = self.headers.get("Host", "").lower() in HOSTS
+        if ok and write:
+            origin = self.headers.get("Origin")
+            ok = (origin is None or origin in ORIGINS) and \
+                self.headers.get("Content-Type", "").split(";")[0].strip() == "application/json"
+        if not ok:
+            self._json(403, {"error": {"message": "forbidden: LM Trace accepts requests from localhost only"}})
+        return not ok
+
     def do_GET(self):
+        if self._blocked():
+            return
         if self.path in LISTS:
             try:
                 with open(LISTS[self.path]) as f:
@@ -109,9 +126,14 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return self._json(200, {"available": log_ok, "entry": hit})
         if self.path.startswith(("/v1/", "/api/v1/models")):  # api/v1/models lists reasoning options
             return self._proxy("GET")
-        return super().do_GET()
+        if urllib.parse.urlparse(self.path).path in ("/", "/index.html"):
+            self.path = "/index.html"
+            return super().do_GET()
+        self.send_error(404)  # never serve .git, saved lists, logs or source files
 
     def do_PUT(self):
+        if self._blocked(write=True):
+            return
         # Saved lists: the page sends the whole list as [{"name": ..., <data>}, ...].
         if self.path not in LISTS:
             return self.send_error(404)
@@ -129,6 +151,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         return self._json(200, items)
 
     def do_POST(self):
+        if self._blocked(write=True):
+            return
         if self.path.startswith("/v1/"):
             return self._proxy("POST")
         self.send_error(404)

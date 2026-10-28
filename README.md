@@ -10,6 +10,31 @@ Reasoning models show their thought process as reasoning tokens. Non-reasoning m
 
 ![LM Trace: Gemma 3 with a system prompt, few-shot examples and structured output. The right panel shows the candidates for one token.](docs/screenshot.png)
 
+## Quick start with an AI agent
+
+Tell your coding agent (for example Claude Code or Codex): "Set up and start https://github.com/VincentSchaik/lm-trace".
+
+**Instructions for the agent:**
+
+1. Make sure that LM Studio is installed. Find the `lms` tool: use `lms` if it is on the PATH, or else `~/.lmstudio/bin/lms` (on Windows: `%USERPROFILE%\.lmstudio\bin\lms.exe`). If you cannot find it, stop. Tell the user to install LM Studio from https://lmstudio.ai and to open it one time.
+2. Run `lms ls` to list the downloaded models. If there is no model, ask the user before you download one. Recommended models:
+   - `google/gemma-3-12b`: non-reasoning, approximately 8 GB.
+   - `google/gemma-4-12b`: reasoning, thinking on or off, approximately 7 GB.
+
+   To download, run `lms get <model> -y`.
+3. Run `lms server start`. Then run `lms server status` and make sure that the server is on port 1234.
+4. Run `lms load <model> -y`.
+5. Clone the repo and start the server in the background:
+
+   ```sh
+   git clone https://github.com/VincentSchaik/lm-trace.git
+   cd lm-trace
+   nohup python3 server.py > lm-trace.log 2>&1 &
+   ```
+
+6. Make sure that http://localhost:8765 responds. Then open it in the browser of the user.
+7. Tell the user to stop the server with `kill <pid>` when they are done.
+
 ## How an LLM generates text
 
 A chat application shows only the final text. But an LLM generates a sequence of tokens. A token is a part of a word, a full word, a number or a punctuation mark. For each new token, the model does these steps:
@@ -149,3 +174,12 @@ These limitations come from LM Studio:
 - LM Studio does not return the stop token. LM Trace adds an end marker.
 - With structured output, LM Studio does not return the tokens that the schema forces, for example keys and braces.
 - With structured output, the model cannot use its thinking mode. To get reasoning, put a `reasoning` field first in the schema.
+
+## References and credits
+
+Thank you to the authors of these works. They are the basis of the ideas and examples in LM Trace.
+
+- Wei et al. (2022). [Chain-of-Thought Prompting Elicits Reasoning in Large Language Models](https://arxiv.org/abs/2201.11903).
+- Kojima et al. (2022). [Large Language Models are Zero-Shot Reasoners](https://arxiv.org/abs/2205.11916).
+- Renze & Guven (2024). [The Benefits of a Concise Chain of Thought on Problem-Solving in Large Language Models](https://arxiv.org/abs/2401.05618).
+- Jay Alammar and Maarten Grootendorst. [An Illustrated Guide to AI Agents](https://learning.oreilly.com/library/view/an-illustrated-guide/9798341662681/). O'Reilly. The book explains how language models reason, from chain-of-thought prompting to reasoning models trained with reinforcement learning.
