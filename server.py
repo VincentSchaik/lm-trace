@@ -1,4 +1,4 @@
-"""Serve the token viewer and proxy /v1/* to the LM Studio server (avoids CORS).
+"""Serve LM Trace and proxy /v1/* to the LM Studio server (avoids CORS).
 
 Also tails LM Studio's model log (`lms log stream`) so the page can show the exact
 formatted prompt (chat template + special tokens) the model received.
@@ -144,7 +144,7 @@ if __name__ == "__main__":
     atexit.register(stop_log)
     signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
     threading.Thread(target=tail_model_log, daemon=True).start()
-    print(f"Token viewer: http://localhost:{PORT}  (proxying {LMS})")
+    print(f"LM Trace: http://localhost:{PORT}  (proxying {LMS})")
     try:
         server.serve_forever()
     except KeyboardInterrupt:

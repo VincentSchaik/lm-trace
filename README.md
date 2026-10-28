@@ -1,12 +1,14 @@
-# Token Viewer
+# LM Trace
 
-Token Viewer shows how a large language model (LLM) generates text, one token at a time. It uses a model that runs locally on your computer in [LM Studio](https://lmstudio.ai).
+**Local LLM observability tool and prompt playground**
 
-The main objective of Token Viewer is to help you understand how LLMs reason and solve problems. This knowledge is necessary when you build AI agents and the harnesses that control them. An agent uses an LLM to plan, to select tools and to make decisions. If you know how the model gets to an answer, you can write better prompts, examples and controls for the agent.
+LM Trace connects to the local OpenAI-compatible server of [LM Studio](https://lmstudio.ai). It traces how a local language model generates its answer, token by token. For each token, you see the token that the model selected, the 10 most probable candidates, and their probabilities. A color heatmap shows where the model was sure and where it was not.
 
-Reasoning models show their thought process as reasoning tokens. Non-reasoning models also have reasoning capabilities in their parameters, but the prompt must start the reasoning. Token Viewer lets you see both, and compare the prompt engineering methods that start reasoning.
+The main objective of LM Trace is to help you understand how LLMs reason and solve problems. This knowledge is necessary when you build AI agents and the harnesses that control them. An agent uses an LLM to plan, to select tools and to make decisions. If you know how the model gets to an answer, you can write better prompts, examples and controls for the agent.
 
-![Token Viewer: Gemma 3 with a system prompt, few-shot examples and structured output. The right panel shows the candidates for one token.](docs/screenshot.png)
+Reasoning models show their thought process as reasoning tokens. Non-reasoning models also have reasoning capabilities in their parameters, but the prompt must start the reasoning. LM Trace lets you see both, and compare the prompt engineering methods that start reasoning.
+
+![LM Trace: Gemma 3 with a system prompt, few-shot examples and structured output. The right panel shows the candidates for one token.](docs/screenshot.png)
 
 ## How an LLM generates text
 
@@ -17,13 +19,13 @@ A chat application shows only the final text. But an LLM generates a sequence of
 3. It selects one token. The temperature, top-k and top-p settings control this selection.
 4. It adds the token to the text and starts again.
 
-For each token, Token Viewer shows:
+For each token, LM Trace shows:
 
 - The token that the model selected.
 - The 10 most probable candidates and their probabilities.
 - How temperature, top-k and top-p change the probabilities.
 
-Token Viewer also shows the exact text that the model received. This text includes the chat template and the special tokens that a chat application usually hides.
+LM Trace also shows the exact text that the model received. This text includes the chat template and the special tokens that a chat application usually hides.
 
 ## Reasoning models and non-reasoning models
 
@@ -39,7 +41,7 @@ To start reasoning in a non-reasoning model, use chain-of-thought (CoT) promptin
 
 Usually, zero-shot prompts give worse results than one-shot prompts, and one-shot prompts give worse results than few-shot prompts.
 
-The model does not "think" as a separate process. It predicts the next token. Reasoning steps in the text change the probabilities of the tokens that come after them. Token Viewer lets you see this:
+The model does not "think" as a separate process. It predicts the next token. Reasoning steps in the text change the probabilities of the tokens that come after them. LM Trace lets you see this:
 
 - With a non-reasoning model, the reasoning steps are answer tokens. You can see the probabilities of each step.
 - With a reasoning model, the reasoning tokens are in the **Reasoning** section, as text only (see [Limitations](#limitations)).
@@ -79,7 +81,7 @@ The **Reasoning** section shows how the model decided between the instruction an
 - macOS, Windows or Linux.
 - LM Studio, with one or more models downloaded.
 - Python 3. The server uses only the Python standard library.
-- Optional: the `lms` command-line tool. It comes with LM Studio. Token Viewer needs it to show the model input.
+- Optional: the `lms` command-line tool. It comes with LM Studio. LM Trace needs it to show the model input.
 
 ## Set up LM Studio
 
@@ -89,15 +91,15 @@ The **Reasoning** section shows how the model decided between the instruction an
    - In LM Studio, open **Developer** and set the server status to **Running**.
    - In a terminal, run `lms server start`.
 4. Make sure that the server uses port 1234. This is the default.
-5. Load a model, or keep **Just-in-Time Model Loading** on. With this setting, LM Studio loads a model when Token Viewer sends a request to it.
+5. Load a model, or keep **Just-in-Time Model Loading** on. With this setting, LM Studio loads a model when LM Trace sends a request to it.
 
-You do not have to enable CORS. The Token Viewer server sends the requests to LM Studio.
+You do not have to enable CORS. The LM Trace server sends the requests to LM Studio.
 
-## Start Token Viewer
+## Start LM Trace
 
 ```sh
-git clone https://github.com/VincentSchaik/token-viewer.git
-cd token-viewer
+git clone https://github.com/VincentSchaik/lm-trace.git
+cd lm-trace
 python3 server.py
 ```
 
@@ -107,11 +109,11 @@ To change the defaults, set these environment variables before you start the ser
 
 | Variable | Default | Function |
 |---|---|---|
-| `PORT` | `8765` | Port of Token Viewer |
+| `PORT` | `8765` | Port of LM Trace |
 | `LMS_URL` | `http://localhost:1234` | Address of the LM Studio server |
 | `LM_API_TOKEN` | not set | API token, if LM Studio requires authentication |
 
-## Use Token Viewer
+## Use LM Trace
 
 1. Select a model.
 2. Type a prompt, or select an example or a preset.
@@ -143,7 +145,7 @@ The server keeps these items in JSON files in the project folder. Git ignores th
 These limitations come from LM Studio:
 
 - LM Studio returns a maximum of 10 candidates for each token.
-- LM Studio returns no probabilities for reasoning (thinking) tokens. Token Viewer shows the reasoning as text only.
-- LM Studio does not return the stop token. Token Viewer adds an end marker.
+- LM Studio returns no probabilities for reasoning (thinking) tokens. LM Trace shows the reasoning as text only.
+- LM Studio does not return the stop token. LM Trace adds an end marker.
 - With structured output, LM Studio does not return the tokens that the schema forces, for example keys and braces.
 - With structured output, the model cannot use its thinking mode. To get reasoning, put a `reasoning` field first in the schema.
