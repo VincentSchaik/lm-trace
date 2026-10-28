@@ -83,7 +83,7 @@ The prompt contains only the question. The model gives the answer "7" in the fir
 
 ### Zero-shot chain-of-thought: correct answer
 
-The system prompt adds one instruction: "Think step-by-step before you give the final answer." There are no examples. The model writes the steps first, and then gives the correct answer, 11.
+The prompt adds one sentence at the end of the question: "Think step-by-step." There is no system prompt and there are no examples. The model writes the steps first, and then gives the correct answer, 11.
 
 ![Zero-shot prompt with "Think step-by-step": Gemma 3 answers 11](docs/zero-shot-cot.png)
 
