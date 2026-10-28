@@ -73,7 +73,7 @@ The model does not "think" as a separate process. It predicts the next token. Re
 
 ## Examples
 
-The first three examples use the non-reasoning model Gemma 3 12B and the same question: "I saw 9 penguins. 2 slid in the water and disappeared from sight while 4 waddled up from the shore. How many can I see?" The correct answer is 11.
+The first three examples use the non-reasoning model Gemma 3 12B and the same question: "I saw 9 penguins. 2 slid in the water and disappeared from sight while 4 waddled up from the shore. How many can I see?" The correct answer is 11. The penguin question and the flamingo example come from *An Illustrated Guide to AI Agents* (see [References and credits](#references-and-credits)).
 
 ### Zero-shot: incorrect answer
 
@@ -182,4 +182,4 @@ Thank you to the authors of these works. They are the basis of the ideas and exa
 - Wei et al. (2022). [Chain-of-Thought Prompting Elicits Reasoning in Large Language Models](https://arxiv.org/abs/2201.11903).
 - Kojima et al. (2022). [Large Language Models are Zero-Shot Reasoners](https://arxiv.org/abs/2205.11916).
 - Renze & Guven (2024). [The Benefits of a Concise Chain of Thought on Problem-Solving in Large Language Models](https://arxiv.org/abs/2401.05618).
-- Jay Alammar and Maarten Grootendorst. [An Illustrated Guide to AI Agents](https://learning.oreilly.com/library/view/an-illustrated-guide/9798341662681/). O'Reilly. The book explains how language models reason, from chain-of-thought prompting to reasoning models trained with reinforcement learning.
+- Jay Alammar and Maarten Grootendorst. [An Illustrated Guide to AI Agents](https://learning.oreilly.com/library/view/an-illustrated-guide/9798341662681/). O'Reilly. The book explains how language models reason, from chain-of-thought prompting to reasoning models trained with reinforcement learning. The penguin and flamingo examples in LM Trace come from this book.
