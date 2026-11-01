@@ -514,7 +514,8 @@
             <p class="explain">The documents are cut into chunks: small pieces of text that the search can find one by one.
               Small chunks are precise, but a sentence such as "It is closed on Sunday" can lose what "it" means. Large chunks keep the context, but one vector must then carry many topics.
               With Fixed size, the overlap (shaded) repeats the end of a chunk at the start of the next one, so that a fact cut at a border is complete in one chunk.
-              Real RAG tools also cut by document headings, by changes in meaning (with an embedding model), or with an LLM that selects the cut points. These give better borders, but the idea is the same: each chunk must hold one complete fact.</p>
+              Most real tools set a maximum size in tokens and an overlap, and try to cut at a paragraph or sentence border first.
+              Some tools also cut by document headings, by changes in meaning (with an embedding model), or with an LLM that selects the cut points. These give better borders, but the idea is the same: each chunk must hold one complete fact.</p>
             <div id="chunksBody"><span class="empty">Click Ask to see the chunks.</span></div>
           </div>
         </details>
