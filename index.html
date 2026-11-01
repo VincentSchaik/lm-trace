@@ -262,7 +262,7 @@
     padding: 7px 9px; border: 1px solid var(--stone-2); border-radius: 8px;
     background: var(--input-bg); box-shadow: inset 0 1px 2px rgba(var(--shadow-rgb), .06);
   }
-  .shots .input-tools { top: 8px; right: 8px; }  /* 8 + 1px border = same spot as the other boxes */
+  .shots .input-tools { top: 8px; right: 21px; }  /* 8 + 1px border = same spot as the other boxes */
   .shots .input-tools .copy { margin: 0; }
   .shots .input-tools .copy[hidden] { display: none; }
   .shot-head, .shot { display: grid; grid-template-columns: 1fr 1fr 30px; gap: 8px; align-items: start; }
@@ -291,8 +291,8 @@
   .copy:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
   .copy.done { color: var(--on-primary); background: var(--primary); border-color: var(--primary); }
   .input-wrap { position: relative; min-width: 0; }
-  .input-wrap .input { width: 100%; padding-right: 128px; }
-  .input-tools { position: absolute; top: 9px; right: 9px; display: flex; gap: 6px; }
+  .input-wrap .input { width: 100%; padding-right: 140px; }
+  .input-tools { position: absolute; top: 9px; right: 22px; display: flex; gap: 6px; }  /* clear of the scroll bar of a long text */
   .input-tools .copy { margin: 0; }
   .input-tools .copy[hidden] { display: none; }
   #delPrompt:hover { color: var(--danger); }
