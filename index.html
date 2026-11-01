@@ -397,10 +397,11 @@
   let t = null;
   try { t = localStorage.getItem("theme"); } catch {}
   document.documentElement.dataset.theme = t || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
-  // Sidebar open or closed: saved choice, else closed on a narrow screen.
-  let side = null;
-  try { side = localStorage.getItem("sidebar"); } catch {}
-  document.documentElement.dataset.side = side || (innerWidth <= 860 ? "closed" : "open");
+  // Sidebar: always folded on a narrow screen; else the saved choice, or open.
+  const narrow = matchMedia("(max-width: 860px)");
+  const sideFor = () => { let v = null; try { v = localStorage.getItem("sidebar"); } catch {} return narrow.matches ? "closed" : v || "open"; };
+  document.documentElement.dataset.side = sideFor();
+  narrow.addEventListener("change", () => document.documentElement.dataset.side = sideFor());
 </script>
 </head>
 <body>
@@ -1433,7 +1434,7 @@ loadModels();
 $("sideToggle").onclick = () => {
   const v = document.documentElement.dataset.side === "closed" ? "open" : "closed";
   document.documentElement.dataset.side = v;
-  try { localStorage.setItem("sidebar", v); } catch {}
+  if (!narrow.matches) try { localStorage.setItem("sidebar", v); } catch {}  // a narrow screen does not change the saved choice
 };
 // Light/Dark switch. Remembered per browser.
 function setTheme(v, save) {
