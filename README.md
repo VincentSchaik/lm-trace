@@ -107,6 +107,7 @@ The **Reasoning** section shows how the model decided between the instruction an
 - LM Studio, with one or more models downloaded.
 - Python 3. The server uses only the Python standard library.
 - Optional: the `lms` command-line tool. It comes with LM Studio. LM Trace needs it to show the model input.
+- Optional: the LM Studio Python SDK (`lmstudio`). The Embeddings page needs it to show the tokens. LM Studio has no tokenize endpoint over HTTP.
 
 ## Set up LM Studio
 
@@ -129,6 +130,14 @@ python3 server.py
 ```
 
 Open http://localhost:8765 in your browser.
+
+To see the tokens on the Embeddings page, install the LM Studio SDK in a virtual environment and start the server with it:
+
+```sh
+python3 -m venv .venv
+.venv/bin/pip install lmstudio
+.venv/bin/python server.py
+```
 
 To change the defaults, set these environment variables before you start the server:
 
@@ -165,6 +174,17 @@ Each field has a list of examples. You can save your own prompts, system prompts
 
 The server keeps these items in JSON files in the project folder. Git ignores these files.
 
+## Tokens and embeddings
+
+Open **Embeddings** in the sidebar. The page shows the input of the model in two steps, with the real data of the selected model:
+
+1. **Tokens:** the tokenizer cuts your text into tokens and gives each token an ID. The model receives only the list of IDs.
+2. **Embeddings:** the model takes the row of each ID from its embedding table: a list of numbers. For Gemma 3 12B, the table has 262,208 rows of 3,840 numbers. These lists are the input of the first layer.
+
+Click a token to see its whole vector. The same token always gets the same row, in any sentence: the layers of the model add the context later.
+
+The page reads the embedding table directly from the model files, because LM Studio does not return it. This works for models in safetensors (MLX) format, plain or quantized. It does not work for GGUF models yet.
+
 ## Limitations
 
 These limitations come from LM Studio:
@@ -174,6 +194,9 @@ These limitations come from LM Studio:
 - LM Studio does not return the stop token. LM Trace adds an end marker.
 - With structured output, LM Studio does not return the tokens that the schema forces, for example keys and braces.
 - With structured output, the model cannot use its thinking mode. To get reasoning, put a `reasoning` field first in the schema.
+- LM Studio does not return the embeddings of a chat model. The page reads them from the safetensors files of the model.
+- The SDK returns token IDs only. The page finds the text of each token from the prefixes of the input.
+- The SDK tokenizes the text without the chat template. The **Model input** section of the Trace page shows the full text with the template and its special tokens.
 
 ## References and credits
 

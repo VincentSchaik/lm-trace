@@ -4,7 +4,9 @@ system-prompts.json
 few-shot.json
 schemas.json
 presets.json
+embed-texts.json
 *.tmp
 __pycache__/
 .DS_Store
 lm-trace.log
+.venv/

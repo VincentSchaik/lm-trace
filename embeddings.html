@@ -1,0 +1,734 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LM Trace · Tokens and Embeddings</title>
+<style>
+  /* Same look as index.html: system font, white panels, light grey lines, blue accent.
+     --red/--red-rgb carry the accent (positive vector values); --neg-rgb, slate grey, colours negative values. */
+  :root {
+    color-scheme: light;
+    --paper: #f5f5f7;
+    --field: #ffffff;
+    --paper-2: #eeeef1;
+    --line: #e1e1e6;
+    --stone-2: #c7c7cc;
+    --ink: #1d1d1f;
+    --ink-2: #4b4b52;
+    --ink-3: #8e8e93;
+    --red: #1f6ff2;
+    --red-rgb: 31, 111, 242;
+    --neg-rgb: 71, 85, 105;
+    --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, monospace;
+    --input-bg: #ffffff;
+    --shadow-rgb: 0, 0, 0;
+    --primary: #1f6ff2;
+    --primary-hover: #185ed6;
+    --on-primary: #ffffff;
+    --danger: #d93025;
+    --tip-bg: #1d1d1f;
+    --tip-fg: #f5f5f7;
+    --tip-sub: #c7c7cc;
+    --tip-code: #8ab4ff;
+    --r: 10px;
+    --lift: 0 1px 2px rgba(0, 0, 0, .04), 0 2px 8px -4px rgba(0, 0, 0, .08);
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --paper: #161618;
+    --field: #1f1f22;
+    --paper-2: #2a2a2e;
+    --line: #333338;
+    --stone-2: #4a4a50;
+    --ink: #ececf0;
+    --ink-2: #b9b9c0;
+    --ink-3: #85858c;
+    --red: #4c8dff;
+    --red-rgb: 76, 141, 255;
+    --neg-rgb: 148, 163, 184;
+    --input-bg: #18181a;
+    --primary: #3b7cf5;
+    --primary-hover: #5a90f7;
+    --danger: #ff6b5e;
+    --tip-bg: #f0f0f3;
+    --tip-fg: #1d1d1f;
+    --tip-sub: #4b4b52;
+    --tip-code: #185ed6;
+    --lift: 0 1px 2px rgba(0, 0, 0, .3), 0 2px 10px -4px rgba(0, 0, 0, .5);
+  }
+  * { font-variant-ligatures: none !important; font-feature-settings: "calt" 0, "liga" 0 !important; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--paper); color: var(--ink);
+    font: 14px/1.5 var(--sans); -webkit-font-smoothing: antialiased;
+  }
+  .app {
+    height: 100vh; max-width: 1280px; margin: 0 auto; padding: 0 24px 20px;
+    display: grid; grid-template-rows: auto auto 1fr; gap: 16px;
+  }
+
+  /* Sidebar, as in LM Studio: one row per page. The toggle folds it to a rail of icons. Same block in index.html. */
+  body { display: flex; }
+  .app { flex: 1; min-width: 0; }
+  .side {
+    position: sticky; top: 0; flex: none; width: 200px; height: 100vh; display: flex; flex-direction: column; gap: 2px;
+    padding: 0 10px 12px; background: var(--paper-2); border-right: 1px solid var(--line); overflow: hidden; transition: width .15s;
+  }
+  .side-top { display: flex; align-items: center; height: 64px; }
+  .side a, .side-toggle {
+    display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 9px; border-radius: 8px; flex: none;
+    color: var(--ink); text-decoration: none; font: 500 14px var(--sans); white-space: nowrap;
+  }
+  .side-toggle { width: 36px; justify-content: center; padding: 0; border: 0; background: transparent; color: var(--ink-2); cursor: pointer; }
+  .side a:hover, .side-toggle:hover { background: rgba(var(--shadow-rgb), .06); }
+  .side a[aria-current="page"] { background: rgba(var(--red-rgb), .14); }
+  .side svg { width: 18px; height: 18px; flex: none; color: var(--ink-2); }
+  .side a[aria-current="page"] svg { color: var(--red); }
+  :root[data-side="closed"] .side { width: 57px; }
+  :root[data-side="closed"] .side a span { display: none; }
+
+  /* Top bar */
+  .top { display: flex; align-items: center; gap: 16px; height: 64px; border-bottom: 1px solid var(--line); }
+  h1 { font-size: 17px; font-weight: 600; margin: 0; display: flex; align-items: center; gap: 10px; white-space: nowrap; }
+  h1::before { content: ""; width: 14px; height: 14px; background: var(--red); }
+  .top .spacer { flex: 1; }
+  .hdr-lbl { font-size: 15px; font-weight: 600; margin-left: 12px; }
+  .top .copy { margin-left: 0; }
+  .top .copy[hidden] { display: none; }
+  .hdr-btn {
+    height: 32px; padding: 0 14px; border-radius: 8px; cursor: pointer; margin-right: 4px;
+    border: 1px solid var(--line); background: var(--field); color: var(--ink-2); font: 500 13px var(--sans);
+  }
+  .hdr-btn:hover { color: var(--ink); border-color: var(--stone-2); }
+
+  .field {
+    font: 15px var(--sans); color: var(--ink);
+    background: var(--field); border: 1px solid var(--line); border-radius: 8px;
+    height: 40px; padding: 0 12px; outline: none;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .field:hover { border-color: var(--stone-2); }
+  .field:focus { border-color: var(--ink); box-shadow: 0 0 0 3px rgba(var(--red-rgb), .18); }
+  select.field {
+    appearance: none; cursor: pointer; padding-right: 34px; min-width: 240px; font-weight: 500;
+    background: var(--field) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%232a2927' stroke-width='1.6'/%3E%3C/svg%3E") no-repeat right 12px center;
+  }
+  select.field.ex { height: 48px; min-width: 0; width: 100%; font-weight: 400; }
+  #model { min-width: 300px; }
+
+  /* Composer */
+  .composer { background: var(--field); border: 1px solid var(--line); border-radius: var(--r); padding: 16px 18px; box-shadow: var(--lift); }
+  .prompt-grid { display: grid; grid-template-columns: 260px 1fr auto; gap: 8px 12px; align-items: start; }
+  .lbl { font-size: 14px; font-weight: 600; color: var(--ink); }
+  .lbl-s { font-size: 12px; color: var(--ink-3); }
+  .lbl-s a { color: var(--red); }
+  .opts { margin-top: 12px; border-top: 1px solid var(--paper-2); }
+  .opt { border-bottom: 1px solid var(--paper-2); }
+  .opt:last-child { border-bottom: 0; }
+  .opt > summary {
+    list-style: none; cursor: pointer; user-select: none; display: flex; align-items: center; gap: 8px;
+    height: 40px; padding: 0; font-size: 14px;
+  }
+  .opt > summary::-webkit-details-marker { display: none; }
+  .opt > summary:hover .opt-title, .opt > summary:hover .chev { color: var(--red); }
+  .opt[open] > summary .chev { transform: rotate(90deg); }
+  .opt-title { font-weight: 600; color: var(--ink); }
+  .opt-state { color: var(--ink-3); font-size: 13px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .opt-state.on { color: var(--red); }
+  .opt-body { display: grid; grid-template-columns: 260px 1fr 124px; gap: 6px 12px; padding: 0 0 14px; align-items: start; }
+  .chev { width: 16px; height: 16px; flex: none; display: grid; place-items: center; color: var(--ink-3); transition: transform .15s; }
+  .chev::before { content: ""; width: 6px; height: 6px; border: solid currentColor; border-width: 0 1.6px 1.6px 0; transform: rotate(-45deg); }
+
+  .input {
+    flex: 1; min-width: 0; resize: none; display: block;
+    font: 16px/1.5 var(--sans); color: var(--ink);
+    background: var(--input-bg); border: 1px solid var(--stone-2); border-radius: 8px;
+    padding: 11px 14px; min-height: 48px; outline: none;
+    box-shadow: inset 0 1px 2px rgba(var(--shadow-rgb), .06);
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .input:hover { border-color: var(--ink-3); }
+  .input:focus { border-color: var(--ink); box-shadow: 0 0 0 3px rgba(var(--red-rgb), .18); }
+  .input::placeholder { color: var(--ink-3); }
+  .input.mono { font: 14px/1.5 var(--mono); }
+  .input-wrap { position: relative; min-width: 0; }
+  .input-wrap .input { width: 100%; padding-right: 128px; }
+  .input-tools { position: absolute; top: 9px; right: 9px; display: flex; gap: 6px; }
+  .input-tools .copy { margin: 0; }
+  .input-tools .copy[hidden] { display: none; }
+
+  .copy {
+    flex: none; display: inline-grid; place-items: center; width: 30px; height: 30px; margin-left: auto; padding: 0;
+    border: 1px solid var(--line); border-radius: 7px; cursor: pointer; color: var(--ink-2);
+    background: var(--field); box-shadow: 0 1px 0 rgba(var(--shadow-rgb), .06);
+    transition: color .15s, background .15s, border-color .15s;
+  }
+  .copy svg { width: 15px; height: 15px; }
+  .copy:hover { color: var(--ink); border-color: var(--stone-2); background: var(--input-bg); }
+  .copy:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+  .copy.done { color: var(--on-primary); background: var(--primary); border-color: var(--primary); }
+  #delTexts:hover, #delPreset:hover { color: var(--danger); }
+
+  .btn {
+    font: 600 15px var(--sans); height: 44px; padding: 0 22px; border-radius: 8px; cursor: pointer;
+    border: 1px solid var(--primary); background: var(--primary); color: var(--on-primary);
+    display: inline-flex; align-items: center; gap: 8px; transition: background .15s;
+  }
+  .btn:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .btn.primary { height: 48px; width: 124px; padding: 0; justify-content: center; flex: none; }
+
+  .settings { display: flex; align-items: flex-start; gap: 10px 24px; flex-wrap: wrap; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--paper-2); }
+  .ctl { display: flex; flex-direction: column; gap: 4px; }
+  .ctl-label { display: flex; align-items: center; gap: 12px; white-space: nowrap; height: 22px; font-size: 14px; font-weight: 500; color: var(--ink-2); }
+  .ctl-note { font-size: 12px; color: var(--ink-3); align-self: flex-end; padding-bottom: 8px; max-width: 360px; }
+  .seg { display: inline-flex; background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 3px; }
+  .seg button {
+    font: 500 13px var(--sans); color: var(--ink-2); background: transparent; border: 0;
+    height: 28px; padding: 0 10px; border-radius: 6px; cursor: pointer;
+  }
+  .seg button:hover { color: var(--ink); }
+  .seg button[aria-pressed="true"] { background: var(--primary); color: var(--on-primary); }
+  .error { color: var(--danger); font-size: 14px; padding: 8px 2px 0; }
+  .error:empty { display: none; }
+
+  /* Main: the output panel */
+  .main { display: grid; grid-template-columns: 1fr; gap: 16px; min-height: 0; }
+  .panel { background: var(--field); border: 1px solid var(--line); border-radius: var(--r); display: flex; flex-direction: column; min-height: 0; box-shadow: var(--lift); }
+  .panel-head {
+    display: flex; align-items: center; gap: 20px; padding: 12px 18px; border-bottom: 1px solid var(--paper-2);
+    font-size: 13px; color: var(--ink-3); min-height: 46px; flex-wrap: wrap;
+  }
+  .panel-head h2 { font-size: 13px; font-weight: 600; color: var(--ink); margin: 0; margin-right: auto; }
+  .panel-head .sub { font: 13px var(--mono); color: var(--ink-3); }
+  .stats b { color: var(--ink); font-weight: 600; font-family: var(--mono); }
+  .stats > span + span { margin-left: 12px; }
+  .output { flex: 1; overflow-y: auto; }
+  .sec { border-bottom: 1px solid var(--paper-2); }
+  .sec > summary {
+    position: sticky; top: 0; z-index: 2; list-style: none; cursor: pointer; user-select: none;
+    display: flex; align-items: center; gap: 8px; min-height: 46px; padding: 8px 18px 8px 16px;
+    background: var(--field); border-bottom: 1px solid transparent;
+    font: 600 13px var(--sans); color: var(--ink);
+  }
+  .sec[open] > summary { border-bottom-color: var(--paper-2); }
+  .sec > summary:hover { background: color-mix(in srgb, var(--field) 94%, var(--ink)); }
+  .sec > summary::-webkit-details-marker { display: none; }
+  .sec > summary .sub { font: 400 12px var(--sans); color: var(--ink-3); }
+  .sec[open] > summary .chev { transform: rotate(90deg); }
+  .sec-body { padding: 14px 22px 18px; }
+  .hint { color: var(--ink-3); margin: 0; }
+  .empty { display: block; font: 15px/1.6 var(--sans); color: var(--ink-3); }
+
+
+  /* Explanations stay quiet: small grey text in a light box. The data is the focus. */
+  .lede, .explain {
+    margin: 0 0 16px; padding: 9px 14px; border-radius: 8px;
+    background: rgba(var(--shadow-rgb), .025); font-size: 12.5px; line-height: 1.55; color: var(--ink-3);
+  }
+  .lede code, .explain code { font-size: 11.5px; }
+  .steps { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; margin-right: auto; }
+  .steps button {
+    display: inline-flex; align-items: center; gap: 7px; height: 30px; padding: 0 10px 0 5px; border-radius: 15px;
+    border: 0; background: transparent; color: var(--ink); font: 600 13px var(--sans); cursor: pointer;
+  }
+  .steps button:hover { background: rgba(var(--shadow-rgb), .05); }
+  .steps .arrow { color: var(--stone-2); }
+  .stepnum {
+    display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; flex: none;
+    background: var(--paper-2); color: var(--ink-3); font: 600 11px var(--sans);
+  }
+  .toolbar { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; font-size: 13px; color: var(--ink-3); }
+  /* Cards: every output sits in a bordered card with a header bar */
+  .card { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--field); }
+  .card + .card { margin-top: 16px; }
+  .card-head {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 6px 24px; padding: 10px 14px;
+    background: var(--paper); border-bottom: 1px solid var(--line); font-size: 13px; color: var(--ink-2);
+  }
+  .card-head h3 { margin: 0; font: 600 13px var(--sans); color: var(--ink); }
+  .card-head h3 code { font: 600 14px var(--mono); }
+  .card-body { padding: 14px; }
+  .spec { display: flex; flex-direction: column; gap: 1px; }
+  .spec span { font: 500 10.5px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
+  .spec b { font: 500 12.5px var(--mono); color: var(--ink); }
+
+  /* Step 1: one coloured chip per token. Click a chip to select the token. */
+  .chips { font: 17px/2 var(--mono); word-break: break-word; }
+  /* Neutral chips: a thin border and two greys in turn, so you can see where each token starts */
+  .chip {
+    display: inline-flex; flex-direction: column; align-items: center; vertical-align: top; padding: 2px 5px; margin: 0 3px 6px 0;
+    border-radius: 5px; white-space: pre; cursor: pointer; background: var(--field); box-shadow: inset 0 0 0 1px var(--line);
+  }
+  .chip.alt { background: var(--paper-2); }
+  .chip:hover { box-shadow: inset 0 0 0 1px var(--ink-3); }
+  .chip.sel { outline: 2px solid var(--ink); }
+  .chip .cid { display: none; font: 10px/1.3 var(--mono); color: var(--ink-3); }
+  .show-ids .chip .cid { display: block; }
+  .chip .ws { color: var(--ink-3); }
+  .chip.sp { color: var(--ink-2); background: transparent; box-shadow: inset 0 0 0 1px var(--stone-2); font-size: 14px; }
+
+  /* Step 2: one row per token. Bars for the first 16 numbers, a strip for all of them. */
+  .vec-head, .vec-row { display: grid; grid-template-columns: 170px 260px minmax(0, 1fr); gap: 16px; align-items: center; }
+  .vec-head:hover { background: none; }
+  .vec-head { font: 500 10.5px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
+  .vec-row { padding: 10px 14px; cursor: pointer; }
+  .vec-row + .vec-row { border-top: 1px solid var(--paper-2); }
+  .vec-row:hover { background: rgba(var(--shadow-rgb), .025); }
+  .vec-row.sel { background: rgba(var(--red-rgb), .06); box-shadow: inset 3px 0 0 var(--red); }
+  .vec-tok { font: 15px var(--mono); white-space: pre; overflow: hidden; text-overflow: ellipsis; }
+  .vec-tok small { display: block; font: 11px var(--mono); color: var(--ink-3); }
+  .bars { display: block; width: 260px; height: 40px; }
+  .bars .base { stroke: var(--line); }
+  .strip { display: block; width: 100%; height: 40px; border-radius: 4px; background: var(--paper-2); }
+
+  /* The selected token: its whole vector as a grid */
+  .detail-grid { display: grid; grid-template-columns: 448px minmax(0, 1fr); gap: 20px; align-items: start; }
+  .grid { display: block; width: 100%; image-rendering: pixelated; border-radius: 4px; border: 1px solid var(--paper-2); }  /* 7 px per number */
+  .facts { margin: 0; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; font-size: 13px; }
+  .facts div { display: grid; grid-template-columns: 150px 1fr; gap: 12px; padding: 8px 12px; }
+  .facts div + div { border-top: 1px solid var(--paper-2); }
+  .facts dt { color: var(--ink-3); }
+  .facts dd { margin: 0; font-family: var(--mono); color: var(--ink); word-break: break-word; }
+  .facts .note { display: block; padding: 10px 12px; border-top: 1px solid var(--paper-2); background: rgba(var(--shadow-rgb), .025); color: var(--ink-3); font-size: 12.5px; line-height: 1.5; }
+  .legend { display: flex; align-items: center; gap: 8px; font: 12px var(--mono); color: var(--ink-3); margin-top: 8px; }
+  .legend .ramp { width: 120px; height: 8px; border-radius: 4px; border: 1px solid var(--paper-2);
+    background: linear-gradient(90deg, rgb(var(--neg-rgb)), var(--paper-2), rgb(var(--red-rgb))); }
+
+  [data-tip] { cursor: help; }
+  #tip {
+    position: fixed; z-index: 50; max-width: 300px; padding: 10px 12px; border-radius: 8px; pointer-events: none;
+    background: var(--tip-bg); color: var(--tip-fg); font: 13px/1.45 var(--sans); box-shadow: 0 8px 24px -6px rgba(0,0,0,.35);
+    opacity: 0; transform: translateY(2px); transition: opacity .12s, transform .12s;
+  }
+  #tip.show { opacity: 1; transform: none; }
+  #tip b { display: block; font-weight: 600; margin-bottom: 4px; }
+  #tip code { display: inline-block; font: 12px var(--mono); color: var(--tip-code); margin-bottom: 6px; white-space: pre; }
+  #tip span { display: block; color: var(--tip-sub); }
+
+  @media (max-width: 860px) {
+    .app { height: auto; min-height: 100vh; padding: 0 16px 16px; }
+    .output { min-height: 40vh; }
+    select.field, #model { min-width: 0; width: 100%; }
+    .top { flex-wrap: wrap; height: auto; padding: 12px 0; }
+    .prompt-grid, .detail-grid { grid-template-columns: 1fr; }
+    .facts div { grid-template-columns: 110px 1fr; }
+    .prompt-grid > span { display: none; }
+    .vec-head { display: none; }
+    .vec-row { grid-template-columns: 1fr; gap: 6px; }
+  }
+</style>
+<script>
+  // Saved choice, else the system setting. Set before the page draws, so there is no flash.
+  let t = null;
+  try { t = localStorage.getItem("theme"); } catch {}
+  document.documentElement.dataset.theme = t || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+  // Sidebar open or closed: saved choice, else closed on a narrow screen.
+  let side = null;
+  try { side = localStorage.getItem("sidebar"); } catch {}
+  document.documentElement.dataset.side = side || (innerWidth <= 860 ? "closed" : "open");
+</script>
+</head>
+<body>
+<nav class="side" aria-label="Pages">
+  <div class="side-top"><button type="button" class="side-toggle" id="sideToggle" title="Show or hide the sidebar" aria-label="Show or hide the sidebar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/></svg></button></div>
+  <a href="/" title="Trace: tokens and their probabilities"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 6h5M12 6h8M4 12h10M17 12h3M4 18h3M10 18h10"/></svg><span>Trace</span></a>
+  <a href="/embeddings.html" aria-current="page" title="Tokens and embeddings: the input of the model"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="5" height="5" rx="1"/><rect x="3" y="14" width="5" height="5" rx="1"/><path d="M11 7.5h10M11 16.5h10M14 5v5M17 5v5M14 14v5M17 14v5"/></svg><span>Embeddings</span></a>
+</nav>
+<div class="app">
+  <header class="top">
+    <h1><label for="model">Model</label></h1>
+    <select id="model" class="field" aria-label="Model"></select>
+    <span class="spacer"></span>
+    <button type="button" id="resetAll" class="hdr-btn" title="Clear the text and the output">Reset all</button>
+    <span class="seg" id="theme" role="group" aria-label="Theme">
+      <button data-theme="light" aria-pressed="false">Light</button>
+      <button data-theme="dark" aria-pressed="false">Dark</button>
+    </span>
+  </header>
+
+  <section class="composer" aria-label="Text">
+    <p class="lede">A language model never reads letters. First, the tokenizer cuts the text into tokens and gives each token an ID.
+      Then the model looks up each ID in its embedding table and gets a list of numbers: the embedding. These lists are the input of the first layer.
+      This page shows both steps with the real data of the selected model.</p>
+    <div class="prompt-grid">
+      <label for="examples" class="lbl">Text examples</label>
+      <label for="text" class="lbl">Text</label>
+      <span></span>
+      <select id="examples" class="field ex"></select>
+      <div class="input-wrap"><textarea id="text" class="input" rows="2" placeholder="Type a text, or choose an example…"></textarea><div class="input-tools"><button type="button" class="copy" id="delText" title="Delete saved text" aria-label="Delete saved text" hidden></button><button type="button" class="copy" id="saveText" title="Save text to the list" aria-label="Save text to the list"></button><button type="button" class="copy" data-copy="text" title="Copy text" aria-label="Copy text"></button></div></div>
+      <button id="run" class="btn primary" title="Show tokens and embeddings (⌘ + Enter)">Show</button>
+    </div>
+    <div class="error" id="error"></div>
+  </section>
+
+  <div class="main">
+    <section class="panel">
+      <div class="panel-head">
+        <nav class="steps" aria-label="Steps">
+          <button data-go="secTok"><span class="stepnum">1</span>Tokens</button><span class="arrow">→</span>
+          <button data-go="secVec"><span class="stepnum">2</span>Embeddings</button>
+        </nav>
+        <span class="stats" id="stats"></span>
+      </div>
+      <div class="output" id="output">
+        <details class="sec" id="secTok" open>
+          <summary><span class="chev"></span><span class="stepnum">1</span>Tokens <span class="sub" id="tokSub">text → token IDs</span></summary>
+          <div class="sec-body">
+            <p class="explain">The tokenizer cuts the text into tokens: whole words, parts of words, single characters or symbols.
+              A space is usually part of the next token (<code>·Paris</code>). Each token has an ID: its row number in the vocabulary of the model.
+              The model receives only the list of IDs. Click a token to see its embedding.</p>
+            <div id="tokBody" class="show-ids"><span class="empty">Click Show to see the tokens.</span></div>
+          </div>
+        </details>
+        <details class="sec" id="secVec" open>
+          <summary><span class="chev"></span><span class="stepnum">2</span>Embeddings <span class="sub" id="vecSub">token ID → list of numbers</span><button type="button" class="copy" data-copy="vectors" title="Copy the embeddings as JSON" aria-label="Copy the embeddings as JSON"></button></summary>
+          <div class="sec-body">
+            <p class="explain">The embedding table has one row for each token in the vocabulary. The model takes the row of each token ID: a list of numbers, the embedding.
+              The same token always gets the same row, in any sentence. The layers of the model add the context later.
+              Blue = positive, grey = negative. These are the real numbers from the model file.</p>
+            <div id="vecBody"><span class="empty">Click Show to see the embeddings.</span></div>
+          </div>
+        </details>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const short = (t, n = 40) => { t = t.replace(/\s+/g, " ").trim(); return t.length > n ? t.slice(0, n) + "…" : t; };
+const fit = t => { t.style.height = "auto"; t.style.height = Math.min(t.scrollHeight + 2, 200) + "px"; };
+const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+// Result of the last run: tokens = [{ id, text, special, name }], emb = server answer with rows (or { error })
+let tokens = [], emb = null, sel = -1, busy = false;
+
+// ---- Models: language models. The tokenizer works for all; the embeddings need safetensors (MLX) files.
+async function loadModels() {
+  try {
+    let keys = [];
+    try {
+      const v1 = await fetch("/api/v1/models").then(r => r.json());
+      keys = (v1.models || []).filter(m => m.type === "llm").map(m => m.key);
+    } catch {}
+    if (!keys.length) {
+      const r = await fetch("/v1/models"), j = await r.json();
+      if (!r.ok) throw new Error(j.error?.message || r.status);
+      keys = j.data.map(m => m.id).filter(id => !/embed/i.test(id));
+    }
+    $("model").replaceChildren(...keys.map(k => new Option(k)));
+    $("model").value = keys.find(k => k === "google/gemma-3-12b") || keys.find(k => /gemma-3/.test(k)) || keys[0];
+  } catch (e) {
+    $("error").textContent = `LM Studio unreachable: ${e.message || e}`;
+  }
+}
+
+async function run() {
+  if (busy) return;
+  const text = $("text").value, model = $("model").value;
+  $("error").textContent = "";
+  if (!text.trim()) { $("error").textContent = "Type a text."; return; }
+  if (text.length > 2000) { $("error").textContent = "The text is too long: the maximum is 2,000 characters."; return; }
+  busy = true; $("run").disabled = true; $("run").textContent = "Working…";
+  document.activeElement?.blur();
+  try {
+    const post = (url, body) => fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
+      .then(async r => { const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error?.message || j.error || `Error ${r.status}`); return j; });
+    // The tokenizer loads the model in LM Studio if it is not loaded yet; this can take some seconds.
+    const tok = await post("/tokenize", { model, texts: [text] });
+    tokens = tok.results[0].pieces;
+    emb = await post("/embed-rows", { model, ids: tokens.map(p => p.id) }).catch(e => ({ error: e.message }));
+    tokens.forEach((p, i) => p.name = emb.names?.[i] || "");
+    sel = tokens.findIndex(p => !p.special);
+    render();
+  } catch (e) {
+    $("error").textContent = String(e.message || e);
+  } finally {
+    busy = false; $("run").disabled = false; $("run").textContent = "Show";
+  }
+}
+$("run").onclick = run;
+$("text").addEventListener("keydown", e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); run(); } });
+
+function render() {
+  renderTokens();
+  renderVectors();
+  const n = tokens.length;
+  $("stats").innerHTML = `<span>characters <b>${[...$("text").value].length}</b></span><span>tokens <b>${n}</b></span>` +
+    (emb.rows ? `<span>numbers per token <b>${emb.hidden.toLocaleString()}</b></span>` : "");
+}
+
+// ---- Step 1: tokens
+const wsShow = s => esc(s).replace(/ /g, '<span class="ws">·</span>').replace(/\n/g, '<span class="ws">↵</span>').replace(/\t/g, '<span class="ws">→</span>');
+const tokLabel = p => p.special ? esc(p.name || `special ${p.id}`) : p.text ? wsShow(p.text) : "∅";
+function renderTokens() {
+  const chars = [...$("text").value].length;
+  $("tokSub").textContent = `text → token IDs · ${tokens.length} tokens for ${chars} characters`;
+  let k = 0;
+  const chips = tokens.map((p, i) => {
+    const cls = p.special ? "chip sp" : `chip${k++ % 2 ? " alt" : ""}`;
+    const tip = p.special ? "A special token: a control sign, not text." : `${[...p.text].length} character${[...p.text].length === 1 ? "" : "s"}${p.name ? ` · vocabulary entry ${p.name}` : ""}`;
+    return `<span class="${cls}${i === sel ? " sel" : ""}" data-i="${i}" data-tip-title="Token ${i + 1} · ID ${p.id}" data-tip="${esc(tip)}"${p.special ? "" : ` data-tip-code="${esc(JSON.stringify(p.text))}"`}><span class="ct">${tokLabel(p)}</span><span class="cid">${p.id}</span></span>`;
+  }).join("");
+  const on = $("tokBody").classList.contains("show-ids");
+  $("tokBody").innerHTML = `<div class="card"><div class="card-head"><h3>Tokens</h3><span>${tokens.length} tokens for ${chars} characters</span>
+      <span class="toolbar" style="margin:0 0 0 auto">Token IDs <span class="seg" id="ids" role="group" aria-label="Token IDs"><button data-v="off" aria-pressed="${!on}">Hide</button><button data-v="on" aria-pressed="${on}">Show</button></span></span></div>
+    <div class="card-body"><div class="chips">${chips}</div></div>
+    <div class="card-head" style="border-top:1px solid var(--line);border-bottom:0"><div class="spec"><span>What the model receives</span><b>[${tokens.map(p => p.id).join(", ")}]</b></div></div></div>`;
+}
+
+// ---- Step 2: embeddings
+function renderVectors() {
+  if (emb.error) {
+    $("vecBody").innerHTML = `<p class="hint">${esc(emb.error)}</p>`;
+    $("vecSub").textContent = "token ID → list of numbers";
+    return;
+  }
+  $("vecSub").textContent = `token ID → list of ${emb.hidden.toLocaleString()} numbers`;
+  const spec = (label, value) => `<div class="spec"><span>${label}</span><b>${esc(value)}</b></div>`;
+  const specs = spec("Read from", emb.source) + spec("Embedding table", `${emb.vocab.toLocaleString()} rows × ${emb.hidden.toLocaleString()}`) +
+    (emb.bits ? spec("Stored as", `${emb.bits}-bit values`) : "") +
+    (emb.multiplier ? spec("Before layer 1", `× ${emb.multiplier} (√${emb.hidden})`) : "") +
+    (emb.layers ? spec("Layers", String(emb.layers)) : "");
+  // One colour scale for all rows, so you can compare them. The 99th percentile, so that a few large numbers do not hide the rest.
+  const all = emb.rows.flat().map(Math.abs).sort((a, b) => a - b);
+  scale = all[Math.floor(all.length * 0.99)] || 1;
+  const barMax = Math.max(...emb.rows.flatMap(r => r.slice(0, 16).map(Math.abs))) || 1;
+  $("vecBody").innerHTML = `<div class="card"><div class="card-head">${specs}</div>
+    <div class="vec-head vec-row" style="cursor:default"><span>Token · ID</span><span>First 16 numbers</span><span>All ${emb.hidden.toLocaleString()} numbers</span></div>
+    ${tokens.map((p, i) => `<div class="vec-row${i === sel ? " sel" : ""}" data-i="${i}">
+      <span class="vec-tok">${tokLabel(p)}<small>ID ${p.id}</small></span>${barsSvg(emb.rows[i], barMax)}<canvas class="strip" data-v="${i}"></canvas></div>`).join("")}</div>
+    <div class="card" id="detail"></div>`;
+  drawStrips();
+  renderDetail();
+}
+let scale = 1;
+const tint = x => `rgba(${cssVar(x >= 0 ? "--red-rgb" : "--neg-rgb")}, ${Math.min(1, Math.abs(x) / scale).toFixed(3)})`;
+// The first 16 numbers as bars: up = positive, down = negative. Hover a bar to see its value.
+function barsSvg(v, max) {
+  const W = 260, H = 40, n = 16, bw = W / n, mid = H / 2;
+  const bars = v.slice(0, n).map((x, j) => {
+    const h = Math.max(1, Math.abs(x) / max * (mid - 2));
+    return `<rect x="${(j * bw + 2).toFixed(1)}" y="${(x >= 0 ? mid - h : mid).toFixed(1)}" width="${(bw - 4).toFixed(1)}" height="${h.toFixed(1)}" rx="1.5"
+      fill="rgb(var(${x >= 0 ? "--red-rgb" : "--neg-rgb"}))"><title>number ${j + 1}: ${x.toFixed(5)}</title></rect>`;
+  }).join("");
+  return `<svg class="bars" viewBox="0 0 ${W} ${H}" aria-label="First 16 numbers"><line class="base" x1="0" y1="${mid}" x2="${W}" y2="${mid}"/>${bars}</svg>`;
+}
+function drawStrips() {
+  const pos = cssVar("--red-rgb"), neg = cssVar("--neg-rgb");
+  document.querySelectorAll("canvas.strip").forEach(c => {
+    const v = emb.rows[+c.dataset.v], w = c.clientWidth, h = c.clientHeight, dpr = devicePixelRatio || 1;
+    if (!w) return;
+    c.width = w * dpr; c.height = h * dpr;
+    const g = c.getContext("2d");
+    g.scale(dpr, dpr);
+    const cw = w / v.length;
+    v.forEach((x, j) => {
+      g.fillStyle = `rgba(${x >= 0 ? pos : neg}, ${Math.min(1, Math.abs(x) / scale).toFixed(3)})`;
+      g.fillRect(j * cw, 0, cw + 0.5, h);
+    });
+  });
+}
+// The selected token: its whole vector as a grid of 64 columns, one cell per number.
+function renderDetail() {
+  const box = $("detail"), p = tokens[sel];
+  if (!box || !p) return;
+  const v = emb.rows[sel], cols = 64, rows = Math.ceil(v.length / cols);
+  const len = Math.hypot(...v), min = Math.min(...v), max = Math.max(...v);
+  const same = tokens.filter(q => q.id === p.id).length;
+  const fact = (k, v) => `<div><dt>${k}</dt><dd>${v}</dd></div>`;
+  box.innerHTML = `<div class="card-head"><h3>Token ${sel + 1}: <code>${tokLabel(p)}</code></h3><span>ID ${p.id} · row ${p.id.toLocaleString()} of ${emb.vocab.toLocaleString()}</span></div>
+    <div class="card-body"><div class="detail-grid"><div><canvas class="grid" id="grid" width="${cols}" height="${rows}"></canvas>
+      <div class="legend"><span>${(-scale).toFixed(3)}</span><span class="ramp"></span><span>+${scale.toFixed(3)}</span></div></div>
+      <dl class="facts">
+        ${fact("Numbers", `${v.length.toLocaleString()} (${rows} lines of ${cols})`)}
+        ${fact("Smallest", min.toFixed(5))}${fact("Largest", max.toFixed(5))}${fact("Length", len.toFixed(4))}
+        ${emb.multiplier ? fact(`Length after × ${emb.multiplier}`, (len * emb.multiplier).toFixed(2)) : ""}
+        ${fact("First 4 numbers", v.slice(0, 4).map(x => x.toFixed(4)).join(", "))}
+        ${fact("In this text", same > 1 ? `${same} times, the same row each time` : "1 time")}
+        <span class="note">Each cell is one number of the row, from left to right and top to bottom. One number alone has no meaning that you can read. The pattern of all ${v.length.toLocaleString()} numbers is what the model learned for this token.</span>
+      </dl></div></div>`;
+  const c = $("grid"), g = c.getContext("2d");
+  c.style.aspectRatio = `${cols} / ${rows}`;
+  v.forEach((x, j) => { g.fillStyle = tint(x); g.fillRect(j % cols, Math.floor(j / cols), 1, 1); });
+}
+
+// Select a token: click a chip or a row.
+function select(i) {
+  if (!tokens[i] || i === sel) return;
+  sel = i;
+  document.querySelectorAll(".chip.sel, .vec-row.sel").forEach(el => el.classList.remove("sel"));
+  document.querySelectorAll(`.chip[data-i="${i}"], .vec-row[data-i="${i}"]`).forEach(el => el.classList.add("sel"));
+  if (emb?.rows) renderDetail();
+}
+document.querySelector(".main").addEventListener("click", e => {
+  const el = e.target.closest("[data-i]");
+  if (!el) return;
+  select(+el.dataset.i);  // no scroll: the tokens stay in view
+});
+addEventListener("resize", () => { if (emb?.rows) drawStrips(); });
+document.querySelectorAll(".steps button").forEach(b => b.onclick = () => {
+  const sec = $(b.dataset.go);
+  sec.open = true;
+  $("output").scrollTo({ top: sec.offsetTop, behavior: "smooth" });
+});
+// The Token IDs switch sits in the Tokens card, which is drawn again on each run.
+$("tokBody").addEventListener("click", e => {
+  const b = e.target.closest("#ids button");
+  if (!b) return;
+  e.stopPropagation();
+  document.querySelectorAll("#ids button").forEach(x => x.setAttribute("aria-pressed", x === b));
+  $("tokBody").classList.toggle("show-ids", b.dataset.v === "on");
+});
+
+// ---- Tooltip: one shared box for every element with data-tip.
+const tip = Object.assign(document.createElement("div"), { id: "tip", role: "tooltip" });
+document.body.append(tip);
+document.addEventListener("mouseover", e => {
+  const el = e.target.closest("[data-tip]");
+  if (!el) return tip.classList.remove("show");
+  const code = el.dataset.tipCode ? `<code>${esc(el.dataset.tipCode)}</code>` : "";
+  tip.innerHTML = `<b>${esc(el.dataset.tipTitle || "")}</b>${code}<span>${esc(el.dataset.tip)}</span>`;
+  tip.classList.add("show");
+  const r = el.getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight;
+  tip.style.left = Math.max(8, Math.min(r.left, innerWidth - w - 8)) + "px";
+  tip.style.top = (r.bottom + 8 + h > innerHeight ? r.top - h - 8 : r.bottom + 8) + "px";
+});
+document.addEventListener("scroll", () => tip.classList.remove("show"), true);
+
+// ---- Copy buttons
+const ICON_COPY = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/></svg>';
+const ICON_DONE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>';
+const COPY = {
+  text: () => $("text").value,
+  vectors: () => emb?.rows ? JSON.stringify(tokens.map((p, i) => ({ id: p.id, token: p.special ? p.name : p.text, embedding: emb.rows[i] }))) : "",
+};
+document.querySelectorAll(".copy[data-copy]").forEach(b => {
+  b.innerHTML = ICON_COPY;
+  b.addEventListener("mousedown", e => e.preventDefault());
+  b.addEventListener("click", async e => {
+    e.preventDefault(); e.stopPropagation();  // a click inside <summary> must not fold the section
+    const text = COPY[b.dataset.copy]();
+    if (!text) return;
+    try { await navigator.clipboard.writeText(text); }
+    catch { const ta = Object.assign(document.createElement("textarea"), { value: text }); document.body.append(ta); ta.select(); document.execCommand("copy"); ta.remove(); }
+    b.innerHTML = ICON_DONE; b.classList.add("done"); b.title = "Copied";
+    clearTimeout(b._t); b._t = setTimeout(() => { b.innerHTML = ICON_COPY; b.classList.remove("done"); b.title = b.getAttribute("aria-label"); }, 1400);
+  });
+});
+
+// ---- Examples. Same saved-list pattern as index.html: your saved texts (stored by the server) above built-in examples.
+const EXAMPLES = [
+  ["Capital of France", "The capital of France is Paris."],
+  ["Same word, other forms", "Paris paris PARIS  Paris"],
+  ["Repeated words", "The dog chased the cat, and the cat chased the dog."],
+  ["Long and rare words", "unbelievably antidisestablishmentarianism"],
+  ["Numbers", "12345 + 678 = 13023"],
+  ["Emoji and other languages", "Hello 🦜 naïve café 東京"],
+  ["Code", "def add(a, b):\n    return a + b"],
+  ["Penguins", "I saw 9 penguins. 2 slid in the water and disappeared from sight while 4 waddled up from the shore. How many can I see?"],
+];
+const ICON_SAVE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21l-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/><path d="M12 7v6M9 10h6"/></svg>';
+const ICON_DEL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/></svg>';
+let saved = [];
+function fillExamples(value = "") {
+  const sel = $("examples");
+  sel.innerHTML = `<option value="">Choose a text example…</option><option value="c" hidden>Custom</option>`;
+  if (saved.length) {
+    const g = Object.assign(document.createElement("optgroup"), { label: "Saved" });
+    saved.forEach((p, i) => g.append(new Option(p.name, "s" + i)));
+    sel.append(g);
+  }
+  const g = Object.assign(document.createElement("optgroup"), { label: "Examples" });
+  EXAMPLES.forEach(([lbl], i) => g.append(new Option(lbl, "e" + i)));
+  sel.append(g);
+  sel.value = value;
+  $("delText").hidden = !value.startsWith("s");
+}
+// The menu shows the item that matches the text, or "Custom".
+function matchExample() {
+  const v = $("text").value;
+  const si = saved.findIndex(p => p.text === v), ei = si >= 0 ? -1 : EXAMPLES.findIndex(e => e[1] === v);
+  $("examples").value = !v.trim() ? "" : si >= 0 ? "s" + si : ei >= 0 ? "e" + ei : "c";
+  $("delText").hidden = si < 0;
+}
+const storeSaved = () => fetch("/embed-texts", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(saved) })
+  .then(r => { if (!r.ok) throw new Error("Could not save the list."); });
+$("saveText").innerHTML = ICON_SAVE;
+$("delText").innerHTML = ICON_DEL;
+$("saveText").onclick = async () => {
+  const v = $("text").value;
+  if (!v.trim()) return;
+  let i = saved.findIndex(p => p.text === v);
+  if (i < 0) {
+    saved.push({ name: short(v), text: v });
+    i = saved.length - 1;
+    try { await storeSaved(); } catch (e) { saved.pop(); $("error").textContent = e.message; return; }
+  }
+  fillExamples("s" + i);
+  $("saveText").classList.add("done"); setTimeout(() => $("saveText").classList.remove("done"), 900);
+};
+$("delText").onclick = async () => {
+  const v = $("examples").value;
+  if (!v.startsWith("s")) return;
+  const [gone] = saved.splice(+v.slice(1), 1);
+  try { await storeSaved(); } catch (e) { saved.splice(+v.slice(1), 0, gone); $("error").textContent = e.message; return; }
+  fillExamples("");
+};
+$("examples").onchange = () => {
+  const v = $("examples").value;
+  $("delText").hidden = !v.startsWith("s");
+  if (!v || v === "c") return;
+  $("text").value = v.startsWith("s") ? saved[+v.slice(1)].text : EXAMPLES[+v.slice(1)][1];
+  fit($("text"));
+};
+$("text").addEventListener("input", () => { matchExample(); fit($("text")); });
+fillExamples();
+fetch("/embed-texts").then(r => r.json()).then(list => { saved = list.filter(p => typeof p.text === "string"); fillExamples($("examples").value); matchExample(); }).catch(() => {});
+
+// ---- Reset: empty text and output.
+const EMPTY = Object.fromEntries(["tokBody", "vecBody"].map(id => [id, $(id).innerHTML]));
+$("resetAll").onclick = () => {
+  $("text").value = ""; fit($("text")); fillExamples("");
+  tokens = []; emb = null; sel = -1;
+  for (const [id, html] of Object.entries(EMPTY)) $(id).innerHTML = html;
+  $("tokSub").textContent = "text → token IDs"; $("vecSub").textContent = "token ID → list of numbers";
+  $("stats").innerHTML = ""; $("error").textContent = "";
+  $("text").focus();
+};
+
+// Remember which steps are open.
+["secTok", "secVec"].forEach(id => {
+  try { const v = localStorage.getItem("open:" + id); if (v !== null) $(id).open = v === "1"; } catch {}
+  $(id).addEventListener("toggle", () => {
+    try { localStorage.setItem("open:" + id, $(id).open ? "1" : "0"); } catch {}
+    if (id === "secVec" && $(id).open && emb?.rows) drawStrips();
+  });
+});
+$("sideToggle").onclick = () => {
+  const v = document.documentElement.dataset.side === "closed" ? "open" : "closed";
+  document.documentElement.dataset.side = v;
+  try { localStorage.setItem("sidebar", v); } catch {}
+  setTimeout(() => { if (emb?.rows) drawStrips(); }, 200);  // after the width transition
+};
+// Light/Dark switch. Remembered per browser. Canvas colours come from CSS, so draw again.
+function setTheme(v, save) {
+  document.documentElement.dataset.theme = v;
+  document.querySelectorAll("#theme button").forEach(b => b.setAttribute("aria-pressed", b.dataset.theme === v));
+  if (save) try { localStorage.setItem("theme", v); } catch {}
+  if (emb?.rows) { drawStrips(); renderDetail(); }
+}
+document.querySelectorAll("#theme button").forEach(b => { b.onmousedown = e => e.preventDefault(); b.onclick = () => setTheme(b.dataset.theme, true); });
+setTheme(document.documentElement.dataset.theme, false);
+document.querySelectorAll("button").forEach(b => b.addEventListener("mousedown", e => e.preventDefault()));
+
+$("text").value = EXAMPLES[0][1]; fit($("text")); matchExample();
+loadModels();
+</script>
+</body>
+</html>

@@ -355,6 +355,26 @@
   .error { color: var(--danger); font-size: 14px; padding: 8px 2px 0; }
   .error:empty { display: none; }
 
+  /* Sidebar, as in LM Studio: one row per page. The toggle folds it to a rail of icons. Same block in embeddings.html. */
+  body { display: flex; }
+  .app { flex: 1; min-width: 0; }
+  .side {
+    position: sticky; top: 0; flex: none; width: 200px; height: 100vh; display: flex; flex-direction: column; gap: 2px;
+    padding: 0 10px 12px; background: var(--paper-2); border-right: 1px solid var(--line); overflow: hidden; transition: width .15s;
+  }
+  .side-top { display: flex; align-items: center; height: 64px; }
+  .side a, .side-toggle {
+    display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 9px; border-radius: 8px; flex: none;
+    color: var(--ink); text-decoration: none; font: 500 14px var(--sans); white-space: nowrap;
+  }
+  .side-toggle { width: 36px; justify-content: center; padding: 0; border: 0; background: transparent; color: var(--ink-2); cursor: pointer; }
+  .side a:hover, .side-toggle:hover { background: rgba(var(--shadow-rgb), .06); }
+  .side a[aria-current="page"] { background: rgba(var(--red-rgb), .14); }
+  .side svg { width: 18px; height: 18px; flex: none; color: var(--ink-2); }
+  .side a[aria-current="page"] svg { color: var(--red); }
+  :root[data-side="closed"] .side { width: 57px; }
+  :root[data-side="closed"] .side a span { display: none; }
+
   @media (max-width: 860px) {
     .app { height: auto; min-height: 100vh; padding: 0 16px 16px; }
     .main { grid-template-columns: 1fr; }
@@ -376,9 +396,18 @@
   let t = null;
   try { t = localStorage.getItem("theme"); } catch {}
   document.documentElement.dataset.theme = t || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+  // Sidebar open or closed: saved choice, else closed on a narrow screen.
+  let side = null;
+  try { side = localStorage.getItem("sidebar"); } catch {}
+  document.documentElement.dataset.side = side || (innerWidth <= 860 ? "closed" : "open");
 </script>
 </head>
 <body>
+<nav class="side" aria-label="Pages">
+  <div class="side-top"><button type="button" class="side-toggle" id="sideToggle" title="Show or hide the sidebar" aria-label="Show or hide the sidebar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/></svg></button></div>
+  <a href="/" aria-current="page" title="Trace: tokens and their probabilities"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 6h5M12 6h8M4 12h10M17 12h3M4 18h3M10 18h10"/></svg><span>Trace</span></a>
+  <a href="/embeddings.html" title="Embeddings: tokens and vectors of texts"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><circle cx="8" cy="15" r="1.6"/><circle cx="11" cy="8" r="1.6"/><circle cx="16" cy="13" r="1.6"/><circle cx="18" cy="6" r="1.6"/></svg><span>Embeddings</span></a>
+</nav>
 <div class="app">
   <header class="top">
     <h1><label for="model">Model</label></h1>
@@ -1399,6 +1428,11 @@ loadModels();
   try { const v = localStorage.getItem("open:" + id); if (v !== null) $(id).open = v === "1"; } catch {}
   $(id).addEventListener("toggle", () => { try { localStorage.setItem("open:" + id, $(id).open ? "1" : "0"); } catch {} });
 });
+$("sideToggle").onclick = () => {
+  const v = document.documentElement.dataset.side === "closed" ? "open" : "closed";
+  document.documentElement.dataset.side = v;
+  try { localStorage.setItem("sidebar", v); } catch {}
+};
 // Light/Dark switch. Remembered per browser.
 function setTheme(v, save) {
   document.documentElement.dataset.theme = v;
