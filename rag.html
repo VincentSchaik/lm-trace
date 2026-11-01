@@ -122,7 +122,8 @@
   /* Composer */
   .composer { background: var(--field); border: 1px solid var(--line); border-radius: var(--r); padding: 16px 18px; box-shadow: var(--lift); }
   .prompt-grid { display: grid; grid-template-columns: 260px 1fr auto; gap: 8px 12px; align-items: start; }
-  .prompt-grid .row2 { margin-top: 6px; }
+  .prompt-grid.grp { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--paper-2); }
+  .settings.in { margin-top: 2px; padding-top: 0; border-top: 0; }  /* the settings sit under the input that they change */
   .lbl { font-size: 14px; font-weight: 600; color: var(--ink); }
   .lbl-s { font-size: 12px; color: var(--ink-3); }
   .opts { margin-top: 12px; border-top: 1px solid var(--paper-2); }
@@ -383,9 +384,9 @@
     .prompt-grid { grid-template-columns: 1fr; }
     .prompt-grid > span { display: none; }
     /* One column: each label above its field */
-    .prompt-grid > :nth-child(4) { order: 1; } .prompt-grid > :nth-child(2) { order: 2; } .prompt-grid > :nth-child(5) { order: 3; }
-    .prompt-grid > :nth-child(n+7) { order: 4; } .prompt-grid > :nth-child(10) { order: 5; } .prompt-grid > :nth-child(8) { order: 6; } .prompt-grid > :nth-child(n+11) { order: 7; }
-    .prompt-grid > :nth-child(1) { order: 0; }
+    /* Each label above its field, then the settings, then Ask */
+    .prompt-grid > :nth-child(1) { order: 0; } .prompt-grid > :nth-child(4) { order: 1; } .prompt-grid > :nth-child(2) { order: 2; }
+    .prompt-grid > :nth-child(5) { order: 3; } .prompt-grid > :nth-child(8) { order: 4; } .prompt-grid > :nth-child(6) { order: 5; }
     .settings { gap: 10px 16px; }
     .seg { flex-wrap: wrap; }
     .opt-state { display: none; }
@@ -447,12 +448,62 @@
       <select id="docExamples" class="field ex"></select>
       <div class="input-wrap"><textarea id="docs" class="input" rows="3" placeholder="Paste the text that the model must use. Empty lines separate the paragraphs."></textarea><div class="input-tools"><button type="button" class="copy" id="delDoc" title="Delete saved documents" aria-label="Delete saved documents" hidden></button><button type="button" class="copy" id="saveDoc" title="Save documents to the list" aria-label="Save documents to the list"></button><button type="button" class="copy" data-copy="docs" title="Copy documents" aria-label="Copy documents"></button></div></div>
       <span></span>
-      <label for="qExamples" class="lbl row2">Question examples</label>
-      <label for="question" class="lbl row2">Question</label>
+      <span></span>
+      <div class="settings in">
+        <div class="ctl">
+          <div class="ctl-label"><span class="tipped" data-tip-title="Split by" data-tip="How the documents are cut into chunks. Paragraphs: a cut at each empty line. Sentences: a cut after . ! or ?. Fixed size: a cut after a set number of characters.">Split by</span></div>
+          <span class="seg" id="split" role="group" aria-label="Split by">
+            <button data-v="para" aria-pressed="true">Paragraphs</button>
+            <button data-v="sent" aria-pressed="false">Sentences</button>
+            <button data-v="fixed" aria-pressed="false">Fixed size</button>
+          </span>
+        </div>
+          <div class="ctl grow" id="sizeCtl" hidden>
+            <div class="ctl-label"><span class="tipped" data-tip-title="Chunk size" data-tip="The maximum number of characters in one chunk. A cut moves back to a space, so words stay whole.">Chunk size</span></div>
+            <div class="ctl-row"><input id="size" type="range" min="80" max="1000" step="20" value="240"><output id="sizeOut">240</output></div>
+          </div>
+          <div class="ctl grow" id="overlapCtl" hidden>
+            <div class="ctl-label"><span class="tipped" data-tip-title="Overlap" data-tip="The number of characters that repeat from the end of one chunk at the start of the next chunk. A fact cut at a border is then complete in one chunk.">Overlap</span></div>
+            <div class="ctl-row"><input id="overlap" type="range" min="0" max="200" step="10" value="40"><output id="overlapOut">40</output></div>
+          </div>
+          <div class="ctl">
+            <div class="ctl-label"><span class="tipped" data-tip-title="Task prefixes" data-tip="Some embedding models expect a short text in front of the question and in front of each chunk, for example &quot;task: search result | query: &quot;. With the prefixes, the search is usually better.">Task prefixes</span></div>
+            <span class="seg" id="prefix" role="group" aria-label="Task prefixes">
+              <button data-v="off" aria-pressed="false">Off</button>
+              <button data-v="on" aria-pressed="true">On</button>
+            </span>
+          </div>
+      </div>
+      <span></span>
+    </div>
+    <div class="prompt-grid grp">
+      <label for="qExamples" class="lbl">Question examples</label>
+      <label for="question" class="lbl">Question</label>
       <span></span>
       <select id="qExamples" class="field ex"></select>
       <div class="input-wrap"><textarea id="question" class="input" rows="1" placeholder="Ask a question about the documents…"></textarea><div class="input-tools"><button type="button" class="copy" id="delQ" title="Delete saved question" aria-label="Delete saved question" hidden></button><button type="button" class="copy" id="saveQ" title="Save question to the list" aria-label="Save question to the list"></button><button type="button" class="copy" data-copy="question" title="Copy question" aria-label="Copy question"></button></div></div>
       <button id="run" class="btn primary" title="Search the documents and answer (⌘ + Enter)">Ask</button>
+      <span></span>
+      <div class="settings in">
+        <div class="ctl">
+          <div class="ctl-label"><span class="tipped" data-tip-title="Top k chunks" data-tip="The number of chunks with the highest similarity that go into the prompt. More chunks give more context, but also more text that is not related to the question.">Top k chunks</span></div>
+          <span class="seg" id="topk" role="group" aria-label="Top k">
+            <button data-v="1" aria-pressed="false">1</button>
+            <button data-v="2" aria-pressed="false">2</button>
+            <button data-v="3" aria-pressed="true">3</button>
+            <button data-v="4" aria-pressed="false">4</button>
+            <button data-v="5" aria-pressed="false">5</button>
+          </span>
+        </div>
+          <div class="ctl">
+            <div class="ctl-label"><span class="tipped" data-tip-title="Answer without RAG too" data-tip="The chat model also answers the question without the chunks, so you can compare the two answers.">Answer without RAG too</span></div>
+            <span class="seg" id="compare" role="group" aria-label="Answer without RAG too">
+              <button data-v="off" aria-pressed="false">Off</button>
+              <button data-v="on" aria-pressed="true">On</button>
+            </span>
+          </div>
+      </div>
+      <span></span>
     </div>
     <div class="opts">
       <details class="opt" id="optInstr">
@@ -484,48 +535,6 @@
           <p class="hint chat-hint">Used for both answers. At temperature 0, the model always takes the most likely token, so top-k and top-p change nothing. A higher temperature gives a different answer each time. Max tokens stops a long answer.</p>
         </div>
       </details>
-    </div>
-    <div class="settings">
-      <div class="ctl">
-        <div class="ctl-label"><span class="tipped" data-tip-title="Split by" data-tip="How the documents are cut into chunks. Paragraphs: a cut at each empty line. Sentences: a cut after . ! or ?. Fixed size: a cut after a set number of characters.">Split by</span></div>
-        <span class="seg" id="split" role="group" aria-label="Split by">
-          <button data-v="para" aria-pressed="true">Paragraphs</button>
-          <button data-v="sent" aria-pressed="false">Sentences</button>
-          <button data-v="fixed" aria-pressed="false">Fixed size</button>
-        </span>
-      </div>
-      <div class="ctl grow" id="sizeCtl" hidden>
-        <div class="ctl-label"><span class="tipped" data-tip-title="Chunk size" data-tip="The maximum number of characters in one chunk. A cut moves back to a space, so words stay whole.">Chunk size</span></div>
-        <div class="ctl-row"><input id="size" type="range" min="80" max="1000" step="20" value="240"><output id="sizeOut">240</output></div>
-      </div>
-      <div class="ctl grow" id="overlapCtl" hidden>
-        <div class="ctl-label"><span class="tipped" data-tip-title="Overlap" data-tip="The number of characters that repeat from the end of one chunk at the start of the next chunk. A fact cut at a border is then complete in one chunk.">Overlap</span></div>
-        <div class="ctl-row"><input id="overlap" type="range" min="0" max="200" step="10" value="40"><output id="overlapOut">40</output></div>
-      </div>
-      <div class="ctl">
-        <div class="ctl-label"><span class="tipped" data-tip-title="Top k chunks" data-tip="The number of chunks with the highest similarity that go into the prompt. More chunks give more context, but also more text that is not related to the question.">Top k chunks</span></div>
-        <span class="seg" id="topk" role="group" aria-label="Top k">
-          <button data-v="1" aria-pressed="false">1</button>
-          <button data-v="2" aria-pressed="false">2</button>
-          <button data-v="3" aria-pressed="true">3</button>
-          <button data-v="4" aria-pressed="false">4</button>
-          <button data-v="5" aria-pressed="false">5</button>
-        </span>
-      </div>
-      <div class="ctl">
-        <div class="ctl-label"><span class="tipped" data-tip-title="Task prefixes" data-tip="Some embedding models expect a short text in front of the question and in front of each chunk, for example &quot;task: search result | query: &quot;. With the prefixes, the search is usually better.">Task prefixes</span></div>
-        <span class="seg" id="prefix" role="group" aria-label="Task prefixes">
-          <button data-v="off" aria-pressed="false">Off</button>
-          <button data-v="on" aria-pressed="true">On</button>
-        </span>
-      </div>
-      <div class="ctl">
-        <div class="ctl-label"><span class="tipped" data-tip-title="Answer without RAG too" data-tip="The chat model also answers the question without the chunks, so you can compare the two answers.">Answer without RAG too</span></div>
-        <span class="seg" id="compare" role="group" aria-label="Answer without RAG too">
-          <button data-v="off" aria-pressed="false">Off</button>
-          <button data-v="on" aria-pressed="true">On</button>
-        </span>
-      </div>
     </div>
     <div class="error" id="error"></div>
   </section>
