@@ -187,6 +187,12 @@
   .ctl-row input[type=range] { flex: 1; width: 0; min-width: 70px; }
   .ctl output { font: 500 15px var(--mono); color: var(--ink); min-width: 36px; }
   .ctl[hidden] { display: none; }
+  .tipped { cursor: help; text-decoration: underline dotted var(--stone-2); text-underline-offset: 4px; }
+  .chat-set { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 10px 24px; padding: 0 0 14px; }
+  .chat-set .ctl { flex: 1 1 200px; max-width: 280px; }
+  .chat-hint { flex-basis: 100%; font-size: 12.5px; line-height: 1.5; }
+  .radio { display: inline-flex; align-items: center; gap: 5px; font-weight: 500; color: var(--ink); cursor: pointer; }
+  .radio input { accent-color: var(--red); width: 15px; height: 15px; margin: 0; cursor: pointer; }
   .seg { display: inline-flex; background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 3px; }
   .ctl .seg { height: 36px; align-self: flex-start; }
   .seg button {
@@ -294,14 +300,14 @@
   .sel { background: rgba(var(--shadow-rgb), .055) !important; box-shadow: inset 3px 0 0 var(--ink-3); }
 
   /* Step 2: one vector per text, as a strip of colour */
-  .vrow, .vhead { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 16px; align-items: center; padding: 9px 14px; }
+  .vrow, .vhead { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 16px; align-items: center; padding: 9px 14px; }
   .vrow { cursor: pointer; }
   .vhead-r { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-width: 0; }
   .vrow + .vrow, .vhead + .vrow { border-top: 1px solid var(--paper-2); }
   .vrow.q { background: rgba(var(--shadow-rgb), .025); cursor: default; }
   .vlab { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 13px; }
-  .vlab .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-  .strip { display: block; width: 100%; height: 28px; border-radius: 4px; background: var(--paper-2); }
+  .vlab .t { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; min-width: 0; line-height: 1.45; }
+  .strip { display: block; width: 100%; height: 18px; border-radius: 4px; background: var(--paper-2); }
   .legend { display: flex; align-items: center; gap: 8px; font: 12px var(--mono); color: var(--ink-3); }
   .legend .ramp { width: 120px; height: 8px; border-radius: 4px; border: 1px solid var(--paper-2);
     background: linear-gradient(90deg, rgb(var(--neg-rgb)), var(--paper-2), rgb(var(--red-rgb))); }
@@ -312,10 +318,10 @@
   .sent { font: 12px var(--mono); color: var(--ink-3); }
 
   /* Step 3: ranked list and map */
-  .rrow { display: grid; grid-template-columns: 22px 36px minmax(0, 1fr) minmax(80px, 160px) 46px; gap: 10px; align-items: center; padding: 7px 14px; cursor: pointer; }
+  .rrow { display: grid; grid-template-columns: 22px 36px minmax(0, 1fr) minmax(36px, 64px) 46px; gap: 10px; align-items: center; padding: 7px 14px; cursor: pointer; }
   .rrow + .rrow { border-top: 1px solid var(--paper-2); }
   .rank { font: 12px var(--mono); color: var(--ink-3); text-align: right; }
-  .rtext { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-2); }
+  .rtext { font-size: 13px; line-height: 1.45; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; color: var(--ink-2); }
   .hit .rtext { color: var(--ink); }
   .track { position: relative; height: 10px; border-radius: 5px; background: var(--paper-2); overflow: hidden; }
   .track i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 5px; background: var(--stone-2); }
@@ -345,7 +351,7 @@
   .ctx.sel { box-shadow: inset 3px 0 0 var(--ink-3); }
 
   /* Step 5: the two answers */
-  .answer { padding: 14px; font-size: 14.5px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; min-height: 84px; max-height: 340px; overflow-y: auto; }
+  .answer { padding: 14px; font-size: 14.5px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; min-height: 84px; }
   .answer .wait { color: var(--ink-3); }
   .ans-stat { font: 600 14px var(--mono); color: var(--ink); white-space: nowrap; }
   .ans-stat small { font: 400 12px var(--sans); color: var(--ink-3); }
@@ -457,10 +463,31 @@
           <span></span>
         </div>
       </details>
+      <details class="opt" id="optChat">
+        <summary><span class="chev"></span><span class="opt-title">Chat model settings</span><span class="opt-state" id="stChat"></span></summary>
+        <div class="chat-set">
+          <div class="ctl">
+            <div class="ctl-label"><span class="tipped" data-tip-title="Temperature" data-tip="How random the choice of the next token is. 0 = always the most likely token. A higher value gives more varied answers.">Temperature</span></div>
+            <div class="ctl-row"><input id="temp" type="range" min="0" max="2" step="0.1" value="0"><output id="tempOut">0.0</output></div>
+          </div>
+          <div class="ctl">
+            <div class="ctl-label"><span class="tipped" data-tip-title="Sampling" data-tip="Which tokens the model can choose from. Top-k: only the k most likely tokens. Top-p: only the most likely tokens that together have the probability p. At temperature 0, these change nothing.">Sampling</span>
+              <label class="radio"><input type="radio" name="samp" value="k" checked> Top-k</label>
+              <label class="radio"><input type="radio" name="samp" value="p"> Top-p</label>
+            </div>
+            <div class="ctl-row"><input id="samp" type="range" min="1" max="10" step="1" value="10"><output id="sampOut">k=10</output></div>
+          </div>
+          <div class="ctl">
+            <div class="ctl-label"><span class="tipped" data-tip-title="Max tokens" data-tip="The maximum length of each answer. The model stops when it gets to this number of tokens.">Max tokens</span></div>
+            <div class="ctl-row"><input id="max" type="range" min="8" max="2048" step="8" value="400"><output id="maxOut">400</output></div>
+          </div>
+          <p class="hint chat-hint">Used for both answers. At temperature 0, the model always takes the most likely token, so top-k and top-p change nothing. A higher temperature gives a different answer each time. Max tokens stops a long answer.</p>
+        </div>
+      </details>
     </div>
     <div class="settings">
       <div class="ctl">
-        <div class="ctl-label">Split by</div>
+        <div class="ctl-label"><span class="tipped" data-tip-title="Split by" data-tip="How the documents are cut into chunks. Paragraphs: a cut at each empty line. Sentences: a cut after . ! or ?. Fixed size: a cut after a set number of characters.">Split by</span></div>
         <span class="seg" id="split" role="group" aria-label="Split by">
           <button data-v="para" aria-pressed="true">Paragraphs</button>
           <button data-v="sent" aria-pressed="false">Sentences</button>
@@ -468,15 +495,15 @@
         </span>
       </div>
       <div class="ctl grow" id="sizeCtl" hidden>
-        <div class="ctl-label">Chunk size</div>
+        <div class="ctl-label"><span class="tipped" data-tip-title="Chunk size" data-tip="The maximum number of characters in one chunk. A cut moves back to a space, so words stay whole.">Chunk size</span></div>
         <div class="ctl-row"><input id="size" type="range" min="80" max="1000" step="20" value="240"><output id="sizeOut">240</output></div>
       </div>
       <div class="ctl grow" id="overlapCtl" hidden>
-        <div class="ctl-label">Overlap</div>
+        <div class="ctl-label"><span class="tipped" data-tip-title="Overlap" data-tip="The number of characters that repeat from the end of one chunk at the start of the next chunk. A fact cut at a border is then complete in one chunk.">Overlap</span></div>
         <div class="ctl-row"><input id="overlap" type="range" min="0" max="200" step="10" value="40"><output id="overlapOut">40</output></div>
       </div>
       <div class="ctl">
-        <div class="ctl-label">Top k</div>
+        <div class="ctl-label"><span class="tipped" data-tip-title="Top k chunks" data-tip="The number of chunks with the highest similarity that go into the prompt. More chunks give more context, but also more text that is not related to the question.">Top k chunks</span></div>
         <span class="seg" id="topk" role="group" aria-label="Top k">
           <button data-v="1" aria-pressed="false">1</button>
           <button data-v="2" aria-pressed="false">2</button>
@@ -486,14 +513,14 @@
         </span>
       </div>
       <div class="ctl">
-        <div class="ctl-label">Task prefixes</div>
+        <div class="ctl-label"><span class="tipped" data-tip-title="Task prefixes" data-tip="Some embedding models expect a short text in front of the question and in front of each chunk, for example &quot;task: search result | query: &quot;. With the prefixes, the search is usually better.">Task prefixes</span></div>
         <span class="seg" id="prefix" role="group" aria-label="Task prefixes">
           <button data-v="off" aria-pressed="false">Off</button>
           <button data-v="on" aria-pressed="true">On</button>
         </span>
       </div>
       <div class="ctl">
-        <div class="ctl-label">Answer without RAG too</div>
+        <div class="ctl-label"><span class="tipped" data-tip-title="Answer without RAG too" data-tip="The chat model also answers the question without the chunks, so you can compare the two answers.">Answer without RAG too</span></div>
         <span class="seg" id="compare" role="group" aria-label="Answer without RAG too">
           <button data-v="off" aria-pressed="false">Off</button>
           <button data-v="on" aria-pressed="true">On</button>
@@ -590,7 +617,10 @@ const dot = (a, b) => { let s = 0; for (let i = 0; i < a.length; i++) s += a[i] 
 const cosine = (a, b) => dot(a, b) / (Math.sqrt(dot(a, a) * dot(b, b)) || 1);
 const ms = t => t < 1000 ? `${Math.round(t)} ms` : `${(t / 1000).toFixed(1)} s`;
 
-const MAX_TOKENS = 400;  // enough for an answer; the answer without RAG can be long
+// Chat model settings, read when Ask starts. The same settings go to both answers.
+const chatSettings = () => ({ temp: +$("temp").value, mode: document.querySelector('input[name="samp"]:checked').value, val: +$("samp").value, max: +$("max").value });
+const settingsText = st => `temperature ${st.temp.toFixed(1)} · ${st.mode === "k" ? `top-k ${st.val}` : `top-p ${st.val.toFixed(2)}`} · max ${st.max} tokens`;
+let chatSet = chatSettings();
 const DEFAULT_INSTR = "Answer the question with the context only. If the context does not contain the answer, say that you do not know. After each fact, give the number of its chunk in square brackets, for example [2].";
 
 // Task prefixes that the model makers recommend. A model without an entry gets no prefix.
@@ -723,6 +753,7 @@ async function run() {
     ];
     const compare = segVal("compare") === "on";
     answers = { rag: { text: "", done: false }, plain: compare ? { text: "", done: false } : null };
+    chatSet = chatSettings();
     render();
     // Answer: with RAG, then (one after the other, so LM Studio loads one model at a time) without.
     await answer(chat, messages, answers.rag);
@@ -750,7 +781,8 @@ async function answer(model, msgs, a) {
   const t0 = performance.now();
   const r = await fetch("/v1/chat/completions", {
     method: "POST", headers: { "Content-Type": "application/json" }, signal: ctrl.signal,
-    body: JSON.stringify({ model, messages: msgs, temperature: 0, max_tokens: MAX_TOKENS, stream: true, stream_options: { include_usage: true } }),
+    body: JSON.stringify({ model, messages: msgs, temperature: chatSet.temp, max_tokens: chatSet.max,
+      ...(chatSet.mode === "k" ? { top_k: chatSet.val, top_p: 1 } : { top_p: chatSet.val }), stream: true, stream_options: { include_usage: true } }),
   });
   if (!r.ok) { const j = await r.json().catch(() => ({})); throw new Error(j.error?.message || j.error || r.status); }
   const reader = r.body.pipeThrough(new TextDecoderStream()).getReader();
@@ -926,7 +958,7 @@ function renderPrompt() {
   const ctx = search.scores.slice(0, k).map(({ c }) => `<span class="ctx${c === sel ? " sel" : ""}" data-c="${c}">[${c + 1}] ${esc(index.chunks[c].text)}</span>`).join("\n");
   const sys = messages.find(m => m.role === "system");
   $("promptBody").innerHTML = `<div class="card"><div class="card-head"><h3>Messages to ${esc($("chatModel").value)}</h3>
-      <span>${user.length.toLocaleString()} characters in the user message${answers.rag?.prompt ? ` · ${answers.rag.prompt} prompt tokens` : ""}</span><span class="right">temperature 0</span></div>
+      <span>${user.length.toLocaleString()} characters in the user message${answers.rag?.prompt ? ` · ${answers.rag.prompt} prompt tokens` : ""}</span><span class="right">${settingsText(chatSet)}</span></div>
     ${sys ? `<div class="msg"><span class="role">System</span><div class="msg-text">${esc(sys.content)}</div></div>` : ""}
     <div class="msg"><span class="role">User</span><div class="msg-text">Context:\n${ctx}\nQuestion: ${esc(search.q)}</div></div></div>`;
 }
@@ -942,7 +974,7 @@ function answerHtml(a) {
     return index.chunks[c] ? `<span class="cite${hits.has(c) ? "" : " miss"}" data-c="${c}" data-tip-title="Chunk #${c + 1}" data-tip="${esc(short(index.chunks[c].text, 200))}">${n}</span>` : `[${n}]`;
   }).join(""));
 }
-const answerFoot = a => a.done && a.tokens != null ? `${a.tokens} tokens · ${ms(a.ms)}${a.finish === "length" ? `<small> · cut at ${MAX_TOKENS} tokens</small>` : ""}` : a.stopped ? "stopped" : a.done ? "" : "writing…";
+const answerFoot = a => a.done && a.tokens != null ? `${a.tokens} tokens · ${ms(a.ms)}${a.finish === "length" ? `<small> · cut at ${chatSet.max} tokens</small>` : ""}` : a.stopped ? "stopped" : a.done ? "" : "writing…";
 function renderAnswers() {
   const { rag, plain } = answers;
   if (!rag) return;
@@ -985,11 +1017,19 @@ document.querySelectorAll(".seg").forEach(g => g.id !== "theme" && g.addEventLis
   if (g.id === "split") $("sizeCtl").hidden = $("overlapCtl").hidden = b.dataset.v !== "fixed";
 }));
 function syncSliders() {
+  // Top-k and top-p share one slider: its range changes with the mode.
+  const isK = document.querySelector('input[name="samp"]:checked').value === "k", sl = $("samp");
+  if (isK && sl.step !== "1") { sl.min = 1; sl.max = 10; sl.step = 1; sl.value = 10; }
+  if (!isK && sl.step !== "0.05") { sl.min = 0.05; sl.max = 1; sl.step = 0.05; sl.value = 0.9; }
+  $("tempOut").textContent = (+$("temp").value).toFixed(1);
+  $("sampOut").textContent = isK ? `k=${sl.value}` : `p=${(+sl.value).toFixed(2)}`;
+  $("maxOut").textContent = $("max").value;
+  $("stChat").textContent = settingsText(chatSettings());
   $("sizeOut").textContent = $("size").value;
   $("overlapOut").textContent = $("overlap").value;
   document.querySelectorAll("input[type=range]").forEach(r => r.style.setProperty("--fill", ((r.value - r.min) / (r.max - r.min) * 100) + "%"));
 }
-document.querySelectorAll("input[type=range]").forEach(r => r.addEventListener("input", syncSliders));
+document.querySelectorAll('input[type=range], input[name="samp"]').forEach(r => r.addEventListener("input", syncSliders));
 syncSliders();
 function syncInstr() {
   const v = $("instr").value.trim();
