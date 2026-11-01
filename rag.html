@@ -116,7 +116,7 @@
   }
   :root[data-theme="dark"] select.field { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23b9b9c0' stroke-width='1.6'/%3E%3C/svg%3E"); }
   select.field.ex { height: 48px; min-width: 0; width: 100%; font-weight: 400; }
-  #embModel { min-width: 260px; }
+  #embModel { min-width: 400px; }  /* the select measures its options at weight 400, so a long name at 500 was cut */
   #chatModel { min-width: 220px; }
 
   /* Composer */
@@ -237,6 +237,13 @@
     background: rgba(var(--shadow-rgb), .025); font-size: 12.5px; line-height: 1.55; color: var(--ink-3);
   }
   .lede code, .explain code { font-size: 11.5px; }
+  .explain p { margin: 0; }
+  .explain > p:first-child { color: var(--ink-2); }
+  .explain ul { margin: 4px 0 0; padding-left: 18px; }
+  .more { margin-top: 4px; }
+  .more > summary { display: inline; cursor: pointer; font-weight: 500; }
+  .more > summary:hover { color: var(--red); }
+  .more p { margin-top: 2px; }
   .steps { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; margin-right: auto; }
   .steps button {
     display: inline-flex; align-items: center; gap: 7px; height: 30px; padding: 0 10px 0 5px; border-radius: 15px;
@@ -278,17 +285,18 @@
   .hit .cn, .cn.hit { background: rgba(var(--red-rgb), .14); color: var(--red); }
 
   /* Step 1: one row per chunk */
-  .chunk { display: grid; grid-template-columns: 36px minmax(0, 1fr) 70px; gap: 12px; align-items: start; padding: 10px 14px; cursor: pointer; }
+  .chunk { display: grid; grid-template-columns: 36px minmax(0, 1fr) 80px; gap: 12px; align-items: start; padding: 10px 14px; cursor: pointer; }
   .chunk + .chunk { border-top: 1px solid var(--paper-2); }
   .chunk:hover, .vrow:hover, .rrow:hover { background: rgba(var(--shadow-rgb), .025); }
   .chunk-text { font-size: 14px; line-height: 1.55; white-space: pre-wrap; word-break: break-word; }
   .chunk-text .ov { background: rgba(var(--neg-rgb), .14); border-radius: 3px; }
   .chunk-len { font: 12px var(--mono); color: var(--ink-3); text-align: right; padding-top: 2px; }
-  .sel { background: rgba(var(--red-rgb), .06) !important; box-shadow: inset 3px 0 0 var(--red); }
+  .sel { background: rgba(var(--shadow-rgb), .055) !important; box-shadow: inset 3px 0 0 var(--ink-3); }
 
   /* Step 2: one vector per text, as a strip of colour */
   .vrow, .vhead { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 16px; align-items: center; padding: 9px 14px; }
   .vrow { cursor: pointer; }
+  .vhead-r { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-width: 0; }
   .vrow + .vrow, .vhead + .vrow { border-top: 1px solid var(--paper-2); }
   .vrow.q { background: rgba(var(--shadow-rgb), .025); cursor: default; }
   .vlab { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 13px; }
@@ -334,11 +342,13 @@
   .msg-text { font: 13px/1.6 var(--mono); white-space: pre-wrap; word-break: break-word; color: var(--ink); }
   .ctx { display: block; margin: 2px 0; padding: 4px 8px; border-radius: 5px; background: rgba(var(--red-rgb), .06); cursor: pointer; }
   .ctx:hover { background: rgba(var(--red-rgb), .1); }
-  .ctx.sel { background: rgba(var(--red-rgb), .14) !important; box-shadow: inset 3px 0 0 var(--red); }
+  .ctx.sel { box-shadow: inset 3px 0 0 var(--ink-3); }
 
   /* Step 5: the two answers */
   .answer { padding: 14px; font-size: 14.5px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; min-height: 84px; max-height: 340px; overflow-y: auto; }
   .answer .wait { color: var(--ink-3); }
+  .ans-stat { font: 600 14px var(--mono); color: var(--ink); white-space: nowrap; }
+  .ans-stat small { font: 400 12px var(--sans); color: var(--ink-3); }
   .answer.off { color: var(--ink-3); font-size: 13px; }
   .cite { display: inline-grid; place-items: center; min-width: 22px; height: 18px; padding: 0 4px; margin: 0 1px; border-radius: 4px; vertical-align: 1px;
     font: 600 10.5px var(--mono); color: var(--red); background: rgba(var(--red-rgb), .12); cursor: pointer; }
@@ -511,46 +521,56 @@
         <details class="sec" id="secChunks" open>
           <summary><span class="chev"></span><span class="stepnum">1</span>Chunks <span class="sub" id="chunksSub">documents → chunks</span></summary>
           <div class="sec-body">
-            <p class="explain">The documents are cut into chunks: small pieces of text that the search can find one by one.
-              Small chunks are precise, but a sentence such as "It is closed on Sunday" can lose what "it" means. Large chunks keep the context, but one vector must then carry many topics.
-              With Fixed size, the overlap (shaded) repeats the end of a chunk at the start of the next one, so that a fact cut at a border is complete in one chunk.
-              Most real tools set a maximum size in tokens and an overlap, and try to cut at a paragraph or sentence border first.
-              Some tools also cut by document headings, by changes in meaning (with an embedding model), or with an LLM that selects the cut points. These give better borders, but the idea is the same: each chunk must hold one complete fact.</p>
+            <div class="explain"><p>The documents are cut into chunks: small pieces of text that the search can find one by one.</p>
+              <ul>
+              <li>Small chunks are precise, but a sentence such as "It is closed on Sunday" can lose what "it" means.</li>
+              <li>Large chunks keep the context, but one vector must then carry many topics.</li>
+              <li>With Fixed size, the overlap (shaded) repeats the end of a chunk at the start of the next one. A fact cut at a border is then complete in one chunk.</li></ul>
+              <details class="more"><summary>More</summary><p>Most real tools set a maximum size in tokens and an overlap, and try to cut at a paragraph or sentence border first. Some tools also cut by document headings, by changes in meaning (with an embedding model), or with an LLM that selects the cut points. These give better borders, but the idea is the same: each chunk must hold one complete fact.</p></details></div>
             <div id="chunksBody"><span class="empty">Click Ask to see the chunks.</span></div>
           </div>
         </details>
         <details class="sec" id="secVec" open>
           <summary><span class="chev"></span><span class="stepnum">2</span>Embeddings <span class="sub" id="vecSub">chunk → one vector</span><button type="button" class="copy" data-copy="vectors" title="Copy the vectors as JSON" aria-label="Copy the vectors as JSON"></button></summary>
           <div class="sec-body">
-            <p class="explain">The embedding model is a separate, small model. It is not the chat model. It reads a whole chunk and gives one vector: a list of numbers for the meaning of the text.
-              Texts with a similar meaning get vectors that point in a similar direction. (On the Embeddings page, each token gets one row of the chat model's table. Here, all layers of the embedding model make one vector for each text.)
-              The vectors of all chunks are the index. The page makes the index one time and keeps it until the documents, the split or the model change.
-              Some embedding models expect a task prefix in front of the text, for example <code>task: search result | query: </code>. Blue = positive, grey = negative.</p>
+            <div class="explain"><p>A separate, small embedding model (not the chat model) reads each chunk and gives one vector: a list of numbers for the meaning of the text.</p>
+              <ul>
+              <li>Texts with a similar meaning get vectors that point in a similar direction.</li>
+              <li>The vectors of all chunks are the index. The page makes the index one time and keeps it until the documents, the split or the model change.</li>
+              <li>Blue = a positive number, grey = a negative number.</li></ul>
+              <details class="more"><summary>More</summary><p>On the Embeddings page, each token gets one row of the chat model's table. Here, all layers of the embedding model make one vector for each text. Some embedding models expect a task prefix in front of the text, for example <code>task: search result | query: </code>.</p></details></div>
             <div id="vecBody"><span class="empty">Click Ask to see the vectors.</span></div>
           </div>
         </details>
         <details class="sec" id="secSearch" open>
           <summary><span class="chev"></span><span class="stepnum">3</span>Search <span class="sub" id="searchSub">question vector → nearest chunks</span></summary>
           <div class="sec-body">
-            <p class="explain">The question becomes a vector with the same model. Cosine similarity measures how much two vectors point in the same direction: 1 = the same direction, 0 = not related.
-              The search sorts the chunks by similarity and keeps the top k. A chunk can match without a shared word, because the vectors compare meaning, not spelling.
-              The search always returns k chunks, also when no chunk has the answer: it finds the nearest text, not the truth.</p>
+            <div class="explain"><p>The question becomes a vector with the same model. The search keeps the k chunks with the highest cosine similarity.</p>
+              <ul>
+              <li>Cosine similarity measures how much two vectors point in the same direction: 1 = the same direction, 0 = not related.</li>
+              <li>A chunk can match without a shared word, because the vectors compare meaning, not spelling.</li>
+              <li>The search always returns k chunks, also when no chunk has the answer: it finds the nearest text, not the truth.</li></ul></div>
             <div id="searchBody"><span class="empty">Click Ask to see the search.</span></div>
           </div>
         </details>
         <details class="sec" id="secPrompt" open>
           <summary><span class="chev"></span><span class="stepnum">4</span>Prompt <span class="sub" id="promptSub">chunks → context in the prompt</span><button type="button" class="copy" data-copy="messages" title="Copy the messages as JSON" aria-label="Copy the messages as JSON"></button></summary>
           <div class="sec-body">
-            <p class="explain">RAG changes only the prompt. The page puts the retrieved chunks, with their numbers, into the user message, and the instruction tells the model to use only them.
-              The chat model does not see the vectors, the scores or the other chunks: it sees only this text.</p>
+            <div class="explain"><p>RAG changes only the prompt: the page puts the top k chunks, with their numbers, into the user message.</p>
+              <ul>
+              <li>The instruction tells the model to use only these chunks and to give their numbers.</li>
+              <li>The chat model does not see the vectors, the scores or the other chunks. It sees only this text.</li></ul></div>
             <div id="promptBody"><span class="empty">Click Ask to see the prompt.</span></div>
           </div>
         </details>
         <details class="sec" id="secAnswer" open>
           <summary><span class="chev"></span><span class="stepnum">5</span>Answer <span class="sub" id="answerSub">prompt → answer</span></summary>
           <div class="sec-body">
-            <p class="explain">Compare the two answers. Without RAG, the model can use only what it learned in training: for an invented document, it must guess or say that it does not know.
-              With RAG, it can use the chunks; click a chunk number in the answer to see the chunk. If the right chunk is not in the top k, the answer is wrong too: the search limits the answer.</p>
+            <div class="explain"><p>Compare the two answers.</p>
+              <ul>
+              <li>Without RAG, the model can use only what it learned in training. For an invented document, it must guess or say that it does not know.</li>
+              <li>With RAG, it can use the chunks. Click a chunk number in the answer to see the chunk.</li>
+              <li>If the correct chunk is not in the top k, the answer is wrong too: the search limits the answer.</li></ul></div>
             <div id="answerBody"><span class="empty">Click Ask to see the answers.</span></div>
           </div>
         </details>
@@ -652,6 +672,8 @@ function chunkText(text, how, size, overlap) {
 
 const post = (url, body, signal) => fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), signal })
   .then(async r => { const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error?.message || j.error || `Error ${r.status}`); return j; });
+// Tokens of each chunk, counted by the embedding model's tokenizer. Null when the server cannot count (no LM Studio SDK).
+const countTokens = (model, texts) => post("/tokenize", { model, texts, count: true }).then(j => j.counts, () => null);
 async function embed(model, texts, signal) {
   const out = [];
   for (let i = 0; i < texts.length; i += 64) {
@@ -683,6 +705,7 @@ async function run() {
       const sent = chunks.map(c => (pre?.doc || "") + c.text), t0 = performance.now();
       const vectors = await embed(model, sent, ctrl.signal);
       index = { key, model, how, chunks, vectors, sent, ms: performance.now() - t0, cached: false, prefix: pre?.doc || "" };
+      index.tokens = await countTokens(model, chunks.map(c => c.text));
       sel = -1;
     }
     // Search: embed the question, compare it with every chunk.
@@ -780,14 +803,15 @@ const cnum = (c, hit) => `<span class="cn${hit ? " hit" : ""}">#${c + 1}</span>`
 // ---- Step 1
 function renderChunks() {
   const ch = index.chunks, hits = hitSet();
-  const avg = Math.round(ch.reduce((s, c) => s + c.text.length, 0) / ch.length);
+  const avg = Math.round(ch.reduce((s, c) => s + c.text.length, 0) / ch.length), tk = index.tokens;
+  const avgTk = tk && Math.round(tk.reduce((s, n) => s + n, 0) / tk.length);
   const how = { para: "paragraphs", sent: "sentences", fixed: "fixed size" }[index.how];
   $("chunksSub").textContent = `documents → ${ch.length} chunks`;
-  $("chunksBody").innerHTML = `<div class="card"><div class="card-head"><h3>Chunks</h3><span>${ch.length} chunks · split by ${how} · ${avg} characters on average</span>
-      <span class="right">blue number = sent to the chat model</span></div>
+  $("chunksBody").innerHTML = `<div class="card"><div class="card-head"><h3>Chunks</h3><span>${ch.length} chunks · split by ${how} · ${tk ? `${avgTk} tokens / ` : ""}${avg} characters on average</span>
+      <span class="right">blue number = sent to the chat model · grey bar = selected</span></div>
     ${ch.map((c, i) => `<div class="chunk${hits.has(i) ? " hit" : ""}${i === sel ? " sel" : ""}" data-c="${i}">${cnum(i, hits.has(i))}
       <div class="chunk-text">${c.overlap ? `<span class="ov" data-tip-title="Overlap" data-tip="This text is also at the end of chunk #${i}.">${esc(c.text.slice(0, c.overlap))}</span>` : ""}${esc(c.text.slice(c.overlap))}</div>
-      <span class="chunk-len">${c.text.length} chars</span></div>`).join("")}</div>`;
+      <span class="chunk-len">${tk ? `${tk[i]} tokens<br>` : ""}${c.text.length} chars</span></div>`).join("")}</div>`;
 }
 
 // ---- Step 2
@@ -801,9 +825,9 @@ function renderVectors() {
   const len = Math.sqrt(dot(v[0], v[0]));
   $("vecBody").innerHTML = `<div class="card"><div class="card-head">${spec("Model", index.model)}${spec("Vector", `${dim} numbers`)}
       ${spec("Length", Math.abs(len - 1) < 1e-3 ? "1 (normalized)" : len.toFixed(3))}${spec("Index", index.cached ? "from cache" : `${v.length} chunks in ${ms(index.ms)}`)}
-      ${spec("Chunk prefix", index.prefix ? JSON.stringify(index.prefix) : "none")}${spec("Question prefix", search.prefix ? JSON.stringify(search.prefix) : "none")}
-      <div class="legend right"><span>${(-scale).toFixed(3)}</span><span class="ramp"></span><span>+${scale.toFixed(3)}</span></div></div>
-    <div class="vhead"><span class="col-head">Text</span><span class="col-head">All ${dim} numbers</span></div>
+      ${spec("Chunk prefix", index.prefix ? JSON.stringify(index.prefix) : "none")}${spec("Question prefix", search.prefix ? JSON.stringify(search.prefix) : "none")}</div>
+    <div class="vhead"><span class="col-head">Text</span><span class="vhead-r"><span class="col-head">All ${dim} numbers</span>
+      <span class="legend"><span>${(-scale).toFixed(3)}</span><span class="ramp"></span><span>+${scale.toFixed(3)}</span></span></span></div>
     <div class="vrow q"><span class="vlab"><span class="qmark">Q</span><span class="t" data-tip-title="Text sent for the question" data-tip="${esc(search.qSent)}">${esc(search.q)}</span></span><canvas class="strip" data-v="q"></canvas></div>
     ${v.map((_, i) => `<div class="vrow${i === sel ? " sel" : ""}" data-c="${i}"><span class="vlab">${cnum(i, hits.has(i))}<span class="t">${esc(index.chunks[i].text)}</span></span><canvas class="strip" data-v="${i}"></canvas></div>`).join("")}</div>`;
   drawStrips();
@@ -880,13 +904,18 @@ function mapSvg({ pts }, hits) {
     const [x, y] = P(p), sc = search.scores.find(o => o.c === c).s;
     return `<circle class="pt${hits.has(c) ? " hit" : ""}${c === sel ? " on" : ""}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="6" data-c="${c}"
         data-tip-title="Chunk #${c + 1} · similarity ${sc.toFixed(3)}" data-tip="${esc(short(index.chunks[c].text, 160))}"/>
-      <text class="lab" x="${(x + 9).toFixed(1)}" y="${(y + 4).toFixed(1)}">${c + 1}</text>`;
+      <text class="lab" x="${(x + 9).toFixed(1)}" y="${(y + 4).toFixed(1)}">#${c + 1}</text>`;
   }).join("");
+  // The "Question" label goes to the corner that is farthest from the chunk points.
+  const near = pts.slice(0, -1).map(P);
+  const [lx, ly, anchor] = [[10, -8, "start", 32], [10, 18, "start", 32], [-10, -8, "end", -32], [-10, 18, "end", -32]]
+    .map(([dx, dy, a, cx]) => [dx, dy, a, Math.min(...near.map(([x, y]) => Math.hypot(q[0] + cx - x, q[1] + dy - 4 - y)))])
+    .sort((a, b) => b[3] - a[3])[0];
   const r = 7, diamond = `${q[0]},${q[1] - r} ${q[0] + r},${q[1]} ${q[0]},${q[1] + r} ${q[0] - r},${q[1]}`;
   return `<svg class="map" viewBox="0 0 ${W} ${H}" role="img" aria-label="Map of the chunk vectors and the question vector">
     <line class="axis" x1="0" y1="${H / 2}" x2="${W}" y2="${H / 2}"/><line class="axis" x1="${W / 2}" y1="0" x2="${W / 2}" y2="${H}"/>
     ${links}${dots}<polygon class="qpt" points="${diamond}" data-tip-title="Question" data-tip="${esc(search.q)}"/>
-    <text class="qlab" x="${(q[0] + 10).toFixed(1)}" y="${(q[1] - 8).toFixed(1)}">Question</text></svg>`;
+    <text class="qlab" x="${(q[0] + lx).toFixed(1)}" y="${(q[1] + ly).toFixed(1)}" text-anchor="${anchor}">Question</text></svg>`;
 }
 
 // ---- Step 4
@@ -913,18 +942,18 @@ function answerHtml(a) {
     return index.chunks[c] ? `<span class="cite${hits.has(c) ? "" : " miss"}" data-c="${c}" data-tip-title="Chunk #${c + 1}" data-tip="${esc(short(index.chunks[c].text, 200))}">${n}</span>` : `[${n}]`;
   }).join(""));
 }
-const answerFoot = a => a.done && a.tokens != null ? `${a.tokens} tokens · ${ms(a.ms)}${a.finish === "length" ? ` · cut at ${MAX_TOKENS} tokens` : ""}` : a.stopped ? "stopped" : a.done ? "" : "writing…";
+const answerFoot = a => a.done && a.tokens != null ? `${a.tokens} tokens · ${ms(a.ms)}${a.finish === "length" ? `<small> · cut at ${MAX_TOKENS} tokens</small>` : ""}` : a.stopped ? "stopped" : a.done ? "" : "writing…";
 function renderAnswers() {
   const { rag, plain } = answers;
   if (!rag) return;
   $("answerSub").textContent = plain ? "prompt → answer, with and without RAG" : "prompt → answer";
   // While the answers stream, change only their text: the rest of the card stays (and a tooltip stays open).
   if ($("ansRag") && !!$("ansPlain").classList.contains("off") === !plain) {
-    $("ansRag").innerHTML = answerHtml(rag); $("ansRagFoot").textContent = answerFoot(rag);
-    if (plain) { $("ansPlain").innerHTML = answerHtml(plain); $("ansPlainFoot").textContent = answerFoot(plain); }
+    $("ansRag").innerHTML = answerHtml(rag); $("ansRagFoot").innerHTML = answerFoot(rag);
+    if (plain) { $("ansPlain").innerHTML = answerHtml(plain); $("ansPlainFoot").innerHTML = answerFoot(plain); }
     return;
   }
-  const card = (title, sub, a, id) => `<div class="card"><div class="card-head"><h3>${title}</h3><span>${sub}</span><span class="right" id="${id}Foot">${a ? answerFoot(a) : ""}</span></div>
+  const card = (title, sub, a, id) => `<div class="card"><div class="card-head"><h3>${title}</h3><span>${sub}</span><span class="right ans-stat" id="${id}Foot">${a ? answerFoot(a) : ""}</span></div>
       <div class="answer${a ? "" : " off"}" id="${id}">${a ? answerHtml(a) : "Off. Turn on “Answer without RAG too” to compare."}</div></div>`;
   $("answerBody").innerHTML = `<div class="two">${card("With RAG", `question + top ${search.k} chunks`, rag, "ansRag")}${card("Without RAG", "the question only", plain, "ansPlain")}</div>`;
 }

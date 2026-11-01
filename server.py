@@ -3,7 +3,8 @@
 Also tails LM Studio's model log (`lms log stream`) so the page can show the exact
 formatted prompt (chat template + special tokens) the model received.
 
-Optional: with the `lmstudio` package installed, POST /tokenize returns the tokens of a text.
+Optional: with the `lmstudio` package installed, POST /tokenize returns the tokens of a text
+(or, with "count": true, only the number of tokens of each text).
 LM Studio has no tokenize endpoint over HTTP; only its SDK can tokenize.
 
 POST /embed-rows reads the input embeddings of tokens (rows of the model's embedding table)
@@ -240,7 +241,7 @@ def embed_rows(key, ids):
                  "names": [t.names.get(i, "") for i in ids], "rows": rows}
 
 
-def tokenize(key, texts):
+def tokenize(key, texts, count=False):
     global sdk_client
     try:
         import lmstudio
@@ -253,6 +254,9 @@ def tokenize(key, texts):
                     sdk_client = lmstudio.Client(urllib.parse.urlparse(LMS).netloc)
                 kind = lms_models().get(key, {}).get("type")
                 model = (sdk_client.embedding if kind == "embedding" else sdk_client.llm).model(key)
+                if count:  # only the number of tokens of each text, without the special tokens around it
+                    empty = len(model.tokenize(""))
+                    return 200, {"model": key, "counts": [len(ids) - empty for ids in model.tokenize(texts)]}
                 return 200, {"model": key, "results": [split_tokens(model, t) for t in texts]}
             except Exception as e:
                 sdk_client = None
@@ -377,9 +381,12 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     raise ValueError
             except (ValueError, KeyError, TypeError):
                 return self._json(400, {"error": {"message": "expected {\"model\": str, \"texts\": [str, ...]}"}})
-            if len(texts) > 64 or any(len(t) > 4000 for t in texts):
+            count = req.get("count") is True
+            if count and (len(texts) > 300 or sum(map(len, texts)) > 60000):
+                return self._json(400, {"error": {"message": "Token count: at most 300 texts of 60,000 characters in total"}})
+            if not count and (len(texts) > 64 or any(len(t) > 4000 for t in texts)):
                 return self._json(400, {"error": {"message": "Tokenizer: at most 64 texts of 4,000 characters each"}})
-            return self._json(*tokenize(key, texts))
+            return self._json(*tokenize(key, texts, count))
         if self.path == "/embed-rows":
             try:
                 req = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))))
