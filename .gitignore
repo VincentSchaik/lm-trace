@@ -10,3 +10,5 @@ __pycache__/
 .DS_Store
 lm-trace.log
 .venv/
+rag-docs.json
+rag-questions.json

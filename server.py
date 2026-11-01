@@ -17,8 +17,8 @@ PORT = int(os.environ.get("PORT", "8765"))
 ROOT = os.path.dirname(os.path.abspath(__file__))
 # Saved lists: user prompts and system prompts, one JSON file each.
 LISTS = {k: os.path.join(ROOT, k.strip("/") + ".json") for k in ("/prompts", "/system-prompts", "/few-shot", "/schemas", "/presets",
-                                                                   "/embed-texts")}
-PAGES = ("/index.html", "/embeddings.html")
+                                                                   "/embed-texts", "/rag-docs", "/rag-questions")}
+PAGES = ("/index.html", "/embeddings.html", "/rag.html")
 LMS_CLI = shutil.which("lms") or os.path.expanduser("~/.lmstudio/bin/lms")
 # Only local names: a different Host means DNS rebinding; a different Origin means another website.
 LOCAL = ("localhost", "127.0.0.1", "[::1]")

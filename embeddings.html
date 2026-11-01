@@ -99,7 +99,7 @@
   .top .copy { margin-left: 0; }
   .top .copy[hidden] { display: none; }
   .hdr-btn {
-    height: 32px; padding: 0 14px; border-radius: 8px; cursor: pointer; margin-right: 4px;
+    height: 32px; padding: 0 14px; white-space: nowrap; flex: none; border-radius: 8px; cursor: pointer; margin-right: 4px;
     border: 1px solid var(--line); background: var(--field); color: var(--ink-2); font: 500 13px var(--sans);
   }
   .hdr-btn:hover { color: var(--ink); border-color: var(--stone-2); }
@@ -116,6 +116,7 @@
     appearance: none; cursor: pointer; padding-right: 34px; min-width: 240px; font-weight: 500;
     background: var(--field) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%232a2927' stroke-width='1.6'/%3E%3C/svg%3E") no-repeat right 12px center;
   }
+  :root[data-theme="dark"] select.field { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23b9b9c0' stroke-width='1.6'/%3E%3C/svg%3E"); }
   select.field.ex { height: 48px; min-width: 0; width: 100%; font-weight: 400; }
   #model { min-width: 300px; }
 
@@ -206,7 +207,7 @@
   .panel-head .sub { font: 13px var(--mono); color: var(--ink-3); }
   .stats b { color: var(--ink); font-weight: 600; font-family: var(--mono); }
   .stats > span + span { margin-left: 12px; }
-  .output { flex: 1; overflow-y: auto; }
+  .output { flex: 1; overflow-y: auto; position: relative; }  /* relative: offsetTop of a step is measured from here */
   .sec { border-bottom: 1px solid var(--paper-2); }
   .sec > summary {
     position: sticky; top: 0; z-index: 2; list-style: none; cursor: pointer; user-select: none;
@@ -337,6 +338,7 @@
   <div class="side-top"><button type="button" class="side-toggle" id="sideToggle" title="Show or hide the sidebar" aria-label="Show or hide the sidebar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/></svg></button></div>
   <a href="/" title="Trace: tokens and their probabilities"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 6h5M12 6h8M4 12h10M17 12h3M4 18h3M10 18h10"/></svg><span>Trace</span></a>
   <a href="/embeddings.html" aria-current="page" title="Tokens and embeddings: the input of the model"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="5" height="5" rx="1"/><rect x="3" y="14" width="5" height="5" rx="1"/><path d="M11 7.5h10M11 16.5h10M14 5v5M17 5v5M14 14v5M17 14v5"/></svg><span>Embeddings</span></a>
+  <a href="/rag.html" title="RAG: answers from your documents"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h10M4 9h7M4 13h5"/><circle cx="15.5" cy="15.5" r="4"/><path d="M18.5 18.5 21 21"/></svg><span>RAG</span></a>
 </nav>
 <div class="app">
   <header class="top">

@@ -1,0 +1,1175 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LM Trace · RAG</title>
+<style>
+  /* Same look as index.html and embeddings.html: system font, white panels, light grey lines, blue accent.
+     --red/--red-rgb carry the accent (retrieved chunks, positive values); --neg-rgb, slate grey, colours negative values. */
+  :root {
+    color-scheme: light;
+    --paper: #f5f5f7;
+    --field: #ffffff;
+    --paper-2: #eeeef1;
+    --line: #e1e1e6;
+    --stone-2: #c7c7cc;
+    --ink: #1d1d1f;
+    --ink-2: #4b4b52;
+    --ink-3: #8e8e93;
+    --red: #1f6ff2;
+    --red-rgb: 31, 111, 242;
+    --neg-rgb: 71, 85, 105;
+    --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, monospace;
+    --input-bg: #ffffff;
+    --shadow-rgb: 0, 0, 0;
+    --primary: #1f6ff2;
+    --primary-hover: #185ed6;
+    --on-primary: #ffffff;
+    --danger: #d93025;
+    --tip-bg: #1d1d1f;
+    --tip-fg: #f5f5f7;
+    --tip-sub: #c7c7cc;
+    --tip-code: #8ab4ff;
+    --r: 10px;
+    --lift: 0 1px 2px rgba(0, 0, 0, .04), 0 2px 8px -4px rgba(0, 0, 0, .08);
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --paper: #161618;
+    --field: #1f1f22;
+    --paper-2: #2a2a2e;
+    --line: #333338;
+    --stone-2: #4a4a50;
+    --ink: #ececf0;
+    --ink-2: #b9b9c0;
+    --ink-3: #85858c;
+    --red: #4c8dff;
+    --red-rgb: 76, 141, 255;
+    --neg-rgb: 148, 163, 184;
+    --input-bg: #18181a;
+    --primary: #3b7cf5;
+    --primary-hover: #5a90f7;
+    --danger: #ff6b5e;
+    --tip-bg: #f0f0f3;
+    --tip-fg: #1d1d1f;
+    --tip-sub: #4b4b52;
+    --tip-code: #185ed6;
+    --lift: 0 1px 2px rgba(0, 0, 0, .3), 0 2px 10px -4px rgba(0, 0, 0, .5);
+  }
+  * { font-variant-ligatures: none !important; font-feature-settings: "calt" 0, "liga" 0 !important; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--paper); color: var(--ink);
+    font: 14px/1.5 var(--sans); -webkit-font-smoothing: antialiased;
+  }
+  .app {
+    height: 100vh; max-width: 1280px; margin: 0 auto; padding: 0 24px 20px;
+    display: grid; grid-template-rows: auto auto 1fr; grid-template-columns: minmax(0, 1fr); gap: 16px;
+  }
+
+  /* Sidebar, as in LM Studio: one row per page. The toggle folds it to a rail of icons. Same block in index.html. */
+  body { display: flex; }
+  .app { flex: 1; min-width: 0; }
+  .side {
+    position: sticky; top: 0; flex: none; width: 200px; height: 100vh; display: flex; flex-direction: column; gap: 2px;
+    padding: 0 10px 12px; background: var(--paper-2); border-right: 1px solid var(--line); overflow: hidden; transition: width .15s;
+  }
+  .side-top { display: flex; align-items: center; height: 64px; }
+  .side a, .side-toggle {
+    display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 9px; border-radius: 8px; flex: none;
+    color: var(--ink); text-decoration: none; font: 500 14px var(--sans); white-space: nowrap;
+  }
+  .side-toggle { width: 36px; justify-content: center; padding: 0; border: 0; background: transparent; color: var(--ink-2); cursor: pointer; }
+  .side a:hover, .side-toggle:hover { background: rgba(var(--shadow-rgb), .06); }
+  .side a[aria-current="page"] { background: rgba(var(--red-rgb), .14); }
+  .side svg { width: 18px; height: 18px; flex: none; color: var(--ink-2); }
+  .side a[aria-current="page"] svg { color: var(--red); }
+  :root[data-side="closed"] .side { width: 57px; }
+  :root[data-side="closed"] .side a span { display: none; }
+
+  /* Top bar */
+  .top { display: flex; align-items: center; gap: 12px; height: 64px; border-bottom: 1px solid var(--line); }
+  h1 { font-size: 17px; font-weight: 600; margin: 0; display: flex; align-items: center; gap: 10px; white-space: nowrap; }
+  h1::before { content: ""; width: 14px; height: 14px; background: var(--red); }
+  .top .spacer { flex: 1; }
+  .hdr-lbl { font-size: 15px; font-weight: 600; margin-left: 12px; white-space: nowrap; }
+  .hdr-btn {
+    height: 32px; padding: 0 14px; white-space: nowrap; flex: none; border-radius: 8px; cursor: pointer; margin-right: 4px;
+    border: 1px solid var(--line); background: var(--field); color: var(--ink-2); font: 500 13px var(--sans);
+  }
+  .hdr-btn:hover { color: var(--ink); border-color: var(--stone-2); }
+
+  .field {
+    font: 15px var(--sans); color: var(--ink);
+    background: var(--field); border: 1px solid var(--line); border-radius: 8px;
+    height: 40px; padding: 0 12px; outline: none;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .field:hover { border-color: var(--stone-2); }
+  .field:focus { border-color: var(--ink); box-shadow: 0 0 0 3px rgba(var(--red-rgb), .18); }
+  select.field {
+    appearance: none; cursor: pointer; padding-right: 34px; min-width: 240px; font-weight: 500;
+    background: var(--field) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%232a2927' stroke-width='1.6'/%3E%3C/svg%3E") no-repeat right 12px center;
+  }
+  :root[data-theme="dark"] select.field { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23b9b9c0' stroke-width='1.6'/%3E%3C/svg%3E"); }
+  select.field.ex { height: 48px; min-width: 0; width: 100%; font-weight: 400; }
+  #embModel { min-width: 260px; }
+  #chatModel { min-width: 220px; }
+
+  /* Composer */
+  .composer { background: var(--field); border: 1px solid var(--line); border-radius: var(--r); padding: 16px 18px; box-shadow: var(--lift); }
+  .prompt-grid { display: grid; grid-template-columns: 260px 1fr auto; gap: 8px 12px; align-items: start; }
+  .prompt-grid .row2 { margin-top: 6px; }
+  .lbl { font-size: 14px; font-weight: 600; color: var(--ink); }
+  .lbl-s { font-size: 12px; color: var(--ink-3); }
+  .opts { margin-top: 12px; border-top: 1px solid var(--paper-2); }
+  .opt > summary {
+    list-style: none; cursor: pointer; user-select: none; display: flex; align-items: center; gap: 8px;
+    height: 40px; padding: 0; font-size: 14px;
+  }
+  .opt > summary::-webkit-details-marker { display: none; }
+  .opt > summary:hover .opt-title, .opt > summary:hover .chev { color: var(--red); }
+  .opt[open] > summary .chev { transform: rotate(90deg); }
+  .opt-title { font-weight: 600; color: var(--ink); }
+  .opt-state { color: var(--ink-3); font-size: 13px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .opt-body { display: grid; grid-template-columns: 260px 1fr 124px; gap: 6px 12px; padding: 0 0 14px; align-items: start; }
+  .chev { width: 16px; height: 16px; flex: none; display: grid; place-items: center; color: var(--ink-3); transition: transform .15s; }
+  .chev::before { content: ""; width: 6px; height: 6px; border: solid currentColor; border-width: 0 1.6px 1.6px 0; transform: rotate(-45deg); }
+
+  .input {
+    flex: 1; min-width: 0; resize: none; display: block;
+    font: 16px/1.5 var(--sans); color: var(--ink);
+    background: var(--input-bg); border: 1px solid var(--stone-2); border-radius: 8px;
+    padding: 11px 14px; min-height: 48px; outline: none;
+    box-shadow: inset 0 1px 2px rgba(var(--shadow-rgb), .06);
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .input:hover { border-color: var(--ink-3); }
+  .input:focus { border-color: var(--ink); box-shadow: 0 0 0 3px rgba(var(--red-rgb), .18); }
+  .input::placeholder { color: var(--ink-3); }
+  #docs { font-size: 14px; }
+  .input-wrap { position: relative; min-width: 0; }
+  .input-wrap .input { width: 100%; padding-right: 128px; }
+  .input-tools { position: absolute; top: 9px; right: 9px; display: flex; gap: 6px; }
+  .input-tools .copy { margin: 0; }
+  .input-tools .copy[hidden] { display: none; }
+
+  .copy {
+    flex: none; display: inline-grid; place-items: center; width: 30px; height: 30px; margin-left: auto; padding: 0;
+    border: 1px solid var(--line); border-radius: 7px; cursor: pointer; color: var(--ink-2);
+    background: var(--field); box-shadow: 0 1px 0 rgba(var(--shadow-rgb), .06);
+    transition: color .15s, background .15s, border-color .15s;
+  }
+  .copy svg { width: 15px; height: 15px; }
+  .copy:hover { color: var(--ink); border-color: var(--stone-2); background: var(--input-bg); }
+  .copy:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+  .copy.done { color: var(--on-primary); background: var(--primary); border-color: var(--primary); }
+  #delDoc:hover, #delQ:hover { color: var(--danger); }
+
+  .btn {
+    font: 600 15px var(--sans); height: 44px; padding: 0 22px; border-radius: 8px; cursor: pointer;
+    border: 1px solid var(--primary); background: var(--primary); color: var(--on-primary);
+    display: inline-flex; align-items: center; gap: 8px; transition: background .15s;
+  }
+  .btn:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .btn.primary { height: 48px; width: 124px; padding: 0; justify-content: center; flex: none; }
+
+  /* Settings row: same controls as index.html */
+  .settings { display: flex; align-items: flex-start; gap: 10px 24px; flex-wrap: wrap; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--paper-2); }
+  .ctl { display: flex; flex-direction: column; gap: 4px; }
+  .ctl.grow { flex: 1 1 150px; max-width: 240px; }
+  .ctl-label { display: flex; align-items: center; gap: 12px; white-space: nowrap; height: 22px; font-size: 14px; font-weight: 500; color: var(--ink-2); }
+  .ctl-row { display: flex; align-items: center; gap: 12px; height: 36px; }
+  .ctl-row input[type=range] { flex: 1; width: 0; min-width: 70px; }
+  .ctl output { font: 500 15px var(--mono); color: var(--ink); min-width: 36px; }
+  .ctl[hidden] { display: none; }
+  .seg { display: inline-flex; background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 3px; }
+  .ctl .seg { height: 36px; align-self: flex-start; }
+  .seg button {
+    font: 500 13px var(--sans); color: var(--ink-2); background: transparent; border: 0;
+    height: 28px; padding: 0 10px; border-radius: 6px; cursor: pointer;
+  }
+  .seg button:hover { color: var(--ink); }
+  .seg button[aria-pressed="true"] { background: var(--primary); color: var(--on-primary); }
+  .seg button:disabled { opacity: .4; cursor: default; }
+  input[type=range] { -webkit-appearance: none; appearance: none; width: 150px; height: 22px; background: transparent; cursor: pointer; margin: 0; }
+  input[type=range]::-webkit-slider-runnable-track { height: 6px; border-radius: 3px; background: linear-gradient(var(--primary), var(--primary)) 0 / var(--fill, 50%) 100% no-repeat, var(--paper-2); }
+  input[type=range]::-moz-range-track { height: 6px; border-radius: 3px; background: var(--paper-2); }
+  input[type=range]::-moz-range-progress { height: 6px; border-radius: 3px; background: var(--primary); }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; margin-top: -7px; border-radius: 50%; background: var(--field); border: 2px solid var(--primary); box-shadow: 0 1px 3px rgba(0,0,0,.15); }
+  input[type=range]::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: var(--field); border: 2px solid var(--primary); }
+  .error { color: var(--danger); font-size: 14px; padding: 8px 2px 0; }
+  .error:empty { display: none; }
+
+  /* Main: the output panel */
+  .main { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; min-height: 0; }
+  .panel { background: var(--field); border: 1px solid var(--line); border-radius: var(--r); display: flex; flex-direction: column; min-height: 0; box-shadow: var(--lift); }
+  .panel-head {
+    display: flex; align-items: center; gap: 20px; padding: 12px 18px; border-bottom: 1px solid var(--paper-2);
+    font-size: 13px; color: var(--ink-3); min-height: 46px; flex-wrap: wrap; flex: none;
+  }
+  .stats b { color: var(--ink); font-weight: 600; font-family: var(--mono); }
+  .stats > span + span { margin-left: 12px; }
+  .output { flex: 1; overflow-y: auto; position: relative; }  /* relative: offsetTop of a step is measured from here */
+  .sec { border-bottom: 1px solid var(--paper-2); }
+  .sec > summary {
+    position: sticky; top: 0; z-index: 2; list-style: none; cursor: pointer; user-select: none;
+    display: flex; align-items: center; gap: 8px; min-height: 46px; padding: 8px 18px 8px 16px;
+    background: var(--field); border-bottom: 1px solid transparent;
+    font: 600 13px var(--sans); color: var(--ink);
+  }
+  .sec[open] > summary { border-bottom-color: var(--paper-2); }
+  .sec > summary:hover { background: color-mix(in srgb, var(--field) 94%, var(--ink)); }
+  .sec > summary::-webkit-details-marker { display: none; }
+  .sec > summary .sub { font: 400 12px var(--sans); color: var(--ink-3); }
+  .sec[open] > summary .chev { transform: rotate(90deg); }
+  .sec-body { padding: 14px 22px 18px; }
+  .hint { color: var(--ink-3); margin: 0; }
+  .empty { display: block; font: 15px/1.6 var(--sans); color: var(--ink-3); }
+
+  /* Explanations stay quiet: small grey text in a light box. The data is the focus. */
+  .lede, .explain {
+    margin: 0 0 16px; padding: 9px 14px; border-radius: 8px;
+    background: rgba(var(--shadow-rgb), .025); font-size: 12.5px; line-height: 1.55; color: var(--ink-3);
+  }
+  .lede code, .explain code { font-size: 11.5px; }
+  .steps { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; margin-right: auto; }
+  .steps button {
+    display: inline-flex; align-items: center; gap: 7px; height: 30px; padding: 0 10px 0 5px; border-radius: 15px;
+    border: 0; background: transparent; color: var(--ink); font: 600 13px var(--sans); cursor: pointer;
+  }
+  .steps button:hover { background: rgba(var(--shadow-rgb), .05); }
+  .steps .arrow { color: var(--stone-2); }
+  .steps .phase { font: 500 10.5px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); margin: 0 4px 0 2px; }
+  .steps .phase + button { margin-left: 0; }
+  .steps .gap { width: 1px; height: 18px; background: var(--line); margin: 0 10px; }
+  .stepnum {
+    display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; flex: none;
+    background: var(--paper-2); color: var(--ink-3); font: 600 11px var(--sans);
+  }
+
+  /* Cards: every output sits in a bordered card with a header bar */
+  .card { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--field); min-width: 0; }
+  .card + .card { margin-top: 16px; }
+  .card-head {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 6px 24px; padding: 10px 14px;
+    background: var(--paper); border-bottom: 1px solid var(--line); font-size: 13px; color: var(--ink-2);
+  }
+  .card-head h3 { margin: 0; font: 600 13px var(--sans); color: var(--ink); }
+  .card-head .right { margin-left: auto; }
+  .card-foot { border-top: 1px solid var(--line); border-bottom: 0; }
+  .card-body { padding: 14px; }
+  .spec { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+  .spec span { font: 500 10.5px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
+  .spec b { font: 500 12.5px var(--mono); color: var(--ink); white-space: pre; }
+  .two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+  .two .card + .card { margin-top: 0; }
+  .col-head { font: 500 10.5px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
+
+  /* Chunk number: the same small badge in every step */
+  .cn {
+    display: inline-grid; place-items: center; min-width: 26px; height: 20px; padding: 0 5px; border-radius: 5px; flex: none;
+    font: 600 11px var(--mono); color: var(--ink-2); background: var(--paper-2);
+  }
+  .hit .cn, .cn.hit { background: rgba(var(--red-rgb), .14); color: var(--red); }
+
+  /* Step 1: one row per chunk */
+  .chunk { display: grid; grid-template-columns: 36px minmax(0, 1fr) 70px; gap: 12px; align-items: start; padding: 10px 14px; cursor: pointer; }
+  .chunk + .chunk { border-top: 1px solid var(--paper-2); }
+  .chunk:hover, .vrow:hover, .rrow:hover { background: rgba(var(--shadow-rgb), .025); }
+  .chunk-text { font-size: 14px; line-height: 1.55; white-space: pre-wrap; word-break: break-word; }
+  .chunk-text .ov { background: rgba(var(--neg-rgb), .14); border-radius: 3px; }
+  .chunk-len { font: 12px var(--mono); color: var(--ink-3); text-align: right; padding-top: 2px; }
+  .sel { background: rgba(var(--red-rgb), .06) !important; box-shadow: inset 3px 0 0 var(--red); }
+
+  /* Step 2: one vector per text, as a strip of colour */
+  .vrow, .vhead { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 16px; align-items: center; padding: 9px 14px; }
+  .vrow { cursor: pointer; }
+  .vrow + .vrow, .vhead + .vrow { border-top: 1px solid var(--paper-2); }
+  .vrow.q { background: rgba(var(--shadow-rgb), .025); cursor: default; }
+  .vlab { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 13px; }
+  .vlab .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .strip { display: block; width: 100%; height: 28px; border-radius: 4px; background: var(--paper-2); }
+  .legend { display: flex; align-items: center; gap: 8px; font: 12px var(--mono); color: var(--ink-3); }
+  .legend .ramp { width: 120px; height: 8px; border-radius: 4px; border: 1px solid var(--paper-2);
+    background: linear-gradient(90deg, rgb(var(--neg-rgb)), var(--paper-2), rgb(var(--red-rgb))); }
+  .qmark {
+    display: inline-grid; place-items: center; min-width: 26px; height: 20px; border-radius: 5px; flex: none;
+    font: 600 11px var(--mono); color: var(--field); background: var(--ink);
+  }
+  .sent { font: 12px var(--mono); color: var(--ink-3); }
+
+  /* Step 3: ranked list and map */
+  .rrow { display: grid; grid-template-columns: 22px 36px minmax(0, 1fr) minmax(80px, 160px) 46px; gap: 10px; align-items: center; padding: 7px 14px; cursor: pointer; }
+  .rrow + .rrow { border-top: 1px solid var(--paper-2); }
+  .rank { font: 12px var(--mono); color: var(--ink-3); text-align: right; }
+  .rtext { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-2); }
+  .hit .rtext { color: var(--ink); }
+  .track { position: relative; height: 10px; border-radius: 5px; background: var(--paper-2); overflow: hidden; }
+  .track i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 5px; background: var(--stone-2); }
+  .hit .track i { background: var(--red); }
+  .score { font: 500 13px var(--mono); text-align: right; color: var(--ink-2); }
+  .hit .score { color: var(--ink); }
+  .cut { display: flex; align-items: center; gap: 10px; padding: 6px 14px; font-size: 11.5px; color: var(--ink-3); border-top: 1px dashed var(--stone-2); border-bottom: 1px dashed var(--stone-2); background: var(--paper); }
+  .rrow + .cut { border-top-style: dashed; }
+  .map { display: block; width: 100%; height: auto; }
+  .map .axis { stroke: var(--paper-2); }
+  .map .link { stroke: rgb(var(--red-rgb)); stroke-opacity: .5; stroke-dasharray: 3 3; }
+  .map .pt { fill: var(--stone-2); stroke: var(--field); stroke-width: 1.5; cursor: pointer; }
+  .map .pt.hit { fill: rgb(var(--red-rgb)); }
+  .map .pt.on { stroke: var(--ink); stroke-width: 2.5; }
+  .map .lab { font: 600 10.5px var(--mono); fill: var(--ink-2); pointer-events: none; }
+  .map .qpt { fill: var(--ink); }
+  .map .qlab { font: 600 11px var(--sans); fill: var(--ink); pointer-events: none; }
+  .note { padding: 9px 14px; border-top: 1px solid var(--paper-2); background: rgba(var(--shadow-rgb), .025); color: var(--ink-3); font-size: 12.5px; line-height: 1.5; }
+
+  /* Step 4: the messages, as the chat model receives them */
+  .msg { display: grid; grid-template-columns: 90px minmax(0, 1fr); gap: 12px; padding: 12px 14px; }
+  .msg + .msg { border-top: 1px solid var(--paper-2); }
+  .role { font: 500 10.5px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); padding-top: 3px; }
+  .msg-text { font: 13px/1.6 var(--mono); white-space: pre-wrap; word-break: break-word; color: var(--ink); }
+  .ctx { display: block; margin: 2px 0; padding: 4px 8px; border-radius: 5px; background: rgba(var(--red-rgb), .06); cursor: pointer; }
+  .ctx:hover { background: rgba(var(--red-rgb), .1); }
+  .ctx.sel { background: rgba(var(--red-rgb), .14) !important; box-shadow: inset 3px 0 0 var(--red); }
+
+  /* Step 5: the two answers */
+  .answer { padding: 14px; font-size: 14.5px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; min-height: 84px; max-height: 340px; overflow-y: auto; }
+  .answer .wait { color: var(--ink-3); }
+  .answer.off { color: var(--ink-3); font-size: 13px; }
+  .cite { display: inline-grid; place-items: center; min-width: 22px; height: 18px; padding: 0 4px; margin: 0 1px; border-radius: 4px; vertical-align: 1px;
+    font: 600 10.5px var(--mono); color: var(--red); background: rgba(var(--red-rgb), .12); cursor: pointer; }
+  .cite:hover { background: rgba(var(--red-rgb), .22); }
+  .cite.miss { color: var(--ink-3); background: var(--paper-2); }
+
+  [data-tip] { cursor: help; }
+  #tip {
+    position: fixed; z-index: 50; max-width: 340px; padding: 10px 12px; border-radius: 8px; pointer-events: none;
+    background: var(--tip-bg); color: var(--tip-fg); font: 13px/1.45 var(--sans); box-shadow: 0 8px 24px -6px rgba(0,0,0,.35);
+    opacity: 0; transform: translateY(2px); transition: opacity .12s, transform .12s;
+  }
+  #tip.show { opacity: 1; transform: none; }
+  #tip b { display: block; font-weight: 600; margin-bottom: 4px; }
+  #tip span { display: block; color: var(--tip-sub); }
+
+  @media (max-width: 1100px) {
+    .two { grid-template-columns: minmax(0, 1fr); }
+  }
+  @media (max-width: 860px) {
+    .app { height: auto; min-height: 100vh; padding: 0 16px 16px; }
+    .output { min-height: 40vh; }
+    select.field, #embModel, #chatModel { min-width: 0; width: 100%; }
+    .top { flex-wrap: wrap; height: auto; padding: 12px 0; }
+    .hdr-lbl { margin-left: 0; }
+    .prompt-grid { grid-template-columns: 1fr; }
+    .prompt-grid > span { display: none; }
+    /* One column: each label above its field */
+    .prompt-grid > :nth-child(4) { order: 1; } .prompt-grid > :nth-child(2) { order: 2; } .prompt-grid > :nth-child(5) { order: 3; }
+    .prompt-grid > :nth-child(n+7) { order: 4; } .prompt-grid > :nth-child(10) { order: 5; } .prompt-grid > :nth-child(8) { order: 6; } .prompt-grid > :nth-child(n+11) { order: 7; }
+    .prompt-grid > :nth-child(1) { order: 0; }
+    .settings { gap: 10px 16px; }
+    .seg { flex-wrap: wrap; }
+    .opt-state { display: none; }
+    .steps .phase, .steps .gap { display: none; }
+    .stats { display: flex; flex-wrap: wrap; gap: 0 12px; }
+    .stats > span + span { margin-left: 0; }
+    .input-wrap .input { padding-right: 84px; }
+    .opt-body { grid-template-columns: 1fr; }
+    .vrow, .vhead { grid-template-columns: 1fr; gap: 6px; }
+    .vhead { display: none; }
+    .chunk { grid-template-columns: 36px minmax(0, 1fr); }
+    .chunk-len { display: none; }
+    .rrow { grid-template-columns: 30px minmax(0, 1fr) 70px 42px; }
+    .rrow .rank { display: none; }
+    .msg { grid-template-columns: 1fr; gap: 4px; }
+  }
+</style>
+<script>
+  // Saved choice, else the system setting. Set before the page draws, so there is no flash.
+  let t = null;
+  try { t = localStorage.getItem("theme"); } catch {}
+  document.documentElement.dataset.theme = t || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+  // Sidebar open or closed: saved choice, else closed on a narrow screen.
+  let side = null;
+  try { side = localStorage.getItem("sidebar"); } catch {}
+  document.documentElement.dataset.side = side || (innerWidth <= 860 ? "closed" : "open");
+</script>
+</head>
+<body>
+<nav class="side" aria-label="Pages">
+  <div class="side-top"><button type="button" class="side-toggle" id="sideToggle" title="Show or hide the sidebar" aria-label="Show or hide the sidebar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/></svg></button></div>
+  <a href="/" title="Trace: tokens and their probabilities"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 6h5M12 6h8M4 12h10M17 12h3M4 18h3M10 18h10"/></svg><span>Trace</span></a>
+  <a href="/embeddings.html" title="Tokens and embeddings: the input of the model"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="5" height="5" rx="1"/><rect x="3" y="14" width="5" height="5" rx="1"/><path d="M11 7.5h10M11 16.5h10M14 5v5M17 5v5M14 14v5M17 14v5"/></svg><span>Embeddings</span></a>
+  <a href="/rag.html" aria-current="page" title="RAG: answers from your documents"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h10M4 9h7M4 13h5"/><circle cx="15.5" cy="15.5" r="4"/><path d="M18.5 18.5 21 21"/></svg><span>RAG</span></a>
+</nav>
+<div class="app">
+  <header class="top">
+    <h1><label for="embModel">Embedding model</label></h1>
+    <select id="embModel" class="field" aria-label="Embedding model"></select>
+    <label for="chatModel" class="hdr-lbl">Chat model</label>
+    <select id="chatModel" class="field" aria-label="Chat model"></select>
+    <span class="spacer"></span>
+    <button type="button" id="resetAll" class="hdr-btn" title="Clear the documents, the question and the output">Reset all</button>
+    <span class="seg" id="theme" role="group" aria-label="Theme">
+      <button data-theme="light" aria-pressed="false">Light</button>
+      <button data-theme="dark" aria-pressed="false">Dark</button>
+    </span>
+  </header>
+
+  <section class="composer" aria-label="Documents and question">
+    <p class="lede">RAG (retrieval-augmented generation) gives a language model knowledge that it did not learn in training.
+      First, the documents are cut into chunks and the embedding model turns each chunk into a vector: this is the index.
+      Then the question also becomes a vector, the search finds the chunks with the nearest vectors, and the page puts these chunks in the prompt.
+      The chat model writes the answer from that text. The example documents are invented, so the model cannot know them.</p>
+    <div class="prompt-grid">
+      <label for="docExamples" class="lbl">Document examples</label>
+      <label for="docs" class="lbl">Documents</label>
+      <span></span>
+      <select id="docExamples" class="field ex"></select>
+      <div class="input-wrap"><textarea id="docs" class="input" rows="3" placeholder="Paste the text that the model must use. Empty lines separate the paragraphs."></textarea><div class="input-tools"><button type="button" class="copy" id="delDoc" title="Delete saved documents" aria-label="Delete saved documents" hidden></button><button type="button" class="copy" id="saveDoc" title="Save documents to the list" aria-label="Save documents to the list"></button><button type="button" class="copy" data-copy="docs" title="Copy documents" aria-label="Copy documents"></button></div></div>
+      <span></span>
+      <label for="qExamples" class="lbl row2">Question examples</label>
+      <label for="question" class="lbl row2">Question</label>
+      <span></span>
+      <select id="qExamples" class="field ex"></select>
+      <div class="input-wrap"><textarea id="question" class="input" rows="1" placeholder="Ask a question about the documents…"></textarea><div class="input-tools"><button type="button" class="copy" id="delQ" title="Delete saved question" aria-label="Delete saved question" hidden></button><button type="button" class="copy" id="saveQ" title="Save question to the list" aria-label="Save question to the list"></button><button type="button" class="copy" data-copy="question" title="Copy question" aria-label="Copy question"></button></div></div>
+      <button id="run" class="btn primary" title="Search the documents and answer (⌘ + Enter)">Ask</button>
+    </div>
+    <div class="opts">
+      <details class="opt" id="optInstr">
+        <summary><span class="chev"></span><span class="opt-title">Instruction for the chat model</span><span class="opt-state" id="stInstr"></span></summary>
+        <div class="opt-body">
+          <span class="lbl-s">Sent as the system prompt, before the context and the question</span>
+          <div class="input-wrap"><textarea id="instr" class="input" rows="2"></textarea><div class="input-tools"><button type="button" class="copy" id="resetInstr" title="Use the default instruction" aria-label="Use the default instruction"></button></div></div>
+          <span></span>
+        </div>
+      </details>
+    </div>
+    <div class="settings">
+      <div class="ctl">
+        <div class="ctl-label">Split by</div>
+        <span class="seg" id="split" role="group" aria-label="Split by">
+          <button data-v="para" aria-pressed="true">Paragraphs</button>
+          <button data-v="sent" aria-pressed="false">Sentences</button>
+          <button data-v="fixed" aria-pressed="false">Fixed size</button>
+        </span>
+      </div>
+      <div class="ctl grow" id="sizeCtl" hidden>
+        <div class="ctl-label">Chunk size</div>
+        <div class="ctl-row"><input id="size" type="range" min="80" max="1000" step="20" value="240"><output id="sizeOut">240</output></div>
+      </div>
+      <div class="ctl grow" id="overlapCtl" hidden>
+        <div class="ctl-label">Overlap</div>
+        <div class="ctl-row"><input id="overlap" type="range" min="0" max="200" step="10" value="40"><output id="overlapOut">40</output></div>
+      </div>
+      <div class="ctl">
+        <div class="ctl-label">Top k</div>
+        <span class="seg" id="topk" role="group" aria-label="Top k">
+          <button data-v="1" aria-pressed="false">1</button>
+          <button data-v="2" aria-pressed="false">2</button>
+          <button data-v="3" aria-pressed="true">3</button>
+          <button data-v="4" aria-pressed="false">4</button>
+          <button data-v="5" aria-pressed="false">5</button>
+        </span>
+      </div>
+      <div class="ctl">
+        <div class="ctl-label">Task prefixes</div>
+        <span class="seg" id="prefix" role="group" aria-label="Task prefixes">
+          <button data-v="off" aria-pressed="false">Off</button>
+          <button data-v="on" aria-pressed="true">On</button>
+        </span>
+      </div>
+      <div class="ctl">
+        <div class="ctl-label">Answer without RAG too</div>
+        <span class="seg" id="compare" role="group" aria-label="Answer without RAG too">
+          <button data-v="off" aria-pressed="false">Off</button>
+          <button data-v="on" aria-pressed="true">On</button>
+        </span>
+      </div>
+    </div>
+    <div class="error" id="error"></div>
+  </section>
+
+  <div class="main">
+    <section class="panel">
+      <div class="panel-head">
+        <nav class="steps" aria-label="Steps">
+          <span class="phase">Index</span>
+          <button data-go="secChunks"><span class="stepnum">1</span>Chunks</button><span class="arrow">→</span>
+          <button data-go="secVec"><span class="stepnum">2</span>Embeddings</button>
+          <span class="gap"></span><span class="phase">Question</span>
+          <button data-go="secSearch"><span class="stepnum">3</span>Search</button><span class="arrow">→</span>
+          <button data-go="secPrompt"><span class="stepnum">4</span>Prompt</button><span class="arrow">→</span>
+          <button data-go="secAnswer"><span class="stepnum">5</span>Answer</button>
+        </nav>
+        <span class="stats" id="stats"></span>
+      </div>
+      <div class="output" id="output">
+        <details class="sec" id="secChunks" open>
+          <summary><span class="chev"></span><span class="stepnum">1</span>Chunks <span class="sub" id="chunksSub">documents → chunks</span></summary>
+          <div class="sec-body">
+            <p class="explain">The documents are cut into chunks: small pieces of text that the search can find one by one.
+              Small chunks are precise, but a sentence such as "It is closed on Sunday" can lose what "it" means. Large chunks keep the context, but one vector must then carry many topics.
+              With Fixed size, the overlap (shaded) repeats the end of a chunk at the start of the next one, so that a fact cut at a border is complete in one chunk.</p>
+            <div id="chunksBody"><span class="empty">Click Ask to see the chunks.</span></div>
+          </div>
+        </details>
+        <details class="sec" id="secVec" open>
+          <summary><span class="chev"></span><span class="stepnum">2</span>Embeddings <span class="sub" id="vecSub">chunk → one vector</span><button type="button" class="copy" data-copy="vectors" title="Copy the vectors as JSON" aria-label="Copy the vectors as JSON"></button></summary>
+          <div class="sec-body">
+            <p class="explain">The embedding model is a separate, small model. It is not the chat model. It reads a whole chunk and gives one vector: a list of numbers for the meaning of the text.
+              Texts with a similar meaning get vectors that point in a similar direction. (On the Embeddings page, each token gets one row of the chat model's table. Here, all layers of the embedding model make one vector for each text.)
+              The vectors of all chunks are the index. The page makes the index one time and keeps it until the documents, the split or the model change.
+              Some embedding models expect a task prefix in front of the text, for example <code>task: search result | query: </code>. Blue = positive, grey = negative.</p>
+            <div id="vecBody"><span class="empty">Click Ask to see the vectors.</span></div>
+          </div>
+        </details>
+        <details class="sec" id="secSearch" open>
+          <summary><span class="chev"></span><span class="stepnum">3</span>Search <span class="sub" id="searchSub">question vector → nearest chunks</span></summary>
+          <div class="sec-body">
+            <p class="explain">The question becomes a vector with the same model. Cosine similarity measures how much two vectors point in the same direction: 1 = the same direction, 0 = not related.
+              The search sorts the chunks by similarity and keeps the top k. A chunk can match without a shared word, because the vectors compare meaning, not spelling.
+              The search always returns k chunks, also when no chunk has the answer: it finds the nearest text, not the truth.</p>
+            <div id="searchBody"><span class="empty">Click Ask to see the search.</span></div>
+          </div>
+        </details>
+        <details class="sec" id="secPrompt" open>
+          <summary><span class="chev"></span><span class="stepnum">4</span>Prompt <span class="sub" id="promptSub">chunks → context in the prompt</span><button type="button" class="copy" data-copy="messages" title="Copy the messages as JSON" aria-label="Copy the messages as JSON"></button></summary>
+          <div class="sec-body">
+            <p class="explain">RAG changes only the prompt. The page puts the retrieved chunks, with their numbers, into the user message, and the instruction tells the model to use only them.
+              The chat model does not see the vectors, the scores or the other chunks: it sees only this text.</p>
+            <div id="promptBody"><span class="empty">Click Ask to see the prompt.</span></div>
+          </div>
+        </details>
+        <details class="sec" id="secAnswer" open>
+          <summary><span class="chev"></span><span class="stepnum">5</span>Answer <span class="sub" id="answerSub">prompt → answer</span></summary>
+          <div class="sec-body">
+            <p class="explain">Compare the two answers. Without RAG, the model can use only what it learned in training: for an invented document, it must guess or say that it does not know.
+              With RAG, it can use the chunks; click a chunk number in the answer to see the chunk. If the right chunk is not in the top k, the answer is wrong too: the search limits the answer.</p>
+            <div id="answerBody"><span class="empty">Click Ask to see the answers.</span></div>
+          </div>
+        </details>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const short = (t, n = 40) => { t = t.replace(/\s+/g, " ").trim(); return t.length > n ? t.slice(0, n) + "…" : t; };
+const fit = (t, max = 200) => { t.style.height = "auto"; t.style.height = Math.min(t.scrollHeight + 2, max) + "px"; };
+const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const segVal = id => document.querySelector(`#${id} button[aria-pressed="true"]`)?.dataset.v;
+const dot = (a, b) => { let s = 0; for (let i = 0; i < a.length; i++) s += a[i] * b[i]; return s; };
+const cosine = (a, b) => dot(a, b) / (Math.sqrt(dot(a, a) * dot(b, b)) || 1);
+const ms = t => t < 1000 ? `${Math.round(t)} ms` : `${(t / 1000).toFixed(1)} s`;
+
+const MAX_TOKENS = 400;  // enough for an answer; the answer without RAG can be long
+const DEFAULT_INSTR = "Answer the question with the context only. If the context does not contain the answer, say that you do not know. After each fact, give the number of its chunk in square brackets, for example [2].";
+
+// Task prefixes that the model makers recommend. A model without an entry gets no prefix.
+const PREFIXES = [
+  [/embeddinggemma/i, "task: search result | query: ", "title: none | text: "],
+  [/nomic-embed/i, "search_query: ", "search_document: "],
+];
+const prefixesFor = m => { const p = PREFIXES.find(([re]) => re.test(m)); return p ? { query: p[1], doc: p[2] } : null; };
+
+// State of the last run.
+// index = { key, model, chunks: [{ text, start, overlap }], vectors, sent: [str], ms, cached }
+// search = { q, qSent, qVec, scores: [{ c, s }] (sorted), k, ms }
+let index = null, search = null, messages = null, sel = -1, busy = false, ctrl = null;
+let answers = { rag: null, plain: null };  // { text, tokens, prompt, ms, done, error }
+
+// ---- Models: embedding models for the index, language models for the answer.
+async function loadModels() {
+  try {
+    let list = [];
+    try {
+      const v1 = await fetch("/api/v1/models").then(r => r.json());
+      list = (v1.models || []).map(m => ({ key: m.key, type: m.type }));
+    } catch {}
+    if (!list.length) {
+      const r = await fetch("/v1/models"), j = await r.json();
+      if (!r.ok) throw new Error(j.error?.message || r.status);
+      list = j.data.map(m => ({ key: m.id, type: /embed/i.test(m.id) ? "embedding" : "llm" }));
+    }
+    const emb = list.filter(m => m.type === "embedding").map(m => m.key), llm = list.filter(m => m.type === "llm").map(m => m.key);
+    $("embModel").replaceChildren(...emb.map(k => new Option(k)));
+    $("chatModel").replaceChildren(...llm.map(k => new Option(k)));
+    $("embModel").value = emb.find(k => /embeddinggemma/i.test(k)) || emb[0];
+    $("chatModel").value = llm.find(k => k === "google/gemma-3-12b") || llm.find(k => /gemma-3/.test(k)) || llm[0];
+    if (!emb.length) $("error").textContent = "LM Studio has no embedding model. Download one, for example EmbeddingGemma: lms get https://huggingface.co/lmstudio-community/embeddinggemma-300m-qat-GGUF";
+    syncPrefix();
+  } catch (e) {
+    $("error").textContent = `LM Studio unreachable: ${e.message || e}`;
+  }
+}
+function syncPrefix() {
+  const p = prefixesFor($("embModel").value);
+  document.querySelectorAll("#prefix button").forEach(b => b.disabled = !p);
+  $("prefix").title = p ? "" : "No known task prefix for this model";
+}
+$("embModel").onchange = syncPrefix;
+
+// ---- Step 1: chunking. Each chunk keeps its place in the documents.
+function chunkText(text, how, size, overlap) {
+  const out = [];
+  const add = (start, end, ov = 0) => {
+    const raw = text.slice(start, end), lead = raw.length - raw.trimStart().length;
+    const t = raw.trim();
+    if (t) out.push({ text: t, start: start + lead, overlap: Math.max(0, ov - lead) });
+  };
+  if (how === "para") {
+    const re = /\n\s*\n/g; let last = 0, m;
+    while ((m = re.exec(text))) { add(last, m.index); last = m.index + m[0].length; }
+    add(last, text.length);
+  } else if (how === "sent") {
+    // A sentence ends at . ! or ? followed by a space, or at a line break. "1.1" and "9:00" stay whole.
+    for (const m of text.matchAll(/(?:[^\n.!?]|[.!?](?![.!?"')\]]*(?:\s|$)))+[.!?]*["')\]]*/g)) add(m.index, m.index + m[0].length);
+  } else {
+    // Windows of `size` characters. A cut moves back to the last space, so words stay whole.
+    let start = 0, prevEnd = 0;
+    while (start < text.length) {
+      let end = Math.min(text.length, start + size);
+      if (end < text.length) { const sp = text.lastIndexOf(" ", end); if (sp > start + size * 0.6) end = sp; }
+      add(start, end, Math.max(0, prevEnd - start));
+      prevEnd = end;
+      if (end >= text.length) break;
+      // The next chunk starts `overlap` characters back, at the start of a word.
+      let next = Math.max(start + 1, end - overlap);
+      if (overlap && !/\s/.test(text[next - 1])) { const sp = text.indexOf(" ", next); if (sp >= 0 && sp < end) next = sp + 1; }
+      start = next;
+    }
+  }
+  return out;
+}
+
+const post = (url, body, signal) => fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), signal })
+  .then(async r => { const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error?.message || j.error || `Error ${r.status}`); return j; });
+async function embed(model, texts, signal) {
+  const out = [];
+  for (let i = 0; i < texts.length; i += 64) {
+    const j = await post("/v1/embeddings", { model, input: texts.slice(i, i + 64) }, signal);
+    if (j.model && j.model !== model) throw new Error(`LM Studio answered with ${j.model}, not ${model}.`);
+    out.push(...j.data.sort((a, b) => a.index - b.index).map(d => d.embedding));
+  }
+  return out;
+}
+
+async function run() {
+  if (busy) { ctrl?.abort(); return; }
+  const docs = $("docs").value, q = $("question").value.trim(), model = $("embModel").value, chat = $("chatModel").value;
+  $("error").textContent = "";
+  if (!docs.trim()) { $("error").textContent = "Paste some documents, or choose an example."; return; }
+  if (!q) { $("error").textContent = "Type a question."; return; }
+  if (docs.length > 30000) { $("error").textContent = "The documents are too long: the maximum is 30,000 characters."; return; }
+  const how = segVal("split"), size = +$("size").value, overlap = Math.min(+$("overlap").value, Math.floor(size / 2));
+  const chunks = chunkText(docs, how, size, overlap);
+  if (chunks.length > 300) { $("error").textContent = `${chunks.length} chunks: the maximum is 300. Use larger chunks.`; return; }
+  const pre = segVal("prefix") === "on" ? prefixesFor(model) : null;
+  setBusy(true);
+  ctrl = new AbortController();
+  try {
+    // Index: embed the chunks, unless the same index exists already.
+    const key = JSON.stringify([model, pre?.doc || "", chunks.map(c => c.text)]);
+    if (index?.key === key) index.cached = true;
+    else {
+      const sent = chunks.map(c => (pre?.doc || "") + c.text), t0 = performance.now();
+      const vectors = await embed(model, sent, ctrl.signal);
+      index = { key, model, how, chunks, vectors, sent, ms: performance.now() - t0, cached: false, prefix: pre?.doc || "" };
+      sel = -1;
+    }
+    // Search: embed the question, compare it with every chunk.
+    const qSent = (pre?.query || "") + q, t1 = performance.now();
+    const [qVec] = await embed(model, [qSent], ctrl.signal);
+    const scores = index.vectors.map((v, c) => ({ c, s: cosine(qVec, v) })).sort((a, b) => b.s - a.s);
+    const k = Math.min(+segVal("topk"), scores.length);
+    search = { q, qSent, qVec, scores, k, ms: performance.now() - t1, prefix: pre?.query || "" };
+    if (sel < 0 || sel >= index.chunks.length) sel = scores[0].c;
+    // Prompt: the top k chunks, best first, with their numbers from step 1.
+    const context = scores.slice(0, k).map(({ c }) => `[${c + 1}] ${index.chunks[c].text}`).join("\n\n");
+    messages = [
+      ...($("instr").value.trim() ? [{ role: "system", content: $("instr").value.trim() }] : []),
+      { role: "user", content: `Context:\n\n${context}\n\nQuestion: ${q}` },
+    ];
+    const compare = segVal("compare") === "on";
+    answers = { rag: { text: "", done: false }, plain: compare ? { text: "", done: false } : null };
+    render();
+    // Answer: with RAG, then (one after the other, so LM Studio loads one model at a time) without.
+    await answer(chat, messages, answers.rag);
+    renderPrompt();  // now with the prompt token count
+    if (answers.plain) await answer(chat, [{ role: "user", content: q }], answers.plain);
+  } catch (e) {
+    if (e.name !== "AbortError") $("error").textContent = String(e.message || e);
+    for (const a of Object.values(answers)) if (a && !a.done) { a.done = true; a.stopped = e.name === "AbortError"; }
+    if (search) renderAnswers();
+  } finally {
+    ctrl = null;
+    setBusy(false);
+  }
+}
+function setBusy(on) {
+  busy = on;
+  $("run").textContent = on ? "Stop" : "Ask";
+  $("run").title = on ? "Stop the answer" : "Search the documents and answer (⌘ + Enter)";
+}
+$("run").onclick = run;
+["docs", "question"].forEach(id => $(id).addEventListener("keydown", e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); run(); } }));
+
+// Stream one answer from the chat model. Reasoning (thinking) text is not shown: only the answer.
+async function answer(model, msgs, a) {
+  const t0 = performance.now();
+  const r = await fetch("/v1/chat/completions", {
+    method: "POST", headers: { "Content-Type": "application/json" }, signal: ctrl.signal,
+    body: JSON.stringify({ model, messages: msgs, temperature: 0, max_tokens: MAX_TOKENS, stream: true, stream_options: { include_usage: true } }),
+  });
+  if (!r.ok) { const j = await r.json().catch(() => ({})); throw new Error(j.error?.message || j.error || r.status); }
+  const reader = r.body.pipeThrough(new TextDecoderStream()).getReader();
+  let buf = "";
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buf += value;
+    const lines = buf.split("\n");
+    buf = lines.pop();
+    for (const line of lines) {
+      if (!line.startsWith("data:")) continue;
+      const payload = line.slice(5).trim();
+      if (payload === "[DONE]") continue;
+      const j = JSON.parse(payload);
+      if (j.error) throw new Error(j.error.message || j.error);
+      const d = j.choices?.[0]?.delta;
+      if (d?.reasoning_content) a.thinking = true;
+      if (d?.content) a.text += d.content;
+      if (j.usage) { a.prompt = j.usage.prompt_tokens; a.tokens = j.usage.completion_tokens; }
+      if (j.choices?.[0]?.finish_reason) a.finish = j.choices[0].finish_reason;
+    }
+    a.ms = performance.now() - t0;
+    renderAnswers();
+  }
+  a.text = a.text.replace(/<think>[\s\S]*?(<\/think>|$)/g, "").trim();
+  a.done = true; a.ms = performance.now() - t0;
+  renderAnswers();
+  renderStats();
+}
+
+function render() {
+  renderChunks();
+  renderVectors();
+  renderSearch();
+  renderPrompt();
+  $("answerBody").innerHTML = "";  // new cards: the header shows the new top k
+  renderAnswers();
+  renderStats();
+}
+function renderStats() {
+  if (!index) return $("stats").innerHTML = "";
+  const tok = answers.rag?.prompt;
+  $("stats").innerHTML = `<span>chunks <b>${index.chunks.length}</b></span><span>numbers per vector <b>${index.vectors[0].length}</b></span>` +
+    `<span>index <b>${index.cached ? "cached" : ms(index.ms)}</b></span>` + (tok ? `<span>prompt <b>${tok}</b> tokens</span>` : "");
+}
+const hitSet = () => new Set(search ? search.scores.slice(0, search.k).map(x => x.c) : []);
+const cnum = (c, hit) => `<span class="cn${hit ? " hit" : ""}">#${c + 1}</span>`;
+
+// ---- Step 1
+function renderChunks() {
+  const ch = index.chunks, hits = hitSet();
+  const avg = Math.round(ch.reduce((s, c) => s + c.text.length, 0) / ch.length);
+  const how = { para: "paragraphs", sent: "sentences", fixed: "fixed size" }[index.how];
+  $("chunksSub").textContent = `documents → ${ch.length} chunks`;
+  $("chunksBody").innerHTML = `<div class="card"><div class="card-head"><h3>Chunks</h3><span>${ch.length} chunks · split by ${how} · ${avg} characters on average</span>
+      <span class="right">blue number = sent to the chat model</span></div>
+    ${ch.map((c, i) => `<div class="chunk${hits.has(i) ? " hit" : ""}${i === sel ? " sel" : ""}" data-c="${i}">${cnum(i, hits.has(i))}
+      <div class="chunk-text">${c.overlap ? `<span class="ov" data-tip-title="Overlap" data-tip="This text is also at the end of chunk #${i}.">${esc(c.text.slice(0, c.overlap))}</span>` : ""}${esc(c.text.slice(c.overlap))}</div>
+      <span class="chunk-len">${c.text.length} chars</span></div>`).join("")}</div>`;
+}
+
+// ---- Step 2
+let scale = 1;
+function renderVectors() {
+  const v = index.vectors, dim = v[0].length, hits = hitSet();
+  $("vecSub").textContent = `chunk → one vector of ${dim} numbers`;
+  const all = [...v, search.qVec].flat().map(Math.abs).sort((a, b) => a - b);
+  scale = all[Math.floor(all.length * 0.99)] || 1;  // the 99th percentile: a few large numbers do not hide the rest
+  const spec = (label, value) => `<div class="spec"><span>${label}</span><b>${esc(value)}</b></div>`;
+  const len = Math.sqrt(dot(v[0], v[0]));
+  $("vecBody").innerHTML = `<div class="card"><div class="card-head">${spec("Model", index.model)}${spec("Vector", `${dim} numbers`)}
+      ${spec("Length", Math.abs(len - 1) < 1e-3 ? "1 (normalized)" : len.toFixed(3))}${spec("Index", index.cached ? "from cache" : `${v.length} chunks in ${ms(index.ms)}`)}
+      ${spec("Chunk prefix", index.prefix ? JSON.stringify(index.prefix) : "none")}${spec("Question prefix", search.prefix ? JSON.stringify(search.prefix) : "none")}
+      <div class="legend right"><span>${(-scale).toFixed(3)}</span><span class="ramp"></span><span>+${scale.toFixed(3)}</span></div></div>
+    <div class="vhead"><span class="col-head">Text</span><span class="col-head">All ${dim} numbers</span></div>
+    <div class="vrow q"><span class="vlab"><span class="qmark">Q</span><span class="t" data-tip-title="Text sent for the question" data-tip="${esc(search.qSent)}">${esc(search.q)}</span></span><canvas class="strip" data-v="q"></canvas></div>
+    ${v.map((_, i) => `<div class="vrow${i === sel ? " sel" : ""}" data-c="${i}"><span class="vlab">${cnum(i, hits.has(i))}<span class="t">${esc(index.chunks[i].text)}</span></span><canvas class="strip" data-v="${i}"></canvas></div>`).join("")}</div>`;
+  drawStrips();
+}
+function drawStrips() {
+  if (!index || !search) return;
+  const pos = cssVar("--red-rgb"), neg = cssVar("--neg-rgb");
+  document.querySelectorAll("canvas.strip").forEach(c => {
+    const v = c.dataset.v === "q" ? search.qVec : index.vectors[+c.dataset.v], w = c.clientWidth, h = c.clientHeight, dpr = devicePixelRatio || 1;
+    if (!w) return;
+    c.width = w * dpr; c.height = h * dpr;
+    const g = c.getContext("2d");
+    g.scale(dpr, dpr);
+    const cw = w / v.length;
+    v.forEach((x, j) => {
+      g.fillStyle = `rgba(${x >= 0 ? pos : neg}, ${Math.min(1, Math.abs(x) / scale).toFixed(3)})`;
+      g.fillRect(j * cw, 0, cw + 0.5, h);
+    });
+  });
+}
+
+// ---- Step 3: ranked list, and a 2D map of all vectors (PCA)
+function renderSearch() {
+  const { scores, k } = search, hits = hitSet(), max = Math.max(1e-9, scores[0].s);
+  $("searchSub").textContent = `question vector → top ${k} of ${scores.length} chunks`;
+  const row = ({ c, s }, r) => `<div class="rrow${hits.has(c) ? " hit" : ""}${c === sel ? " sel" : ""}" data-c="${c}">
+      <span class="rank">${r + 1}</span>${cnum(c, hits.has(c))}<span class="rtext">${esc(index.chunks[c].text)}</span>
+      <span class="track"><i style="width:${(Math.max(0, s) * 100).toFixed(1)}%"></i></span><span class="score">${s.toFixed(3)}</span></div>`;
+  const rows = scores.map(row);
+  if (k < scores.length) rows.splice(k, 0, `<div class="cut">↑ top ${k}: sent to the chat model · ↓ not sent</div>`);
+  const map = pca2([...index.vectors, search.qVec]);
+  $("searchBody").innerHTML = `<div class="two">
+    <div class="card"><div class="card-head"><h3>Cosine similarity to the question</h3><span class="right">0 to 1 · best first</span></div>${rows.join("")}
+      <div class="note">The scores are close to each other. The ranking matters, not the value: a score of ${max.toFixed(2)} can be the best match.</div></div>
+    <div class="card" id="mapCard"><div class="card-head"><h3>Map of the vectors</h3><span class="right">${map ? `${Math.round(map.share * 100)}% of the variation shown` : ""}</span></div>
+      ${map ? mapSvg(map, hits) : `<div class="card-body hint">The map needs 3 chunks or more.</div>`}
+      <div class="note">${search.qVec.length} numbers cannot be drawn. PCA finds the two directions in which the vectors are most different, and puts each vector on them.
+        Near on the map usually means similar in meaning, but the map loses much information: the cosine list is the exact measure.</div></div></div>`;
+}
+// PCA on the Gram matrix: n points is small, so this is exact and fast. Returns 2D points and the share of the variation they keep.
+function pca2(vs) {
+  const n = vs.length, d = vs[0].length;
+  if (n < 3) return null;
+  const mean = new Float64Array(d);
+  vs.forEach(v => v.forEach((x, j) => mean[j] += x / n));
+  const X = vs.map(v => v.map((x, j) => x - mean[j]));
+  const G = X.map(a => X.map(b => dot(a, b)));
+  const trace = G.reduce((s, r, i) => s + r[i], 0) || 1;
+  const eig = [];
+  for (let e = 0; e < 2; e++) {
+    let v = Array.from({ length: n }, (_, i) => Math.sin(i + 1 + e)), l = 0;  // fixed start: the same map each time
+    for (let it = 0; it < 300; it++) {
+      let w = G.map(r => dot(r, v));
+      for (const p of eig) { const c = dot(w, p.v); w = w.map((x, i) => x - c * p.v[i]); }
+      l = Math.hypot(...w);
+      if (!l) break;
+      v = w.map(x => x / l);
+    }
+    eig.push({ v, l });
+  }
+  const pts = vs.map((_, i) => eig.map(p => p.v[i] * Math.sqrt(p.l)));
+  return { pts, share: (eig[0].l + eig[1].l) / trace };
+}
+function mapSvg({ pts }, hits) {
+  const W = 520, H = 320, pad = 26;
+  const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+  const s = Math.min((W - 2 * pad) / (x1 - x0 || 1), (H - 2 * pad) / (y1 - y0 || 1));  // one scale for both axes: distances stay true
+  const ox = (W - (x1 - x0) * s) / 2, oy = (H - (y1 - y0) * s) / 2;
+  const P = ([x, y]) => [ox + (x - x0) * s, H - (oy + (y - y0) * s)];
+  const q = P(pts[pts.length - 1]);
+  const links = [...hits].map(c => { const p = P(pts[c]); return `<line class="link" x1="${q[0].toFixed(1)}" y1="${q[1].toFixed(1)}" x2="${p[0].toFixed(1)}" y2="${p[1].toFixed(1)}"/>`; }).join("");
+  const dots = pts.slice(0, -1).map((p, c) => {
+    const [x, y] = P(p), sc = search.scores.find(o => o.c === c).s;
+    return `<circle class="pt${hits.has(c) ? " hit" : ""}${c === sel ? " on" : ""}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="6" data-c="${c}"
+        data-tip-title="Chunk #${c + 1} · similarity ${sc.toFixed(3)}" data-tip="${esc(short(index.chunks[c].text, 160))}"/>
+      <text class="lab" x="${(x + 9).toFixed(1)}" y="${(y + 4).toFixed(1)}">${c + 1}</text>`;
+  }).join("");
+  const r = 7, diamond = `${q[0]},${q[1] - r} ${q[0] + r},${q[1]} ${q[0]},${q[1] + r} ${q[0] - r},${q[1]}`;
+  return `<svg class="map" viewBox="0 0 ${W} ${H}" role="img" aria-label="Map of the chunk vectors and the question vector">
+    <line class="axis" x1="0" y1="${H / 2}" x2="${W}" y2="${H / 2}"/><line class="axis" x1="${W / 2}" y1="0" x2="${W / 2}" y2="${H}"/>
+    ${links}${dots}<polygon class="qpt" points="${diamond}" data-tip-title="Question" data-tip="${esc(search.q)}"/>
+    <text class="qlab" x="${(q[0] + 10).toFixed(1)}" y="${(q[1] - 8).toFixed(1)}">Question</text></svg>`;
+}
+
+// ---- Step 4
+function renderPrompt() {
+  const { k } = search;
+  $("promptSub").textContent = `${k} chunk${k === 1 ? "" : "s"} → context in the prompt`;
+  const user = messages.find(m => m.role === "user").content;
+  const ctx = search.scores.slice(0, k).map(({ c }) => `<span class="ctx${c === sel ? " sel" : ""}" data-c="${c}">[${c + 1}] ${esc(index.chunks[c].text)}</span>`).join("\n");
+  const sys = messages.find(m => m.role === "system");
+  $("promptBody").innerHTML = `<div class="card"><div class="card-head"><h3>Messages to ${esc($("chatModel").value)}</h3>
+      <span>${user.length.toLocaleString()} characters in the user message${answers.rag?.prompt ? ` · ${answers.rag.prompt} prompt tokens` : ""}</span><span class="right">temperature 0</span></div>
+    ${sys ? `<div class="msg"><span class="role">System</span><div class="msg-text">${esc(sys.content)}</div></div>` : ""}
+    <div class="msg"><span class="role">User</span><div class="msg-text">Context:\n${ctx}\nQuestion: ${esc(search.q)}</div></div></div>`;
+}
+
+// ---- Step 5
+function answerHtml(a) {
+  if (!a.text) return `<span class="wait">${a.done ? (a.stopped ? "Stopped." : "No answer.") : a.thinking ? "The model is thinking…" : "Waiting for the model…"}</span>`;
+  const hits = hitSet();
+  // Chunk numbers in the answer become links to the chunk. A number that was not sent is grey.
+  // Light markdown: no bold or italic marks, and "*" bullets as "•".
+  return esc(a.text).replace(/\*\*(.+?)\*\*/g, "$1").replace(/^(\s*)[*-]\s+/gm, "$1• ").replace(/(^|[^*\w])\*([^*\n]+)\*(?!\w)/g, "$1$2").replace(/\[(\d+(?:\s*,\s*\d+)*)\]/g, (_, list) => list.split(/\s*,\s*/).map(n => {
+    const c = +n - 1;
+    return index.chunks[c] ? `<span class="cite${hits.has(c) ? "" : " miss"}" data-c="${c}" data-tip-title="Chunk #${c + 1}" data-tip="${esc(short(index.chunks[c].text, 200))}">${n}</span>` : `[${n}]`;
+  }).join(""));
+}
+const answerFoot = a => a.done && a.tokens != null ? `${a.tokens} tokens · ${ms(a.ms)}${a.finish === "length" ? ` · cut at ${MAX_TOKENS} tokens` : ""}` : a.stopped ? "stopped" : a.done ? "" : "writing…";
+function renderAnswers() {
+  const { rag, plain } = answers;
+  if (!rag) return;
+  $("answerSub").textContent = plain ? "prompt → answer, with and without RAG" : "prompt → answer";
+  // While the answers stream, change only their text: the rest of the card stays (and a tooltip stays open).
+  if ($("ansRag") && !!$("ansPlain").classList.contains("off") === !plain) {
+    $("ansRag").innerHTML = answerHtml(rag); $("ansRagFoot").textContent = answerFoot(rag);
+    if (plain) { $("ansPlain").innerHTML = answerHtml(plain); $("ansPlainFoot").textContent = answerFoot(plain); }
+    return;
+  }
+  const card = (title, sub, a, id) => `<div class="card"><div class="card-head"><h3>${title}</h3><span>${sub}</span><span class="right" id="${id}Foot">${a ? answerFoot(a) : ""}</span></div>
+      <div class="answer${a ? "" : " off"}" id="${id}">${a ? answerHtml(a) : "Off. Turn on “Answer without RAG too” to compare."}</div></div>`;
+  $("answerBody").innerHTML = `<div class="two">${card("With RAG", `question + top ${search.k} chunks`, rag, "ansRag")}${card("Without RAG", "the question only", plain, "ansPlain")}</div>`;
+}
+
+// ---- Select a chunk: click it in any step. The selection shows in all steps. No scroll.
+function select(c) {
+  if (!index?.chunks[c] || c === sel) return;
+  sel = c;
+  document.querySelectorAll(".sel, .pt.on").forEach(el => el.classList.remove("sel", "on"));
+  document.querySelectorAll(`.chunk[data-c="${c}"], .vrow[data-c="${c}"], .rrow[data-c="${c}"], .ctx[data-c="${c}"]`).forEach(el => el.classList.add("sel"));
+  document.querySelector(`.pt[data-c="${c}"]`)?.classList.add("on");
+}
+document.querySelector(".main").addEventListener("click", e => {
+  const el = e.target.closest("[data-c]");
+  if (el) select(+el.dataset.c);
+});
+addEventListener("resize", drawStrips);
+document.querySelectorAll(".steps button").forEach(b => b.onclick = () => {
+  const sec = $(b.dataset.go);
+  sec.open = true;
+  $("output").scrollTo({ top: sec.offsetTop, behavior: "smooth" });
+});
+
+// ---- Settings
+document.querySelectorAll(".seg").forEach(g => g.id !== "theme" && g.addEventListener("click", e => {
+  const b = e.target.closest("button");
+  if (!b || b.disabled) return;
+  g.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b));
+  if (g.id === "split") $("sizeCtl").hidden = $("overlapCtl").hidden = b.dataset.v !== "fixed";
+}));
+function syncSliders() {
+  $("sizeOut").textContent = $("size").value;
+  $("overlapOut").textContent = $("overlap").value;
+  document.querySelectorAll("input[type=range]").forEach(r => r.style.setProperty("--fill", ((r.value - r.min) / (r.max - r.min) * 100) + "%"));
+}
+document.querySelectorAll("input[type=range]").forEach(r => r.addEventListener("input", syncSliders));
+syncSliders();
+function syncInstr() {
+  const v = $("instr").value.trim();
+  $("stInstr").textContent = !v ? "none" : v === DEFAULT_INSTR ? "default · answer from the context only, cite the chunks" : `custom · ${short(v, 70)}`;
+}
+$("instr").value = DEFAULT_INSTR;
+$("instr").addEventListener("input", () => { syncInstr(); fit($("instr")); });
+$("resetInstr").innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>';
+$("resetInstr").onclick = () => { $("instr").value = DEFAULT_INSTR; syncInstr(); fit($("instr")); };
+$("optInstr").addEventListener("toggle", () => fit($("instr")));
+syncInstr();
+
+// ---- Tooltip: one shared box for every element with data-tip.
+const tip = Object.assign(document.createElement("div"), { id: "tip", role: "tooltip" });
+document.body.append(tip);
+document.addEventListener("mouseover", e => {
+  const el = e.target.closest("[data-tip]");
+  if (!el) return tip.classList.remove("show");
+  tip.innerHTML = `<b>${esc(el.dataset.tipTitle || "")}</b><span>${esc(el.dataset.tip)}</span>`;
+  tip.classList.add("show");
+  const r = el.getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight;
+  tip.style.left = Math.max(8, Math.min(r.left, innerWidth - w - 8)) + "px";
+  tip.style.top = (r.bottom + 8 + h > innerHeight ? r.top - h - 8 : r.bottom + 8) + "px";
+});
+document.addEventListener("scroll", () => tip.classList.remove("show"), true);
+
+// ---- Copy buttons
+const ICON_COPY = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/></svg>';
+const ICON_DONE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>';
+const COPY = {
+  docs: () => $("docs").value,
+  question: () => $("question").value,
+  vectors: () => index && search ? JSON.stringify({ model: index.model, question: { text: search.qSent, embedding: search.qVec },
+    chunks: index.chunks.map((c, i) => ({ chunk: i + 1, text: index.sent[i], embedding: index.vectors[i] })) }) : "",
+  messages: () => messages ? JSON.stringify(messages, null, 2) : "",
+};
+document.querySelectorAll(".copy[data-copy]").forEach(b => {
+  b.innerHTML = ICON_COPY;
+  b.addEventListener("mousedown", e => e.preventDefault());
+  b.addEventListener("click", async e => {
+    e.preventDefault(); e.stopPropagation();  // a click inside <summary> must not fold the section
+    const text = COPY[b.dataset.copy]();
+    if (!text) return;
+    try { await navigator.clipboard.writeText(text); }
+    catch { const ta = Object.assign(document.createElement("textarea"), { value: text }); document.body.append(ta); ta.select(); document.execCommand("copy"); ta.remove(); }
+    b.innerHTML = ICON_DONE; b.classList.add("done"); b.title = "Copied";
+    clearTimeout(b._t); b._t = setTimeout(() => { b.innerHTML = ICON_COPY; b.classList.remove("done"); b.title = b.getAttribute("aria-label"); }, 1400);
+  });
+});
+
+// ---- Examples. Invented documents, so that the chat model cannot know the answers from training; and one real topic to compare.
+const EXAMPLES = [
+  { name: "Library rules (invented)", text: `Opening hours. The Harbor Lane library is open Monday to Friday from 9:00 to 20:00 and on Saturday from 10:00 to 16:00. It is closed on Sunday and on public holidays.
+
+Membership. A library card is free for people who live in Harbor Lane. People from other towns pay 25 euros a year. Bring a document with your address to the front desk. A new card costs 3 euros if you lose yours.
+
+Loans. You can borrow up to 12 items at the same time. The loan period is three weeks. You can renew an item online two times, unless another member has reserved it. The late fee is 20 cents per item per day, with a maximum of 6 euros per item.
+
+Makerspace. The makerspace on the ground floor has two 3D printers and a laser cutter. Before you use them, you must complete the safety course. The course is on the first Saturday of each month. You can book a printer for at most two hours.
+
+Floors. The third floor is the quiet floor: phone calls and conversations are not allowed there. Group study rooms are on the second floor. You can book a room for up to four hours.
+
+Wi-Fi. The guest network is HarborGuest. It has no password. Each session lasts three hours; then you must log in again.
+
+Children. Story time for children is every Wednesday at 10:30 in the children's corner.`,
+    questions: ["How long can I keep a book?", "How much does it cost to join if I live in another town?", "Can I use the 3D printer?",
+      "Is the library open on Sunday?", "Where can I make a phone call?", "Who founded the library?"] },
+  { name: "Team handbook (invented)", text: `Releases. The Nimbus app is released every second Tuesday at 14:00. The code freeze starts on the Monday before the release at 12:00. After the freeze, you can merge only fixes for release blockers.
+
+On-call. The on-call engineer changes every Monday at 9:00. Alerts go to the #nimbus-oncall channel and to the pager. If nobody answers the pager in 15 minutes, the alert goes to the team lead, Marta Lind.
+
+Incidents. A SEV1 incident means that no user can log in or pay. For a SEV1, start a call at once and post an update every 30 minutes. A SEV2 incident affects some users; post an update every two hours.
+
+Data. The main database is PostgreSQL 16. Backups run every six hours, and the team keeps them for 30 days. To restore a backup, ask the platform team in #platform-help.
+
+Working hours. Core hours are 10:00 to 15:00 Central European Time. Outside core hours, you can work when you want. There are no meetings on Friday.
+
+Equipment. Each engineer gets a laptop budget of 1,800 euros every three years. The office manager orders monitors and chairs.`,
+    questions: ["When does the code freeze start?", "What happens if the on-call engineer does not answer?", "How long do we keep backups?",
+      "Can I schedule a meeting on Friday?", "How much can I spend on a computer?", "What is the office Wi-Fi password?"] },
+  { name: "Penguins (real facts)", text: `Where they live. Almost all penguins live in the Southern Hemisphere: in Antarctica, South America, South Africa, Australia and New Zealand. The Galápagos penguin lives near the equator. No penguins live in the Arctic.
+
+Size. The emperor penguin is the largest penguin. It is about 1.1 metres tall and can weigh more than 40 kilograms. The little penguin is the smallest: it is about 33 centimetres tall and weighs about 1 kilogram.
+
+Flight and swimming. Penguins cannot fly. Their wings are stiff flippers, and they use them to swim. The gentoo penguin is the fastest swimmer: it can reach about 36 kilometres per hour.
+
+Eggs. The female emperor penguin lays one egg in the Antarctic winter. The male keeps the egg warm on his feet for about two months, and he does not eat during that time.
+
+Food. Penguins eat krill, fish and squid. They catch their food in the sea and swallow it whole.`,
+    questions: ["Which penguin is the smallest?", "Can penguins fly?", "Do penguins live in the Arctic?", "Who keeps the emperor penguin egg warm?", "How fast can a penguin swim?"] },
+];
+const ICON_SAVE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21l-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/><path d="M12 7v6M9 10h6"/></svg>';
+const ICON_DEL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/></svg>';
+
+// One saved list with its menu: saved items (stored by the server) above the built-in examples. Same pattern as the other pages.
+function savedList({ menu, input, save, del, url, builtIn, choose, max = 200 }) {
+  const L = { saved: [] };
+  L.fill = (value = "") => {
+    const m = $(menu);
+    m.innerHTML = `<option value="">Choose an example…</option><option value="c" hidden>Custom</option>`;
+    if (L.saved.length) {
+      const g = Object.assign(document.createElement("optgroup"), { label: "Saved" });
+      L.saved.forEach((p, i) => g.append(new Option(p.name, "s" + i)));
+      m.append(g);
+    }
+    const items = builtIn();
+    if (items.length) {
+      const g = Object.assign(document.createElement("optgroup"), { label: "Examples" });
+      items.forEach((e, i) => g.append(new Option(e.name, "e" + i)));
+      m.append(g);
+    }
+    m.value = value;
+    $(del).hidden = !value.startsWith("s");
+  };
+  // The menu shows the item that matches the text, or "Custom".
+  L.match = () => {
+    const v = $(input).value;
+    const si = L.saved.findIndex(p => p.text === v), ei = si >= 0 ? -1 : builtIn().findIndex(e => e.text === v);
+    $(menu).value = !v.trim() ? "" : si >= 0 ? "s" + si : ei >= 0 ? "e" + ei : "c";
+    $(del).hidden = si < 0;
+  };
+  const store = () => fetch(url, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(L.saved) })
+    .then(r => { if (!r.ok) throw new Error("Could not save the list."); });
+  $(save).innerHTML = ICON_SAVE;
+  $(del).innerHTML = ICON_DEL;
+  $(save).onclick = async () => {
+    const v = $(input).value;
+    if (!v.trim()) return;
+    let i = L.saved.findIndex(p => p.text === v);
+    if (i < 0) {
+      L.saved.push({ name: short(v), text: v });
+      i = L.saved.length - 1;
+      try { await store(); } catch (e) { L.saved.pop(); $("error").textContent = e.message; return; }
+    }
+    L.fill("s" + i);
+    $(save).classList.add("done"); setTimeout(() => $(save).classList.remove("done"), 900);
+  };
+  $(del).onclick = async () => {
+    const v = $(menu).value;
+    if (!v.startsWith("s")) return;
+    const [gone] = L.saved.splice(+v.slice(1), 1);
+    try { await store(); } catch (e) { L.saved.splice(+v.slice(1), 0, gone); $("error").textContent = e.message; return; }
+    L.fill("");
+  };
+  $(menu).onchange = () => {
+    const v = $(menu).value;
+    $(del).hidden = !v.startsWith("s");
+    if (!v || v === "c") return;
+    $(input).value = v.startsWith("s") ? L.saved[+v.slice(1)].text : builtIn()[+v.slice(1)].text;
+    fit($(input), max);
+    choose?.();
+  };
+  $(input).addEventListener("input", () => { L.match(); fit($(input), max); choose?.(); });
+  L.fill();
+  fetch(url).then(r => r.json()).then(list => { L.saved = list.filter(p => typeof p.text === "string"); L.fill($(menu).value); L.match(); }).catch(() => {});
+  return L;
+}
+// The question menu lists the questions of the chosen example documents.
+const docExample = () => EXAMPLES.find(e => e.text === $("docs").value);
+let docList, qList;
+qList = savedList({ menu: "qExamples", input: "question", save: "saveQ", del: "delQ", url: "/rag-questions",
+  builtIn: () => (docExample()?.questions || []).map(q => ({ name: q, text: q })) });
+docList = savedList({ menu: "docExamples", input: "docs", save: "saveDoc", del: "delDoc", url: "/rag-docs", builtIn: () => EXAMPLES, max: 180,
+  choose: () => {
+    const ex = docExample(), cur = $("question").value;
+    if (ex && !ex.questions.includes(cur)) { $("question").value = ex.questions[0]; fit($("question")); }
+    qList.fill(); qList.match();
+  } });
+
+// ---- Reset: empty documents, question and output.
+const EMPTY = Object.fromEntries(["chunksBody", "vecBody", "searchBody", "promptBody", "answerBody"].map(id => [id, $(id).innerHTML]));
+const SUBS = Object.fromEntries(["chunksSub", "vecSub", "searchSub", "promptSub", "answerSub"].map(id => [id, $(id).textContent]));
+$("resetAll").onclick = () => {
+  ctrl?.abort();
+  $("docs").value = ""; $("question").value = ""; fit($("docs"), 180); fit($("question"));
+  docList.fill(""); qList.fill("");
+  index = search = messages = null; sel = -1; answers = { rag: null, plain: null };
+  for (const [id, html] of Object.entries(EMPTY)) $(id).innerHTML = html;
+  for (const [id, t] of Object.entries(SUBS)) $(id).textContent = t;
+  $("stats").innerHTML = ""; $("error").textContent = "";
+  $("docs").focus();
+};
+
+// Remember which steps are open.
+["secChunks", "secVec", "secSearch", "secPrompt", "secAnswer"].forEach(id => {
+  try { const v = localStorage.getItem("rag:open:" + id); if (v !== null) $(id).open = v === "1"; } catch {}
+  $(id).addEventListener("toggle", () => {
+    try { localStorage.setItem("rag:open:" + id, $(id).open ? "1" : "0"); } catch {}
+    if (id === "secVec" && $(id).open) drawStrips();
+  });
+});
+$("sideToggle").onclick = () => {
+  const v = document.documentElement.dataset.side === "closed" ? "open" : "closed";
+  document.documentElement.dataset.side = v;
+  try { localStorage.setItem("sidebar", v); } catch {}
+  setTimeout(drawStrips, 200);  // after the width transition
+};
+// Light/Dark switch. Remembered per browser. Canvas colours come from CSS, so draw again.
+function setTheme(v, save) {
+  document.documentElement.dataset.theme = v;
+  document.querySelectorAll("#theme button").forEach(b => b.setAttribute("aria-pressed", b.dataset.theme === v));
+  if (save) try { localStorage.setItem("theme", v); } catch {}
+  drawStrips();
+}
+document.querySelectorAll("#theme button").forEach(b => { b.onmousedown = e => e.preventDefault(); b.onclick = () => setTheme(b.dataset.theme, true); });
+setTheme(document.documentElement.dataset.theme, false);
+document.querySelectorAll("button").forEach(b => b.addEventListener("mousedown", e => e.preventDefault()));
+
+$("docs").value = EXAMPLES[0].text; fit($("docs"), 180); docList.match();
+$("question").value = EXAMPLES[0].questions[0]; fit($("question")); qList.fill(); qList.match();
+loadModels();
+</script>
+</body>
+</html>
