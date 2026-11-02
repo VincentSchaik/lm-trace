@@ -1,6 +1,8 @@
 # LM Trace
 
-**Local LLM observability tool and prompt playground**
+**A hands-on guide to how LLMs and agents work**
+
+LM Trace started as a way to look inside a language model while it reasons and generates an answer. Now it is also a step-by-step guide to building a simple AI agent and the harness that controls it. Each module adds one part: first reasoning and prompting, then memory, tool use, planning and reflection. Clear illustrations, real data and practical templates show how the parts fit together, from the language model itself to the system that lets it take action.
 
 LM Trace connects to the local OpenAI-compatible server of [LM Studio](https://lmstudio.ai). It traces how a local language model generates its answer, token by token. For each token, you see the token that the model selected, the 10 most probable candidates, and their probabilities. A color heatmap shows where the model was sure and where it was not.
 
