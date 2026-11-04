@@ -1,0 +1,17 @@
+[project]
+name = "lm-trace"
+version = "0.1.0"
+description = "A hands-on guide to how LLMs and agents work"
+readme = "README.md"
+requires-python = ">=3.10"
+# The server itself uses only the Python standard library.
+dependencies = []
+
+[project.optional-dependencies]
+# Tokens on the Embeddings page
+embeddings = ["lmstudio>=1.5"]
+# Chroma vector database on the Memory page
+memory = ["chromadb>=1.5.9"]
+
+[tool.uv]
+package = false

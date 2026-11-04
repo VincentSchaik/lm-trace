@@ -1,0 +1,1178 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LM Trace · Memory</title>
+<style>
+  :root {
+    color-scheme: light;
+    --paper: #f5f5f7;
+    --field: #ffffff;
+    --paper-2: #eeeef1;
+    --line: #e1e1e6;
+    --stone-2: #c7c7cc;
+    --ink: #1d1d1f;
+    --ink-2: #4b4b52;
+    --ink-3: #8e8e93;
+    --red: #1f6ff2;
+    --red-rgb: 31, 111, 242;
+    --neg-rgb: 71, 85, 105;
+    --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, monospace;
+    --input-bg: #ffffff;
+    --shadow-rgb: 0, 0, 0;
+    --primary: #1f6ff2;
+    --primary-hover: #185ed6;
+    --on-primary: #ffffff;
+    --danger: #d93025;
+    --tip-bg: #1d1d1f;
+    --tip-fg: #f5f5f7;
+    --tip-sub: #c7c7cc;
+    --tip-code: #8ab4ff;
+    --r: 10px;
+    --lift: 0 1px 2px rgba(0, 0, 0, .04), 0 2px 8px -4px rgba(0, 0, 0, .08);
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --paper: #161618;
+    --field: #1f1f22;
+    --paper-2: #2a2a2e;
+    --line: #333338;
+    --stone-2: #4a4a50;
+    --ink: #ececf0;
+    --ink-2: #b9b9c0;
+    --ink-3: #85858c;
+    --red: #4c8dff;
+    --red-rgb: 76, 141, 255;
+    --neg-rgb: 148, 163, 184;
+    --input-bg: #18181a;
+    --primary: #3b7cf5;
+    --primary-hover: #5a90f7;
+    --danger: #ff6b5e;
+    --tip-bg: #f0f0f3;
+    --tip-fg: #1d1d1f;
+    --tip-sub: #4b4b52;
+    --tip-code: #185ed6;
+    --lift: 0 1px 2px rgba(0, 0, 0, .3), 0 2px 10px -4px rgba(0, 0, 0, .5);
+  }
+  * { font-variant-ligatures: none !important; font-feature-settings: "calt" 0, "liga" 0 !important; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--paper); color: var(--ink);
+    font: 14px/1.5 var(--sans); -webkit-font-smoothing: antialiased;
+  }
+  .app {
+    height: 100vh; max-width: 1280px; margin: 0 auto; padding: 0 24px 20px;
+    display: grid; grid-template-rows: auto auto 1fr; grid-template-columns: minmax(0, 1fr); gap: 16px;
+  }
+
+  /* Sidebar, as in LM Studio: one row per page. The toggle folds it to a rail of icons. Same block in index.html. */
+  body { display: flex; }
+  .app { flex: 1; min-width: 0; }
+  .side {
+    position: sticky; top: 0; flex: none; width: 200px; height: 100vh; display: flex; flex-direction: column; gap: 2px;
+    padding: 0 10px 12px; background: var(--paper-2); border-right: 1px solid var(--line); overflow: hidden; transition: width .15s;
+  }
+  .side-top { display: flex; align-items: center; height: 64px; }
+  .side a, .side-toggle {
+    display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 9px; border-radius: 8px; flex: none;
+    color: var(--ink); text-decoration: none; font: 500 14px var(--sans); white-space: nowrap;
+  }
+  .side-toggle { width: 36px; justify-content: center; padding: 0; border: 0; background: transparent; color: var(--ink-2); cursor: pointer; }
+  .side a:hover, .side-toggle:hover { background: rgba(var(--shadow-rgb), .06); }
+  .side a[aria-current="page"] { background: rgba(var(--red-rgb), .14); }
+  .side svg { width: 18px; height: 18px; flex: none; color: var(--ink-2); }
+  .side a[aria-current="page"] svg { color: var(--red); }
+  :root[data-side="closed"] .side { width: 57px; }
+  :root[data-side="closed"] .side a span { display: none; }
+
+  /* Top bar */
+  .top { display: flex; align-items: center; gap: 12px; height: 64px; border-bottom: 1px solid var(--line); }
+  h1 { font-size: 17px; font-weight: 600; margin: 0; display: flex; align-items: center; gap: 10px; white-space: nowrap; }
+  h1::before { content: ""; width: 14px; height: 14px; background: var(--red); }
+  .top .spacer { flex: 1; }
+  .hdr-lbl { font-size: 15px; font-weight: 600; margin-left: 12px; white-space: nowrap; }
+  .hdr-btn {
+    height: 32px; padding: 0 14px; white-space: nowrap; flex: none; border-radius: 8px; cursor: pointer; margin-right: 4px;
+    border: 1px solid var(--line); background: var(--field); color: var(--ink-2); font: 500 13px var(--sans);
+  }
+  .hdr-btn:hover { color: var(--ink); border-color: var(--stone-2); }
+
+  .field {
+    font: 15px var(--sans); color: var(--ink);
+    background: var(--field); border: 1px solid var(--line); border-radius: 8px;
+    height: 40px; padding: 0 12px; outline: none;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .field:hover { border-color: var(--stone-2); }
+  .field:focus { border-color: var(--ink); box-shadow: 0 0 0 3px rgba(var(--red-rgb), .18); }
+  select.field {
+    appearance: none; cursor: pointer; padding-right: 34px; min-width: 240px; font-weight: 500;
+    background: var(--field) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%232a2927' stroke-width='1.6'/%3E%3C/svg%3E") no-repeat right 12px center;
+  }
+  :root[data-theme="dark"] select.field { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23b9b9c0' stroke-width='1.6'/%3E%3C/svg%3E"); }
+  select.field.ex { height: 48px; min-width: 0; width: 100%; font-weight: 400; }
+  #embModel { min-width: 400px; }  /* the select measures its options at weight 400, so a long name at 500 was cut */
+  #chatModel { min-width: 220px; }
+
+  /* Composer */
+  .composer { background: var(--field); border: 1px solid var(--line); border-radius: var(--r); padding: 16px 18px; box-shadow: var(--lift); }
+  .prompt-grid { display: grid; grid-template-columns: 260px 1fr auto; gap: 8px 12px; align-items: start; }
+  .prompt-grid.grp { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--paper-2); }
+  .settings.in { margin-top: 2px; padding-top: 0; border-top: 0; }  /* the settings sit under the input that they change */
+  .lbl { font-size: 14px; font-weight: 600; color: var(--ink); }
+  .lbl-s { font-size: 12px; color: var(--ink-3); }
+  .opts { margin-top: 12px; border-top: 1px solid var(--paper-2); }
+  .opt > summary {
+    list-style: none; cursor: pointer; user-select: none; display: flex; align-items: center; gap: 8px;
+    height: 40px; padding: 0; font-size: 14px;
+  }
+  .opt > summary::-webkit-details-marker { display: none; }
+  .opt > summary:hover .opt-title, .opt > summary:hover .chev { color: var(--red); }
+  .opt[open] > summary .chev { transform: rotate(90deg); }
+  .opt-title { font-weight: 600; color: var(--ink); }
+  .opt-state { color: var(--ink-3); font-size: 13px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .opt-body { display: grid; grid-template-columns: 260px 1fr 124px; gap: 6px 12px; padding: 0 0 14px; align-items: start; }
+  .chev { width: 16px; height: 16px; flex: none; display: grid; place-items: center; color: var(--ink-3); transition: transform .15s; }
+  .chev::before { content: ""; width: 6px; height: 6px; border: solid currentColor; border-width: 0 1.6px 1.6px 0; transform: rotate(-45deg); }
+
+  .input {
+    flex: 1; min-width: 0; resize: none; display: block;
+    font: 16px/1.5 var(--sans); color: var(--ink);
+    background: var(--input-bg); border: 1px solid var(--stone-2); border-radius: 8px;
+    padding: 11px 14px; min-height: 48px; outline: none;
+    box-shadow: inset 0 1px 2px rgba(var(--shadow-rgb), .06);
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .input:hover { border-color: var(--ink-3); }
+  .input:focus { border-color: var(--ink); box-shadow: 0 0 0 3px rgba(var(--red-rgb), .18); }
+  .input::placeholder { color: var(--ink-3); }
+  #docs { font-size: 14px; }
+  .input-wrap { position: relative; min-width: 0; }
+  .input-wrap .input { width: 100%; padding-right: 140px; }
+  .input-tools { position: absolute; top: 9px; right: 22px; display: flex; gap: 6px; }  /* clear of the scroll bar of a long text */
+  .input-tools .copy { margin: 0; }
+  .input-tools .copy[hidden] { display: none; }
+
+  .copy {
+    flex: none; display: inline-grid; place-items: center; width: 30px; height: 30px; margin-left: auto; padding: 0;
+    border: 1px solid var(--line); border-radius: 7px; cursor: pointer; color: var(--ink-2);
+    background: var(--field); box-shadow: 0 1px 0 rgba(var(--shadow-rgb), .06);
+    transition: color .15s, background .15s, border-color .15s;
+  }
+  .copy svg { width: 15px; height: 15px; }
+  .copy:hover { color: var(--ink); border-color: var(--stone-2); background: var(--input-bg); }
+  .copy:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+  .copy.done { color: var(--on-primary); background: var(--primary); border-color: var(--primary); }
+  #delDoc:hover, #delQ:hover { color: var(--danger); }
+
+  .btn {
+    font: 600 15px var(--sans); height: 44px; padding: 0 22px; border-radius: 8px; cursor: pointer;
+    border: 1px solid var(--primary); background: var(--primary); color: var(--on-primary);
+    display: inline-flex; align-items: center; gap: 8px; transition: background .15s;
+  }
+  .btn:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .btn.primary { height: 48px; width: 124px; padding: 0; justify-content: center; flex: none; }
+
+  /* Settings row: same controls as index.html */
+  .settings { display: flex; align-items: flex-start; gap: 10px 24px; flex-wrap: wrap; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--paper-2); }
+  .ctl { display: flex; flex-direction: column; gap: 4px; }
+  .ctl.grow { flex: 1 1 150px; max-width: 240px; }
+  .ctl-label { display: flex; align-items: center; gap: 12px; white-space: nowrap; height: 22px; font-size: 14px; font-weight: 500; color: var(--ink-2); }
+  .ctl-row { display: flex; align-items: center; gap: 12px; height: 36px; }
+  .ctl-row input[type=range] { flex: 1; width: 0; min-width: 70px; }
+  .ctl output { font: 500 15px var(--mono); color: var(--ink); min-width: 36px; }
+  .ctl[hidden] { display: none; }
+  .tipped { cursor: help; text-decoration: underline dotted var(--stone-2); text-underline-offset: 4px; }
+  .chat-set { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 10px 24px; padding: 0 0 14px; }
+  .chat-set .ctl { flex: 1 1 200px; max-width: 280px; }
+  .chat-hint { flex-basis: 100%; font-size: 12.5px; line-height: 1.5; }
+  .radio { display: inline-flex; align-items: center; gap: 5px; font-weight: 500; color: var(--ink); cursor: pointer; }
+  .radio input { accent-color: var(--red); width: 15px; height: 15px; margin: 0; cursor: pointer; }
+  .seg { display: inline-flex; background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 3px; }
+  .ctl .seg { height: 36px; align-self: flex-start; }
+  .seg button {
+    font: 500 13px var(--sans); color: var(--ink-2); background: transparent; border: 0;
+    height: 28px; padding: 0 10px; border-radius: 6px; cursor: pointer;
+  }
+  .seg button:hover { color: var(--ink); }
+  .seg button[aria-pressed="true"] { background: var(--primary); color: var(--on-primary); }
+  .seg button:disabled { opacity: .4; cursor: default; }
+  input[type=range] { -webkit-appearance: none; appearance: none; width: 150px; height: 22px; background: transparent; cursor: pointer; margin: 0; }
+  input[type=range]::-webkit-slider-runnable-track { height: 6px; border-radius: 3px; background: linear-gradient(var(--primary), var(--primary)) 0 / var(--fill, 50%) 100% no-repeat, var(--paper-2); }
+  input[type=range]::-moz-range-track { height: 6px; border-radius: 3px; background: var(--paper-2); }
+  input[type=range]::-moz-range-progress { height: 6px; border-radius: 3px; background: var(--primary); }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; margin-top: -7px; border-radius: 50%; background: var(--field); border: 2px solid var(--primary); box-shadow: 0 1px 3px rgba(0,0,0,.15); }
+  input[type=range]::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: var(--field); border: 2px solid var(--primary); }
+  .error { color: var(--danger); font-size: 14px; padding: 8px 2px 0; }
+  .error:empty { display: none; }
+
+  /* Main: the output panel */
+  .main { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; min-height: 0; }
+  .panel { background: var(--field); border: 1px solid var(--line); border-radius: var(--r); display: flex; flex-direction: column; min-height: 0; box-shadow: var(--lift); }
+  .panel-head {
+    display: flex; align-items: center; gap: 20px; padding: 12px 18px; border-bottom: 1px solid var(--paper-2);
+    font-size: 13px; color: var(--ink-3); min-height: 46px; flex-wrap: wrap; flex: none;
+  }
+  .stats b { color: var(--ink); font-weight: 600; font-family: var(--mono); }
+  .stats > span + span { margin-left: 12px; }
+  .output { flex: 1; overflow-y: auto; position: relative; }  /* relative: offsetTop of a step is measured from here */
+  .sec { border-bottom: 1px solid var(--paper-2); }
+  .sec > summary {
+    position: sticky; top: 0; z-index: 2; list-style: none; cursor: pointer; user-select: none;
+    display: flex; align-items: center; gap: 8px; min-height: 46px; padding: 8px 18px 8px 16px;
+    background: var(--field); border-bottom: 1px solid transparent;
+    font: 600 13px var(--sans); color: var(--ink);
+  }
+  .sec[open] > summary { border-bottom-color: var(--paper-2); }
+  .sec > summary:hover { background: color-mix(in srgb, var(--field) 94%, var(--ink)); }
+  .sec > summary::-webkit-details-marker { display: none; }
+  .sec > summary .sub { font: 400 12px var(--sans); color: var(--ink-3); }
+  .sec[open] > summary .chev { transform: rotate(90deg); }
+  .sec-body { padding: 14px 22px 18px; }
+  .hint { color: var(--ink-3); margin: 0; }
+  .empty { display: block; font: 15px/1.6 var(--sans); color: var(--ink-3); }
+
+  /* Explanations stay quiet: small grey text in a light box. The data is the focus. */
+  .lede, .explain {
+    margin: 0 0 16px; padding: 9px 14px; border-radius: 8px;
+    background: rgba(var(--shadow-rgb), .025); font-size: 12.5px; line-height: 1.55; color: var(--ink-3);
+  }
+  .lede code, .explain code { font-size: 11.5px; }
+  .explain p { margin: 0; }
+  .explain > p:first-child { color: var(--ink-2); }
+  .explain ul { margin: 4px 0 0; padding-left: 18px; }
+  .more { margin-top: 4px; }
+  .more > summary { display: inline; cursor: pointer; font-weight: 500; }
+  .more > summary:hover { color: var(--red); }
+  .more p { margin-top: 2px; }
+  .steps { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; margin-right: auto; }
+  .steps button {
+    display: inline-flex; align-items: center; gap: 7px; height: 30px; padding: 0 10px 0 5px; border-radius: 15px;
+    border: 0; background: transparent; color: var(--ink); font: 600 13px var(--sans); cursor: pointer;
+  }
+  .steps button:hover { background: rgba(var(--shadow-rgb), .05); }
+  .steps .arrow { color: var(--stone-2); }
+  .steps .phase { font: 500 10.5px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); margin: 0 4px 0 2px; }
+  .steps .phase + button { margin-left: 0; }
+  .steps .gap { width: 1px; height: 18px; background: var(--line); margin: 0 10px; }
+  .stepnum {
+    display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; flex: none;
+    background: var(--paper-2); color: var(--ink-3); font: 600 11px var(--sans);
+  }
+
+  /* Cards: every output sits in a bordered card with a header bar */
+  .card { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--field); min-width: 0; }
+  .card + .card { margin-top: 16px; }
+  .card-head {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 6px 24px; padding: 10px 14px;
+    background: var(--paper); border-bottom: 1px solid var(--line); font-size: 13px; color: var(--ink-2);
+  }
+  .card-head h3 { margin: 0; font: 600 13px var(--sans); color: var(--ink); }
+  .card-head .right { margin-left: auto; }
+  .card-foot { border-top: 1px solid var(--line); border-bottom: 0; }
+  .card-body { padding: 14px; }
+  .spec { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+  .spec span { font: 500 10.5px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
+  .spec b { font: 500 12.5px var(--mono); color: var(--ink); white-space: pre; }
+  .two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+  .two .card + .card { margin-top: 0; }
+  .col-head { font: 500 10.5px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
+
+  [data-tip] { cursor: help; }
+  #tip {
+    position: fixed; z-index: 50; max-width: 340px; padding: 10px 12px; border-radius: 8px; pointer-events: none;
+    background: var(--tip-bg); color: var(--tip-fg); font: 13px/1.45 var(--sans); box-shadow: 0 8px 24px -6px rgba(0,0,0,.35);
+    opacity: 0; transform: translateY(2px); transition: opacity .12s, transform .12s;
+  }
+  #tip.show { opacity: 1; transform: none; }
+  #tip b { display: block; font-weight: 600; margin-bottom: 4px; }
+  #tip span { display: block; color: var(--tip-sub); }
+
+
+
+  /* ---- Memory page: two chats side by side, same messages, different memory methods */
+  /* align-self: the body is a flex row of 100% height; without it, the page is stretched to the window height and the panels overlap. */
+  .app { height: auto; min-height: 100vh; grid-template-rows: auto; align-self: flex-start; align-content: start; }
+  .panel { flex: none; }
+  html, body { height: auto; min-height: 100vh; }  /* the page is taller than the window: the body must grow with it */
+  #embModel { min-width: 300px; }
+  .lede { margin-bottom: 14px; }
+  .lede-note { display: block; margin-top: 6px; }
+  .lede-note b { color: var(--ink-2); font-weight: 600; }
+  .linkbtn { border: 0; background: none; padding: 0; font: inherit; color: var(--red); cursor: pointer; }
+  .linkbtn:hover { text-decoration: underline; }
+  .preset-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .preset-row select.field { width: 340px; max-width: 100%; height: 36px; font-weight: 400; font-size: 14px; }
+  .btn.small { height: 36px; padding: 0 18px; font-size: 14px; }
+  .btn.ghost { background: var(--field); color: var(--ink); border-color: var(--line); font-weight: 500; }
+  .btn.ghost:hover { background: var(--input-bg); border-color: var(--stone-2); }
+  .ex-card { margin-top: 12px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13.5px; color: var(--ink-2); }
+  .chip { display: inline-flex; gap: 6px; align-items: center; height: 28px; padding: 0 10px; border-radius: 14px; background: var(--paper-2); color: var(--ink); }
+  .chip b { font-weight: 700; }
+  .vs { color: var(--ink-3); font-size: 12.5px; }
+  .look { margin-left: 8px; color: var(--ink-3); }
+  .info { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; border: 1px solid var(--stone-2); color: var(--ink-3); font: 600 11px/1 var(--sans); cursor: help; flex: none; }
+  .info:hover, .info:focus { color: var(--ink); border-color: var(--ink-3); outline: none; }
+  .lede .more { display: inline; }
+  .lede .more[open] { display: block; }
+  .lede .more > summary { margin-left: 6px; color: var(--red); }
+  .lede .more p { margin: 6px 0 0; }
+  .ex-card .k { font: 500 10.5px/20px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
+  .ex-card b { color: var(--ink); font-weight: 600; }
+  .status { font-size: 12.5px; color: var(--ink-3); padding: 10px 2px 0; }
+  .status:empty { display: none; }
+
+  .main { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .lane-head { display: flex; align-items: flex-end; gap: 10px 16px; flex-wrap: wrap; padding: 12px 16px; border-bottom: 1px solid var(--paper-2); }
+  .lane-badge { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 7px; background: var(--ink); color: var(--field); font: 700 14px var(--sans); align-self: center; margin-top: 18px; }
+  .pick { display: flex; flex-direction: column; gap: 3px; }
+  .pick > span { font-size: 12.5px; font-weight: 500; color: var(--ink-2); }
+  .pick select.field { height: 34px; min-width: 0; font-size: 13.5px; font-weight: 400; }
+  .pick.stm select { width: 210px; }
+  .pick.ltm select { width: 160px; }
+  .lane-info { align-self: center; margin-top: 18px; }
+  .chatlog { min-height: 300px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+  .bubble { max-width: 88%; padding: 8px 12px; border-radius: 12px; font-size: 14px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+  .bubble.user { align-self: flex-end; background: var(--paper-2); border-bottom-right-radius: 4px; }
+  .bubble.assistant { align-self: flex-start; background: var(--field); border: 1px solid var(--line); border-bottom-left-radius: 4px; }
+  .bubble .wait { color: var(--ink-3); }
+  .turn-foot {
+    align-self: flex-start; margin-top: -4px; display: inline-flex; gap: 6px; align-items: center; padding: 2px 8px; border-radius: 10px;
+    font: 12px var(--sans); color: var(--ink-3); background: transparent; border: 1px solid transparent; cursor: pointer; text-align: left;
+  }
+  .turn-foot:hover { color: var(--ink); border-color: var(--line); }
+  .turn-foot.on { color: var(--ink); background: rgba(var(--red-rgb), .1); }
+  .turn-foot b { font: 600 12px var(--mono); color: var(--ink-2); }
+  .turn-foot .chev { width: 12px; height: 12px; }
+  .turn-foot.on .chev { transform: rotate(90deg); }
+  .sent { flex: none; }
+  .sent .card-head { padding: 7px 12px; font-size: 12px; }
+  .saved-card { flex: none; border: 1px solid rgba(var(--red-rgb), .35); border-radius: 8px; background: rgba(var(--red-rgb), .05); padding: 8px 12px; font-size: 13px; }
+  .saved-card.off { border-color: var(--line); background: var(--paper); }
+  .saved-card.off .saved-hd, .saved-card.off .plus { color: var(--ink-3); }
+  .saved-card.off .tx { color: var(--ink-3); }
+  .saved-hd { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; font-weight: 600; color: var(--red); margin-bottom: 4px; }
+  .saved-row { display: grid; grid-template-columns: 14px minmax(0, 1fr) auto; gap: 8px; align-items: baseline; padding: 2px 0; }
+  .saved-row .plus { color: var(--red); font-weight: 700; }
+  .saved-row .nm { font: 11px var(--mono); color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; }
+  .newchat-line { display: flex; align-items: center; gap: 10px; font-size: 11.5px; color: var(--ink-3); flex: none; }
+  .newchat-line::before, .newchat-line::after { content: ""; flex: 1; border-top: 1px dashed var(--stone-2); }
+  .chat-empty { margin: auto; text-align: center; color: var(--ink-3); font-size: 14px; max-width: 320px; line-height: 1.6; }
+  /* No inner scroll: each chat grows with its messages, so one screenshot shows the whole run.
+     Subgrid: the head, chat, stats and summary of A and B share rows, so the stats line up. */
+  .lane { overflow: hidden; display: grid; grid-row: span 4; grid-template-rows: subgrid; gap: 0; }
+  .lane-foot { border-top: 1px solid var(--paper-2); padding: 10px 16px; font-size: 12.5px; color: var(--ink-2); display: grid; gap: 4px; min-height: 58px; background: var(--paper); }
+  .lane-foot b { font: 600 12.5px var(--mono); color: var(--ink); }
+  .lane-foot .row { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  .lane-foot .k { min-width: 150px; color: var(--ink-3); }
+  .spark { display: inline-flex; align-items: flex-end; gap: 2px; height: 16px; vertical-align: middle; margin-right: 4px; }
+  .spark i { width: 6px; background: var(--primary); border-radius: 1px; opacity: .8; }
+
+  .sendbar { padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+  .send-row { display: flex; gap: 10px; align-items: flex-end; }
+  .send-row .input { flex: 1; }
+  .send-row .btn { height: 48px; width: 96px; justify-content: center; padding: 0; flex: none; }
+  .send-tools { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; font-size: 12.5px; color: var(--ink-3); }
+  .send-tools .btn { height: 32px; padding: 0 12px; font-size: 13px; }
+
+  .panel-head h2 { margin: 0; font: 600 14px var(--sans); color: var(--ink); }
+  .panel-head .sub { font-size: 12.5px; color: var(--ink-3); }
+  .msg { display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 8px; padding: 7px 12px; }
+  .msg + .msg { border-top: 1px solid var(--paper-2); }
+  .role { font: 500 10.5px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); padding-top: 2px; }
+  .msg-text { font: 12px/1.55 var(--mono); white-space: pre-wrap; word-break: break-word; color: var(--ink); }
+  .msg.out { background: repeating-linear-gradient(-45deg, transparent 0 6px, rgba(var(--shadow-rgb), .022) 6px 12px); }
+  .msg.out .msg-text, .msg.out .role { color: var(--ink-3); opacity: .7; text-decoration: line-through; text-decoration-color: rgba(var(--shadow-rgb), .18); }
+  .msg.new { box-shadow: inset 3px 0 0 var(--primary); }
+  .tag { display: inline-block; margin: 0 0 4px; padding: 0 7px; border-radius: 9px; font: 500 11px/18px var(--sans); text-decoration: none; color: var(--ink-2); background: var(--paper-2); }
+  .msg.out .tag { text-decoration: none; opacity: 1; }
+  .blk { display: block; margin: 4px 0 2px; padding: 6px 8px; border-radius: 6px; background: rgba(var(--red-rgb), .07); }
+  .blk .tag { background: rgba(var(--red-rgb), .14); color: var(--red); }
+  .sc { display: inline-block; min-width: 40px; font: 500 11px var(--mono); color: var(--red); }
+  .lane-sum { border-top: 1px solid var(--paper-2); padding: 10px 16px; }
+  .lane-sum[hidden] { display: none; }
+  .sum-hd { display: flex; gap: 10px; align-items: baseline; white-space: nowrap; overflow: hidden; font-size: 12.5px; color: var(--ink-3); height: 20px; }
+  .sum-hd > span { overflow: hidden; text-overflow: ellipsis; }
+  .sum-hd .upd { flex: none; }
+  .sum-hd b { color: var(--ink); font-size: 13px; font-weight: 600; }
+  .sum-hd .upd { color: var(--red); }
+  .sum-text { margin-top: 6px; min-height: 40px; padding: 8px 10px; border-radius: 6px; background: rgba(var(--red-rgb), .06); font: 12.5px/1.55 var(--mono); color: var(--ink); white-space: pre-wrap; }
+  .sum-text .ph { color: var(--ink-3); font-family: var(--sans); font-style: italic; }
+  details.idx.sum-prompt > summary { padding: 6px 0 0; border: 0; line-height: 20px; }
+  .ph-line { padding-top: 6px; line-height: 20px; font-size: 12.5px; color: var(--ink-3); }
+  .pre { margin: 0; padding: 10px 14px; font: 12px/1.6 var(--mono); white-space: pre-wrap; word-break: break-word; color: var(--ink-2); background: var(--input-bg); }
+  .note { padding: 8px 12px; border-top: 1px solid var(--paper-2); background: rgba(var(--shadow-rgb), .025); color: var(--ink-3); font-size: 12px; line-height: 1.5; }
+  .note code { font-size: 11.5px; }
+
+  .facts-list { padding: 4px 0; }
+  .fact { display: grid; grid-template-columns: minmax(0, 1fr) auto 30px; gap: 10px; align-items: center; padding: 6px 18px; }
+  .fact + .fact { border-top: 1px solid var(--paper-2); }
+  .fact-text { font-size: 13px; line-height: 1.45; min-width: 0; }
+  .fact-text small { display: block; font: 11.5px var(--mono); color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .type { font: 500 11px/18px var(--sans); padding: 0 7px; border-radius: 9px; background: var(--paper-2); color: var(--ink-2); white-space: nowrap; }
+  .fact .copy { width: 26px; height: 26px; margin: 0; }
+  .fact .copy:hover { color: var(--danger); }
+  .card-tools { display: flex; gap: 8px; flex-wrap: wrap; padding: 10px 18px; border-top: 1px solid var(--line); background: var(--paper); align-items: center; border-radius: 0 0 var(--r) var(--r); }
+  .card-tools .btn { height: 32px; padding: 0 12px; font-size: 13px; }
+  .card-tools .hint { font-size: 12px; margin-left: auto; }
+  .card-tools code { font-size: 11.5px; }
+  .stores { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 24px; padding: 12px 18px; border-bottom: 1px solid var(--line); background: rgba(var(--shadow-rgb), .02); }
+  .store { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; color: var(--ink-2); min-width: 0; }
+  .store b { color: var(--ink); font-weight: 600; }
+  .store small { display: block; color: var(--ink-3); font-size: 12px; margin-top: 2px; }
+  .store code { font-size: 11.5px; }
+  .badges { display: inline-flex; gap: 6px; align-items: center; }
+  .badge { font: 500 11px/18px var(--sans); padding: 0 7px; border-radius: 9px; border: 1px solid transparent; white-space: nowrap; flex: none; }
+  .badge.file { background: var(--paper-2); color: var(--ink-2); }
+  .badge.vec { background: rgba(var(--red-rgb), .12); color: var(--red); cursor: pointer; }
+  button.badge.vec:hover, .badge.vec.on { border-color: var(--red); }
+  .badge.none { color: var(--ink-3); border: 1px dashed var(--stone-2); }
+  .store .badge { margin-top: 1px; }
+  .vec-line { grid-column: 1 / -1; display: block; font: 11.5px/1.5 var(--mono); color: var(--ink-2); background: var(--input-bg); border: 1px solid var(--paper-2); border-radius: 6px; padding: 5px 8px; overflow-x: auto; white-space: nowrap; }
+  .vec-line span { color: var(--ink-3); margin-left: 6px; }
+  /* Tabs as folder tabs: the open tab has the color of its pane and joins it; the other tab sits behind. */
+  .tabbox { display: grid; min-width: 0; }
+  .tabs { display: flex; gap: 2px; padding: 0 10px; position: relative; z-index: 1; }
+  .tabs button {
+    display: inline-flex; align-items: center; gap: 8px; height: 42px; padding: 0 18px; margin-bottom: -1px;
+    border: 1px solid transparent; border-bottom: 0; border-radius: 9px 9px 0 0; background: transparent;
+    font: 600 14px var(--sans); color: var(--ink-3); cursor: pointer;
+  }
+  .tabs button:hover { color: var(--ink); background: rgba(var(--shadow-rgb), .04); }
+  .tabs button[aria-selected="true"] { color: var(--ink); background: var(--paper-2); border-color: var(--line); box-shadow: inset 0 3px 0 var(--primary); }
+  .tabs .cnt { font: 500 12px var(--sans); color: var(--ink-3); }
+  .tabs .newb { font: 600 11px/18px var(--sans); padding: 0 7px; border-radius: 9px; background: var(--primary); color: var(--on-primary); }
+  .tabs .newb[hidden] { display: none; }
+  .tabpane { display: grid; gap: 16px; min-width: 0; padding: 16px; background: var(--paper-2); border: 1px solid var(--line); border-radius: var(--r); }
+  .tabpane[hidden] { display: none; }
+  .small-btn { height: 30px !important; padding: 0 12px !important; font-size: 12.5px !important; }
+  .flow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px 18px; border-bottom: 1px solid var(--paper-2); }
+  .flow .step { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+  .flow .step b { font-weight: 600; color: var(--ink); }
+  .flow .step small { display: block; font-size: 11.5px; color: var(--ink-3); }
+  .flow .arrow { color: var(--stone-2); }
+  .stores2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; padding: 14px 18px 18px; }
+  .store-col { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; min-width: 0; align-self: start; }
+  .store-col.used { border-color: rgba(var(--red-rgb), .55); box-shadow: 0 0 0 1px rgba(var(--red-rgb), .25); }
+  .col-hd { padding: 9px 12px; background: var(--paper); border-bottom: 1px solid var(--line); font-size: 12.5px; color: var(--ink-2); display: grid; gap: 2px; }
+  .col-hd .t { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .col-hd b { font-size: 13px; color: var(--ink); font-weight: 600; }
+  .col-hd code { font-size: 11.5px; }
+  .col-hd small { color: var(--ink-3); font-size: 12px; }
+  .uses { font: 500 11px/18px var(--sans); padding: 0 7px; border-radius: 9px; background: rgba(var(--red-rgb), .12); color: var(--red); }
+  .uses.no { background: var(--paper-2); color: var(--ink-3); }
+  .item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 8px; padding: 7px 12px; align-items: center; }
+  .item + .item { border-top: 1px solid var(--paper-2); }
+  .item.new { background: rgba(var(--red-rgb), .08); }
+  .item .nm { font: 11.5px var(--mono); color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .item .tx { font-size: 13px; line-height: 1.4; min-width: 0; }
+  .item .vc { font: 11px var(--mono); color: var(--red); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .item .vc.none { color: var(--ink-3); font-family: var(--sans); font-style: italic; }
+  .item .copy { width: 26px; height: 26px; margin: 0; grid-row: span 2; }
+  .item .copy:hover { color: var(--danger); }
+  .col-empty { padding: 12px; color: var(--ink-3); font-size: 13px; }
+  .facts-empty { padding: 12px 18px; color: var(--ink-3); font-size: 13px; }
+  details.idx > summary { cursor: pointer; padding: 8px 18px; font-size: 12.5px; color: var(--ink-2); border-top: 1px solid var(--paper-2); }
+  details.idx > summary:hover { color: var(--red); }
+
+  @media (max-width: 1000px) {
+    .main { grid-template-columns: minmax(0, 1fr); }
+  }
+  @media (max-width: 860px) {
+    .app { padding: 0 16px 16px; }
+    select.field, #embModel, #chatModel { min-width: 0; width: 100%; }
+    .top { flex-wrap: wrap; height: auto; padding: 12px 0; }
+    .hdr-lbl { margin-left: 0; }
+    .stores, .stores2 { grid-template-columns: 1fr; }
+    .msg { grid-template-columns: 1fr; gap: 2px; }
+    .bubble { max-width: 94%; }
+  }
+</style>
+<script>
+  // Saved choice, else the system setting. Set before the page draws, so there is no flash.
+  let t = null;
+  try { t = localStorage.getItem("theme"); } catch {}
+  document.documentElement.dataset.theme = t || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+  // Sidebar: always folded on a narrow screen; else the saved choice, or open.
+  const narrow = matchMedia("(max-width: 860px)");
+  const sideFor = () => { let v = null; try { v = localStorage.getItem("sidebar"); } catch {} return narrow.matches ? "closed" : v || "open"; };
+  document.documentElement.dataset.side = sideFor();
+  narrow.addEventListener("change", () => document.documentElement.dataset.side = sideFor());
+</script>
+</head>
+<body>
+<nav class="side" aria-label="Pages">
+  <div class="side-top"><button type="button" class="side-toggle" id="sideToggle" title="Show or hide the sidebar" aria-label="Show or hide the sidebar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/></svg></button></div>
+  <a href="/" title="Trace: tokens and their probabilities"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 6h5M12 6h8M4 12h10M17 12h3M4 18h3M10 18h10"/></svg><span>Trace</span></a>
+  <a href="/embeddings.html" title="Tokens and embeddings: the input of the model"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="5" height="5" rx="1"/><rect x="3" y="14" width="5" height="5" rx="1"/><path d="M11 7.5h10M11 16.5h10M14 5v5M17 5v5M14 14v5M17 14v5"/></svg><span>Embeddings</span></a>
+  <a href="/rag.html" title="RAG: answers from your documents"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h10M4 9h7M4 13h5"/><circle cx="15.5" cy="15.5" r="4"/><path d="M18.5 18.5 21 21"/></svg><span>RAG</span></a>
+  <a href="/memory.html" aria-current="page" title="Memory: what the agent remembers"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 3 8l9 5 9-5-9-5z"/><path d="M3 12.5l9 5 9-5"/><path d="M3 17l9 5 9-5"/></svg><span>Memory</span></a>
+</nav>
+<div class="app">
+  <header class="top">
+    <h1><label for="chatModel">Chat model</label></h1>
+    <select id="chatModel" class="field" aria-label="Chat model"></select>
+    <label for="embModel" class="hdr-lbl">Embedding model</label>
+    <select id="embModel" class="field" aria-label="Embedding model"></select>
+    <span class="spacer"></span>
+    <button type="button" id="resetAll" class="hdr-btn" title="Clear both chats. The saved facts stay.">Reset all</button>
+    <span class="seg" id="theme" role="group" aria-label="Theme">
+      <button data-theme="light" aria-pressed="false">Light</button>
+      <button data-theme="dark" aria-pressed="false">Dark</button>
+    </span>
+  </header>
+
+  <section class="composer" aria-label="Example">
+    <div class="lede">Two chats get the same messages. Each chat uses a different memory method. Compare the answers.
+      <details class="more"><summary>How it works</summary>
+        <p>A language model has no memory. Each request starts empty. The harness (the program around the model) decides what goes into each request.</p>
+        <p><b>Hallucinations:</b> without the facts in the request, the model answers from its training data. It often invents names, dates or links. Memory puts the facts into the request (<button type="button" class="linkbtn" id="toEx4">example 4</button>), but a search can miss a fact and a summary can lose details.</p>
+      </details></div>
+    <div class="preset-row">
+      <label for="preset" class="lbl">Example</label>
+      <select id="preset" class="field"></select>
+      <button type="button" id="play" class="btn small" title="Start two new chats and send the messages of the example to both">Run</button>
+    </div>
+    <div class="ex-card" id="exCard"></div>
+    <div class="status" id="status"></div>
+    <div class="error" id="error"></div>
+  </section>
+
+  <div class="tabbox">
+  <div class="tabs" role="tablist" aria-label="Views">
+    <button type="button" role="tab" data-tab="chats" aria-selected="true">Chats</button>
+    <button type="button" role="tab" data-tab="mem" aria-selected="false">Long-term memory <span class="cnt" id="memCount"></span><span class="newb" id="memNew" hidden></span></button>
+  </div>
+
+  <div class="tabpane" id="pane-chats" role="tabpanel">
+  <div class="main">
+    <section class="panel lane" id="laneA" aria-label="Chat A"></section>
+    <section class="panel lane" id="laneB" aria-label="Chat B"></section>
+  </div>
+
+  <section class="panel sendbar" aria-label="Your message">
+    <div class="send-row">
+      <textarea id="msg" class="input" rows="1" placeholder="Type a message. Both chats get it." title="Enter sends the message to both chats. Shift + Enter adds a line."></textarea>
+      <button id="sendBtn" class="btn" title="Send the message to both chats (Enter)">Send</button>
+    </div>
+    <div class="send-tools">
+      <button type="button" id="newChat" class="btn ghost" title="Start a new chat on both sides. The long-term memory stays.">New chat</button>
+      <button type="button" id="saveFacts" class="btn ghost" title="With text in the box: the model lists the facts in that text. With an empty box: the facts in the chat. The server saves one .md file per fact.">Save facts</button>
+    </div>
+  </section>
+  </div>
+
+  <div class="tabpane" id="pane-mem" role="tabpanel" hidden>
+  <section class="panel" aria-label="Long-term memory">
+    <div class="panel-head"><h2>Long-term memory</h2><span class="sub">stays after a new chat</span>
+      <button type="button" class="btn ghost small-btn" id="loadBook" style="margin-left:auto" title="Save the 10 facts about Sarah and Ilse from the book (example 4). Facts that are already saved are skipped.">Load the book's facts</button>
+      <button type="button" class="btn ghost small-btn" id="clearMem" title="Delete all facts: the .md files and the vectors">Clear long-term memory</button></div>
+    <div class="flow">
+      <div class="step"><span class="stepnum">1</span><b>Chat</b></div><span class="arrow">→</span>
+      <div class="step"><span class="stepnum">2</span><b>Save facts</b></div><span class="arrow">→</span>
+      <div class="step"><span class="stepnum">3</span><b>Files</b></div><span class="arrow">→</span>
+      <div class="step"><span class="stepnum">4</span><b>Chroma</b></div>
+    </div>
+    <div class="stores2">
+      <div class="store-col" id="filesCol"></div>
+      <div class="store-col" id="chromaCol"></div>
+    </div>
+  </section>
+  </div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const fit = (t, max = 160) => { t.style.height = "auto"; t.style.height = Math.min(t.scrollHeight + 2, max) + "px"; };
+const dot = (a, b) => { let s = 0; for (let i = 0; i < a.length; i++) s += a[i] * b[i]; return s; };
+const cosine = (a, b) => dot(a, b) / (Math.sqrt(dot(a, a) * dot(b, b)) || 1);
+const post = (url, body, signal) => fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), signal })
+  .then(async r => { const j = await r.json().catch(() => ({})); if (!r.ok) { const e = new Error(j.error?.message || j.error || `Error ${r.status}`); e.status = r.status; throw e; } return j; });
+const cleanText = t => t.replace(/<think>[\s\S]*?(<\/think>|$)/g, "").replace(/\n{3,}/g, "\n\n").trim();
+
+// The book uses "You are a helpful assistant." The second sentence keeps the answers short, so the two chats are easy to compare.
+const SYSTEM = "You are a helpful assistant. Keep your answers short: one to three sentences.";
+const TEMP = 0, MAX_TOKENS = 400;
+// The prompt of the book's SummarizationMemory, with two more rules (the third and fourth sentences).
+// With the book's exact prompt, Gemma 3 12B copied a long conversation in place of a summary (tested 2026-11-03).
+const SUMMARY_PROMPT = (summary, conversation) => `Update the summary with the new conversation. Write the summary as short sentences in the third person. Keep the names and the facts about the user. Do not copy the conversation.\n\nSummary: ${summary || "(empty)"}\n\nConversation:\n${conversation}\nOutput the updated summary only.`;
+const EXTRACT_PROMPT = `You save long-term memories for an assistant. From the text, list the facts that are useful in a later chat: who the user is, what the user likes or wants, what the user works on, and facts about the people that the user names.
+Write each fact as one short sentence. Keep the names that the text uses, for example "Sarah likes butter chicken." Write "the user" only when the user writes about himself or herself (I, me, my), for example "I'm Sam" gives "The user's name is Sam."
+Type: "user" or "preference" or "project" for a fact about the user, "contact" for a fact about another person.
+Do not save general knowledge, questions, or facts about the assistant. If there are no such facts, return an empty list.`;
+// Task prefixes that the embedding model makers recommend (same as the RAG page).
+const PREFIXES = [[/embeddinggemma/i, "task: search result | query: ", "title: none | text: "], [/nomic-embed/i, "search_query: ", "search_document: "]];
+const prefixesFor = m => { const p = PREFIXES.find(([re]) => re.test(m)); return p ? { query: p[1], doc: p[2] } : { query: "", doc: "" }; };
+
+// ---- The methods. One select per side for each memory type, so no control appears or moves.
+const STM_OPTS = [["none", "None"], ["full", "Full history"], ["trim:1", "Trimming: last 1 turn"], ["trim:2", "Trimming: last 2 turns"],
+  ["trim:3", "Trimming: last 3 turns"], ["trim:5", "Trimming: last 5 turns"], ["summary", "Summary"]];
+const LTM_OPTS = [["off", "Off"], ["files", "Memory files"], ["vector:1", "RAG: top 1"], ["vector:3", "RAG: top 3"], ["vector:5", "RAG: top 5"]];
+const label = (list, v) => list.find(o => o[0] === v)?.[1] || v;
+function parse(stmV, ltmV) {
+  const [stm, keep] = stmV.split(":"), [ltm, k] = ltmV.split(":");
+  return { stm, keep: +keep || 0, ltm, k: +k || 0, stmV, ltmV };
+}
+const methodLabel = o => label(STM_OPTS, o.stmV) + (o.ltm !== "off" ? ` + ${label(LTM_OPTS, o.ltmV)}` : "");
+// One short explanation of the selected methods, under the selects of each side.
+function explain(o) {
+  const s = {
+    none: "None: the harness sends only the new message. The model never gets the earlier messages.",
+    full: "Full history: the harness sends all earlier messages again with each new message. The prompt gets longer with each turn.",
+    trim: `Trimming: the harness sends only the last ${o.keep} turn${o.keep > 1 ? "s" : ""} (a turn is your message and the answer). Older turns are dropped.`,
+    summary: "Summary: after each answer, an extra LLM call updates a short summary. The harness sends the summary in place of the old messages.",
+  }[o.stm];
+  const l = { off: "", files: " Memory files: the index of all saved facts goes into the system prompt, as Claude Code does.",
+    vector: ` RAG: a vector search finds the ${o.k} saved fact${o.k > 1 ? "s" : ""} nearest to the message, and the harness puts ${o.k > 1 ? "them" : "it"} into the message.` }[o.ltm];
+  return s + l;
+}
+
+// ---- Examples from chapter 4 of the book. Each one sends the same messages to A and B.
+// "@new" starts a new chat on both sides; "@save" saves the facts of the chat.
+const BOOK_FACTS = ["Sarah works as a marine biologist studying coral reefs.", "Sarah lives in Lisbon, Portugal.", "Sarah's favorite hobby is rock climbing.",
+  "Sarah's favorite animals are flamingos.", "Sarah speaks fluent Spanish and Portuguese.", "Ilse is a software engineer at a renewable energy startup.",
+  "Ilse lives in Amsterdam, the Netherlands.", "Ilse plays the cello in a local string quartet.", "Ilse's favorite author is Brandon Sanderson.", "Ilse's favorite animals are dolphins."];
+const PRESETS = [
+  { name: "1 · Does the model remember?", a: ["none", "off"], b: ["full", "off"],
+    msgs: ["Hi! We are Maarten and Jay, authors of 'An Illustrated Guide to AI Agents'.", "What are our names?"],
+    what: "You give your names, then you ask for them.",
+    look: "the last answer", why: "The second answer. A does not know the names, because the harness did not send the first message. B knows them. B also uses more prompt tokens." },
+  { name: "2 · What does trimming forget?", a: ["trim:2", "off"], b: ["full", "off"],
+    msgs: ["Hi! I'm reading 'An Illustrated Guide to AI Agents'.", "Why does this book have so many flamingos?", "What is 1+1?", "What is 2+2?", "Which book am I reading?"],
+    what: "You name a book, ask 3 other questions, then ask for the book.",
+    look: "the last answer", why: "The last answer. A keeps only the last 2 turns, so the book is gone. B knows the book, but its prompt gets longer with each turn." },
+  { name: "3 · Can a summary replace the history?", a: ["summary", "off"], b: ["full", "off"],
+    msgs: ["Hi, my name is Sarah. Why are flamingos pink?", "Tell me about yourself.", "What is your favorite color?", "Are you fully autonomous?", "What is my name?"],
+    what: "You give your name, ask 3 other questions, then ask for your name.",
+    look: "the prompt tokens", why: "Both know the name. Compare the prompt tokens per turn: A stays small, B grows. A pays with extra LLM calls (one summary update per turn)." },
+  { name: "4 · Which saved facts go to the model?", a: ["none", "vector:3"], b: ["none", "files"], facts: BOOK_FACTS.map(f => ({ type: "contact", fact: f })),
+    msgs: ["What is Sarah's favorite animal?", "Where does Ilse live?"],
+    what: "The 10 facts about Sarah and Ilse from the book are saved first. Then you ask about them.",
+    look: "what the model got", why: "Both answer. Click “show what the model got”: A gets only the 3 nearest facts in the message, B gets all 10 facts in the system prompt." },
+  { name: "5 · Does it remember you in a new chat?", a: ["full", "files"], b: ["full", "off"],
+    msgs: ["Hi! I'm Sam. I work as a nurse in Utrecht, and I like short answers.", "What is a good quick lunch?", "@save", "@new", "What do you know about me?"],
+    what: "You tell the model about you. The facts are saved, then a new chat starts, and you ask what it knows.",
+    look: "the answer after the new chat", why: "The answer after “new chat”. A reads the saved facts and knows Sam. B has no long-term memory, so it knows nothing." },
+];
+
+// ---- State
+const mkLane = id => ({ id, chat: [], savedUpto: 0, summary: { text: "", upto: 0, lastPrompt: "", calls: 0, busy: false }, extra: 0, open: new Set() });
+const LANES = [mkLane("A"), mkLane("B")];
+let mem = { files: [], index: "", dir: "", vectors: null };  // long-term memory on the server
+let busy = false, ctrl = null;
+let ctxLen = null;
+const localVecs = new Map();    // without Chroma: vectors in the browser, as the book keeps them in a Python list
+const opts = lane => parse($("stm" + lane.id).value, $("ltm" + lane.id).value);
+// The turns of the current chat: after the last "new chat" line.
+const current = lane => { const i = lane.chat.map(t => !!t.divider).lastIndexOf(true); return lane.chat.slice(i + 1); };
+const doneTurns = lane => current(lane).filter(t => t.done && !t.stopped);
+
+// ---- Models
+let modelInfo = [];
+async function loadModels() {
+  try {
+    let list = [];
+    try { list = (await fetch("/api/v1/models").then(r => r.json())).models || []; } catch {}
+    if (!list.length) {
+      const r = await fetch("/v1/models"), j = await r.json();
+      if (!r.ok) throw new Error(j.error?.message || r.status);
+      list = j.data.map(m => ({ key: m.id, type: /embed/i.test(m.id) ? "embedding" : "llm" }));
+    }
+    modelInfo = list;
+    const emb = list.filter(m => m.type === "embedding").map(m => m.key), llm = list.filter(m => m.type === "llm").map(m => m.key);
+    $("chatModel").replaceChildren(...llm.map(k => new Option(k)));
+    $("embModel").replaceChildren(...emb.map(k => new Option(k)));
+    $("chatModel").value = llm.find(k => k === "google/gemma-3-12b") || llm.find(k => /gemma-3/.test(k)) || llm[0];
+    $("embModel").value = emb.find(k => /embeddinggemma/i.test(k)) || emb[0];
+    syncCtxLen();
+  } catch (e) {
+    $("error").textContent = `LM Studio unreachable: ${e.message || e}`;
+  }
+}
+function syncCtxLen() {
+  const m = modelInfo.find(x => x.key === $("chatModel").value);
+  const loaded = m?.loaded_instances?.[0]?.config?.context_length;
+  ctxLen = m ? (loaded || m.max_context_length) : null;
+}
+$("chatModel").onchange = () => { syncCtxLen(); LANES.forEach(l => renderLane(l)); };
+$("embModel").onchange = () => loadMem().then(() => indexFacts()).then(renderFacts);  // a new model needs its own vectors
+
+// ---- Long-term memory: files on the server, vectors in Chroma (or in the browser)
+async function loadMem() {
+  try { mem = await fetch(`/agent-memory?model=${encodeURIComponent($("embModel").value || "")}`).then(r => r.json()); }
+  catch (e) { $("error").textContent = `Memory: ${e.message || e}`; }
+}
+const facts = () => mem.files.filter(f => f.description);
+async function embed(texts, signal) {
+  const model = $("embModel").value;
+  if (!model) throw new Error("LM Studio has no embedding model. Download one, for example EmbeddingGemma.");
+  const j = await post("/v1/embeddings", { model, input: texts }, signal);
+  return j.data.sort((a, b) => a.index - b.index).map(d => d.embedding);
+}
+// Each fact must have a vector of the embedding model. Missing (or changed) facts get one now.
+// Index at write time: each new fact gets its vector when it is saved, so Files and Chroma hold the same facts.
+// A failure does not undo the save: the files stay, and the page says that the vectors are missing.
+async function indexFacts(signal) {
+  try { await syncVectors(signal); }
+  catch (e) { if (e.name === "AbortError") throw e; $("error").textContent = `The facts are saved as files, but not as vectors: ${e.message || e}`; }
+}
+async function syncVectors(signal) {
+  await loadMem();
+  const model = $("embModel").value, pre = prefixesFor(model).doc;
+  if (mem.vectors) {
+    const miss = facts().filter(f => mem.vectors[f.name]?.text !== f.description);
+    if (miss.length) {
+      const vs = await embed(miss.map(f => pre + f.description), signal);
+      await post("/agent-memory/vectors/add", { model, items: miss.map((f, i) => ({ id: f.name, text: f.description, type: f.type || "user", embedding: vs[i] })) }, signal);
+      await loadMem();
+    }
+  } else {
+    const miss = facts().filter(f => !localVecs.has(model + "::" + f.description));
+    if (miss.length) (await embed(miss.map(f => pre + f.description), signal)).forEach((v, i) => localVecs.set(model + "::" + miss[i].description, v));
+  }
+}
+// The k facts nearest to the message. With Chroma, Chroma does the search; without it, the page does (cosine, as the book).
+async function searchFacts(text, k, signal) {
+  if (!facts().length) return [];
+  await syncVectors(signal);
+  const model = $("embModel").value;
+  const [q] = await embed([prefixesFor(model).query + text], signal);
+  if (mem.vectors) return (await post("/agent-memory/vectors/query", { model, embedding: q, k }, signal)).hits;
+  return facts().map(f => ({ id: f.name, text: f.description, score: cosine(q, localVecs.get(model + "::" + f.description)) }))
+    .sort((a, b) => b.score - a.score).slice(0, k);
+}
+
+// ---- The harness: build the messages for one request, from the chat of one side and its methods.
+// rows = every message that "show what the model got" lists, also the messages that are NOT sent (out: the reason).
+function buildContext(lane, text, o, hits) {
+  const rows = [], messages = [];
+  const parts = [{ text: SYSTEM }];
+  if (o.ltm === "files" && facts().length)
+    parts.push({ tag: "saved facts · MEMORY.md", text: `Facts about the user from earlier chats (the memory index):\n${facts().map(f => `- [${f.name.slice(0, -3)}](${f.name}) — ${f.description}`).join("\n")}` });
+  const sum = lane.summary;
+  if (o.stm === "summary" && sum.text && sum.upto)
+    parts.push({ tag: `summary of turns 1–${sum.upto}`, text: `Summary of the conversation so far:\n${sum.text}` });
+  messages.push({ role: "system", content: parts.map(p => p.text).join("\n\n") });
+  rows.push({ role: "system", parts });
+  const done = doneTurns(lane);
+  done.forEach((t, i) => {
+    let out = null;
+    if (o.stm === "none") out = "not sent";
+    else if (o.stm === "trim" && i < done.length - o.keep) out = "trimmed";
+    else if (o.stm === "summary" && i < sum.upto) out = "in the summary";
+    rows.push({ role: "user", text: t.user, out, turn: i + 1 }, { role: "assistant", text: t.assistant, out, turn: i + 1 });
+    if (!out) messages.push({ role: "user", content: t.user }, { role: "assistant", content: t.assistant });
+  });
+  // The new message. With Vector memory, the found facts go into it (the book's RAGMemory format).
+  let content = text;
+  if (o.ltm === "vector" && hits?.length) content = `Context:\n${hits.map(h => h.text).join("\n")}\n\nQuestion: ${text}`;
+  messages.push({ role: "user", content });
+  rows.push({ role: "user", text, hits: o.ltm === "vector" ? hits : undefined, k: o.k, isNew: true });
+  return { messages, rows };
+}
+
+// ---- Send one message to one side
+async function send(lane, text) {
+  const model = $("chatModel").value;
+  if (!model) throw new Error("Select a chat model.");
+  const o = opts(lane);
+  const turn = { user: text, assistant: "", done: false };
+  lane.chat.push(turn);
+  renderLane(lane, true);
+  try {
+    const hits = o.ltm === "vector" ? await searchFacts(text, o.k, ctrl.signal) : null;
+    const { messages, rows } = buildContext(lane, text, o, hits);
+    turn.sent = { messages, rows, ...o };
+    await stream(model, messages, turn, lane);
+    if (o.stm === "summary") await updateSummary(lane, model);
+  } catch (e) {
+    turn.done = true; turn.stopped = true;
+    throw e;
+  } finally { renderLane(lane, true); }
+}
+
+// Stream the answer. Reasoning (thinking) text is not shown: only the answer.
+async function stream(model, messages, turn, lane) {
+  const r = await fetch("/v1/chat/completions", {
+    method: "POST", headers: { "Content-Type": "application/json" }, signal: ctrl.signal,
+    body: JSON.stringify({ model, messages, temperature: TEMP, max_tokens: MAX_TOKENS, stream: true, stream_options: { include_usage: true } }),
+  });
+  if (!r.ok) { const j = await r.json().catch(() => ({})); throw new Error(j.error?.message || j.error || r.status); }
+  const reader = r.body.pipeThrough(new TextDecoderStream()).getReader();
+  let buf = "";
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buf += value;
+    const lines = buf.split("\n");
+    buf = lines.pop();
+    for (const line of lines) {
+      if (!line.startsWith("data:")) continue;
+      const payload = line.slice(5).trim();
+      if (payload === "[DONE]") continue;
+      const j = JSON.parse(payload);
+      if (j.error) throw new Error(j.error.message || j.error);
+      const d = j.choices?.[0]?.delta;
+      if (d?.reasoning_content) turn.thinking = true;
+      if (d?.content) turn.assistant += d.content;
+      if (j.usage) { turn.prompt = j.usage.prompt_tokens; turn.tokens = j.usage.completion_tokens; }
+    }
+    updateBubble(lane, turn);
+  }
+  turn.assistant = cleanText(turn.assistant);
+  turn.done = true;
+}
+
+// After each answer, the book's SummarizationMemory asks the LLM to add the new turns to the summary.
+async function updateSummary(lane, model) {
+  const sum = lane.summary, done = doneTurns(lane), fresh = done.slice(sum.upto);
+  if (!fresh.length) return;
+  const conversation = fresh.map(t => `user: ${t.user}\nassistant: ${t.assistant}\n`).join("");
+  const prompt = SUMMARY_PROMPT(sum.text, conversation);
+  sum.busy = true; renderLane(lane, true);
+  try {
+    const j = await post("/v1/chat/completions", { model, messages: [{ role: "user", content: prompt }], temperature: TEMP, max_tokens: 300 }, ctrl.signal);
+    sum.text = cleanText(j.choices?.[0]?.message?.content || "");
+    sum.upto = done.length; sum.lastPrompt = prompt; sum.calls++;
+    lane.extra++;
+  } finally { sum.busy = false; }
+}
+
+// ---- Save facts: the LLM reads chat A and lists the facts. The server writes one .md file per fact.
+// Both chats get the same user messages, so chat A has the same facts about you as chat B.
+// text: the text in the message box, if there is one. Else the model reads the current chat A.
+async function saveFacts(text) {
+  // Only your messages, and only the ones after the last save. The answers often repeat facts that the
+  // harness took from the long-term memory, so they would be saved again.
+  const lane = LANES[0], fresh = doneTurns(lane).slice(lane.savedUpto);
+  if (!text && !fresh.length) { saveNote("nothing new to save: type a fact, or chat first"); return; }
+  $("saveFacts").textContent = "Saving…";
+  const known = facts().map(f => `- ${f.description}`).join("\n");
+  const transcript = (text ? `user: ${text}` : fresh.map(t => `user: ${t.user}`).join("\n"))
+    + `\n\nFacts that are already saved (do not list them again, also not in other words):\n${known || "(none)"}`;
+  const schema = { type: "object", properties: { facts: { type: "array", items: { type: "object",
+    properties: { type: { type: "string", enum: ["user", "preference", "project", "contact"] }, fact: { type: "string" } }, required: ["type", "fact"] } } }, required: ["facts"] };
+  const j = await post("/v1/chat/completions", { model: $("chatModel").value, temperature: 0, max_tokens: 600,
+    messages: [{ role: "system", content: EXTRACT_PROMPT }, { role: "user", content: transcript }],
+    response_format: { type: "json_schema", json_schema: { name: "facts", strict: true, schema } } }, ctrl.signal);
+  let list = [];
+  try { list = JSON.parse(cleanText(j.choices[0].message.content)).facts || []; } catch { throw new Error("The model did not return a valid list of facts."); }
+  list = list.filter(f => f && typeof f.fact === "string" && f.fact.trim()).slice(0, 50).map(f => ({ type: String(f.type || "user"), fact: f.fact.slice(0, 500) }));
+  if (!list.length) {
+    if (!text) lane.savedUpto = doneTurns(lane).length;
+    saveNote("no new facts found");
+    return;
+  }
+  const r = await post("/agent-memory/add", { facts: list });
+  await loadMem();
+  if (r.added.length) await indexFacts(ctrl.signal);
+  justAdded = new Set(r.added);
+  if (tab !== "mem" && r.added.length) { unseen += r.added.length; renderTabs(); }
+  if (!text) lane.savedUpto = doneTurns(lane).length;
+  // A card in both chats lists each new fact and its file, so the save shows on the Chats tab too.
+  const saved = facts().filter(f => justAdded.has(f.name)).map(f => ({ name: f.name, text: f.description }));
+  LANES.forEach(l => l.chat.push(saved.length ? { saved, note: "saved" } : { note: "no new facts: already saved" }));
+  // Name only the new facts. The server skips a fact that has the same text as a saved fact.
+  renderFacts();
+}
+
+// Start a new chat on one side: a line in the chat, and the short-term memory starts empty.
+function divide(lane) {
+  if (current(lane).some(t => !t.note)) lane.chat.push({ divider: true });
+  lane.summary = { text: "", upto: 0, lastPrompt: "", calls: lane.summary.calls, busy: false };
+  lane.savedUpto = 0;
+}
+function clearLanes() { LANES.forEach((l, i) => LANES[i] = Object.assign(l, mkLane(l.id))); }
+
+// Run a list of items on both sides: a message goes to A, then to B. "@new" and "@save" are actions.
+async function runItems(items) {
+  if (busy) return;
+  setBusy(true); ctrl = new AbortController(); $("error").textContent = "";
+  try {
+    for (const it of items) {
+      if (it === "@new") { LANES.forEach(divide); LANES.forEach(l => renderLane(l, true)); continue; }
+      if (it === "@save" || it.save) { await saveFacts(it.save); LANES.forEach(l => renderLane(l, true)); continue; }
+      for (const lane of LANES) await send(lane, it);
+    }
+    return true;
+  } catch (e) {
+    if (e.name !== "AbortError") $("error").textContent = String(e.message || e);
+    else setStatus("Stopped.");
+    return false;
+  } finally { ctrl = null; setBusy(false); LANES.forEach(l => renderLane(l)); renderFacts(); }
+}
+function setBusy(on) {
+  busy = on;
+  $("sendBtn").textContent = on ? "Stop" : "Send";
+  $("play").textContent = on ? "Stop" : "Run";
+  if (!on) $("saveFacts").textContent = "Save facts";
+  ["newChat", "saveFacts", "clearMem", "loadBook", "preset"].forEach(id => $(id).disabled = on);
+  document.querySelectorAll(".lane select").forEach(s => s.disabled = on);
+}
+function setStatus(t) { $("status").textContent = t; }
+// The result of Save facts, next to the button.
+// The result of Save facts goes into both chats, where you look, as a line or a card.
+function saveNote(t) { LANES.forEach(l => { l.chat.push({ note: t }); renderLane(l, true); }); }
+let justAdded = new Set();  // the files of the last save, marked in the long-term memory
+
+// ---- Rendering: one side
+const fmt = t => esc(t).replace(/\*\*(.+?)\*\*/g, "$1").replace(/^(\s*)[*-]\s+/gm, "$1• ");
+function bubbleHtml(t) {
+  return t.assistant ? fmt(t.assistant) : `<span class="wait">${t.done ? (t.stopped ? "Stopped." : "No answer.") : t.thinking ? "The model is thinking…" : "Waiting for the model…"}</span>`;
+}
+function laneShell(lane) {
+  const sel = (id, list) => `<select id="${id}${lane.id}" class="field">${list.map(([v, l]) => `<option value="${v}">${esc(l)}</option>`).join("")}</select>`;
+  $("lane" + lane.id).innerHTML = `<div class="lane-head"><span class="lane-badge">${lane.id}</span>
+      <label class="pick stm"><span class="tipped" data-tip-title="Short-term memory" data-tip="What the harness sends from this chat. None: only the new message. Full history: all messages. Trimming: only the last turns. Summary: a running summary in place of the old messages.">Short-term memory</span>${sel("stm", STM_OPTS)}</label>
+      <label class="pick ltm"><span class="tipped" data-tip-title="Long-term memory" data-tip="What the harness sends from the saved facts. Memory files: the index of all facts in the system prompt, as Claude Code does. RAG: only the facts nearest to the message, found with a vector search in Chroma.">Long-term memory</span>${sel("ltm", LTM_OPTS)}</label><span class="info lane-info" tabindex="0" id="explain${lane.id}" data-tip-title="What this side sends">i</span></div>
+    <div class="chatlog" id="log${lane.id}"></div>
+    <div class="lane-foot" id="foot${lane.id}"></div>
+    <div class="lane-sum" id="sum${lane.id}"></div>`;
+  for (const k of ["stm", "ltm"]) $(k + lane.id).onchange = () => {
+    if ($("ltm" + lane.id).value !== "off") loadMem().then(renderFacts); else renderFacts();
+    LANES.forEach(l => renderLane(l));  // both: the summary slot depends on both sides
+  };
+}
+function renderLane(lane, scroll) {
+  const o = opts(lane);
+  $("explain" + lane.id).dataset.tip = explain(o);
+  const log = $("log" + lane.id);
+  if (!lane.chat.length) log.innerHTML = `<div class="chat-empty">Click Run, or type a message.</div>`;
+  else log.innerHTML = lane.chat.map((t, i) => t.divider ? `<div class="newchat-line">new chat · the short-term memory is empty</div>`
+    : t.saved ? savedHtml(t, lane) : t.note ? `<div class="newchat-line">${esc(t.note)}</div>` : turnHtml(lane, t, i)).join("");
+  if (scroll) log.scrollTop = log.scrollHeight;
+  // The summary has a fixed place under the chat. It changes only when its text changes, so it does not jump.
+  const sum = $("sum" + lane.id), html = summaryHtml(lane);
+  if (sum._html !== html) { sum.innerHTML = html; sum._html = html; }
+  sum.hidden = !html;
+  $("foot" + lane.id).innerHTML = footHtml(lane);
+}
+// The save is shared, but a side with long-term memory Off does not use it: that card is grey and says so.
+function savedHtml(t, lane) {
+  const list = t.saved, off = opts(lane).ltm === "off";
+  return `<div class="saved-card${off ? " off" : ""}"><div class="saved-hd"><span>${esc(t.title || "Saved to long-term memory")} · ${list.length} fact${list.length === 1 ? "" : "s"}${t.sub ? ` · ${esc(t.sub)}` : ""}${off ? ` · not used by chat ${lane.id} (Off)` : ""}</span>
+      <button type="button" class="linkbtn" data-open-mem>View</button></div>
+    ${list.map(f => `<div class="saved-row"><span class="plus">+</span><span class="tx">${esc(f.text)}</span><span class="nm">${esc(f.name)}</span></div>`).join("")}</div>`;
+}
+document.addEventListener("click", e => { if (e.target.closest("[data-open-mem]")) setTab("mem"); });
+function turnHtml(lane, t, i) {
+  const open = lane.open.has(i), n = t.sent?.messages.length;
+  const foot = t.sent ? `<button type="button" class="turn-foot${open ? " on" : ""}" data-lane="${lane.id}" data-turn="${i}" title="${open ? "Hide" : "Show"} what the model got" aria-expanded="${open}"><span class="chev"></span>${n} message${n === 1 ? "" : "s"}${t.prompt ? ` · <b>${t.prompt}</b> tokens` : ""}</button>` : "";
+  const sent = open ? `<div class="card sent"><div class="card-head"><h3>What the model got</h3><span class="right">${esc(methodLabel(t.sent))}</span></div>${t.sent.rows.map(rowHtml).join("")}</div>` : "";
+  return `<div class="bubble user">${esc(t.user)}</div><div class="bubble assistant" id="b${lane.id}${i}">${bubbleHtml(t)}</div>${foot}${sent}`;
+}
+function updateBubble(lane, t) {
+  const el = $("b" + lane.id + lane.chat.indexOf(t));
+  if (el) { el.innerHTML = bubbleHtml(t); const log = $("log" + lane.id); log.scrollTop = log.scrollHeight; }
+}
+// Shown on both sides when one side uses Summary, so the two chats stay aligned.
+function summaryHtml(lane) {
+  if (!LANES.some(l => opts(l).stm === "summary" || l.summary.text)) return "";
+  const s = lane.summary, on = opts(lane).stm === "summary" || s.text;
+  // The same three lines on both sides and before the first update, so the area keeps its height.
+  const head = on ? `${s.upto ? `turns 1–${s.upto} · ` : ""}${s.calls} extra call${s.calls === 1 ? "" : "s"}` : "not used";
+  const body = !on ? `<span class="ph">${esc(label(STM_OPTS, opts(lane).stmV))} sends the messages.</span>`
+    : s.text ? esc(s.text) : `<span class="ph">Written after the first answer.</span>`;
+  const prompt = s.lastPrompt ? `<details class="idx sum-prompt"><summary>Summary prompt</summary><pre class="pre">${esc(s.lastPrompt)}</pre><div class="note">The book's prompt, plus two rules. With the exact prompt of the book, Gemma 3 12B copied the conversation.</div></details>`
+    : `<div class="sum-prompt ph-line">&nbsp;</div>`;
+  return `<div class="sum-hd"><b>Running summary</b><span>${head}</span>${s.busy ? `<span class="upd">updating…</span>` : ""}</div><div class="sum-text">${body}</div>${prompt}`;
+}
+function footHtml(lane) {
+  const turns = lane.chat.filter(t => t.prompt);
+  if (!turns.length) return `<div class="row"><span class="k">Prompt tokens per turn</span><span>–</span></div><div class="row"><span class="k">Extra LLM calls</span><span>–</span></div>`;
+  const ns = turns.map(t => t.prompt), max = Math.max(...LANES.flatMap(l => l.chat.filter(t => t.prompt).map(t => t.prompt)), 1);
+  return `<div class="row"><span class="k">Prompt tokens per turn</span><span class="spark">${ns.map(n => `<i style="height:${Math.max(2, n / max * 16).toFixed(1)}px"></i>`).join("")}</span><span><b>${ns.join(" → ")}</b>${ctxLen ? ` <span style="color:var(--ink-3)">of ${ctxLen.toLocaleString()}</span>` : ""}</span></div>
+    <div class="row"><span class="k">Extra LLM calls</span><span><b>${lane.extra}</b>${lane.extra ? " (summary updates)" : ""}</span></div>`;
+}
+function rowHtml(r) {
+  if (r.parts) {
+    const body = r.parts.map(p => p.tag ? `<span class="blk"><span class="tag">${esc(p.tag)}</span>\n${esc(p.text)}</span>` : esc(p.text)).join("");
+    return `<div class="msg"><span class="role">System</span><div class="msg-text">${body}</div></div>`;
+  }
+  let text = esc(r.text);
+  if (r.hits !== undefined) {
+    const found = r.hits?.length ? r.hits.map(h => `<span class="sc" title="similarity to the message (not sent)">${h.score.toFixed(2)}</span>${esc(h.text)}`).join("\n") : "no facts saved";
+    text = `<span class="blk"><span class="tag">saved facts · top ${r.k} by similarity</span>\nContext:\n${found}</span>\nQuestion: ${text}`;
+  }
+  const tag = r.out ? `<span class="tag">${esc(r.out)}</span>\n` : r.isNew ? `<span class="tag">new message</span>\n` : "";
+  return `<div class="msg${r.out ? " out" : ""}${r.isNew ? " new" : ""}"><span class="role">${r.role}${r.turn ? ` · ${r.turn}` : ""}</span><div class="msg-text">${tag}${text}</div></div>`;
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest(".turn-foot[data-turn]");
+  if (!b) return;
+  const lane = LANES.find(l => l.id === b.dataset.lane), i = +b.dataset.turn;
+  lane.open.has(i) ? lane.open.delete(i) : lane.open.add(i);
+  const log = $("log" + lane.id), top = log.scrollTop;
+  renderLane(lane);
+  log.scrollTop = top;
+});
+
+// ---- Rendering: saved facts (shared by both sides)
+const ICON_DEL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/></svg>';
+// The vector of a fact: from Chroma, or from the browser when Chroma is not installed. null: no vector yet.
+function vectorOf(f) {
+  if (mem.vectors) { const v = mem.vectors[f.name]; return v && v.text === f.description ? v : null; }
+  const e = localVecs.get($("embModel").value + "::" + f.description);
+  return e ? { dims: e.length, head: e.slice(0, 8).map(x => +x.toFixed(4)) } : null;
+}
+// Which chats use a store now, for the label on its column.
+const usedBy = kind => LANES.filter(l => opts(l).ltm === kind).map(l => l.id);
+function renderFacts() {
+  const list = facts(), vecs = list.map(vectorOf), nv = vecs.filter(Boolean).length;
+  const dims = vecs.find(Boolean)?.dims, model = $("embModel").value || "no embedding model";
+  const dir = mem.dir || "agent-memory";
+  const usesTag = (ids, kind) => ids.length ? `<span class="uses">used by chat ${ids.join(" + ")}</span>` : `<span class="uses no" title="Select ${kind} in a chat to use it">not used</span>`;
+  const del = f => `<button type="button" class="copy" data-del="${esc(f.name)}" title="Delete this fact (the file and the vector)" aria-label="Delete this fact">${ICON_DEL}</button>`;
+  const empty = `<div class="col-empty">No facts yet.</div>`;
+  const uf = usedBy("files"), uv = usedBy("vector");
+  $("filesCol").classList.toggle("used", uf.length > 0);
+  $("chromaCol").classList.toggle("used", uv.length > 0);
+  $("filesCol").innerHTML = `<div class="col-hd"><span class="t"><b>Files</b><span>${list.length} .md</span>${usesTag(uf, "Memory files")}<span class="info" tabindex="0" data-tip-title="Files" data-tip="The facts, as text on disk: ${esc(dir)}. Memory files sends MEMORY.md (the index) in the system prompt.">i</span></span></div>
+    ${list.length ? list.map(f => `<div class="item${justAdded.has(f.name) ? " new" : ""}"><span class="nm">${esc(f.name)}</span>${del(f)}<span class="tx">${esc(f.description)}</span></div>`).join("")
+      + `<details class="idx"><summary>MEMORY.md</summary><pre class="pre">${esc(mem.index || "")}</pre></details>` : empty}`;
+  $("chromaCol").innerHTML = `<div class="col-hd"><span class="t"><b>${mem.vectors ? "Chroma" : "Vectors in the browser"}</b><span>${nv} vector${nv === 1 ? "" : "s"}${dims ? ` × ${dims}` : ""}</span>${usesTag(uv, "RAG")}<span class="info" tabindex="0" data-tip-title="${mem.vectors ? "Chroma" : "Vectors in the browser"}" data-tip="${mem.vectors ? `A vector database on disk: ${esc(dir)}/chroma. ${esc(model)} makes one vector of ${dims || 768} numbers from each file. RAG sends only the facts nearest to the message.` : "Chroma is not installed, so the page keeps the vectors in the browser. To install it: uv sync --extra memory."}">i</span></span></div>
+    ${list.length ? list.map((f, i) => { const v = vecs[i]; return `<div class="item${justAdded.has(f.name) ? " new" : ""}"><span class="tx">${esc(f.description)}</span>${del(f)}${v
+        ? `<span class="vc" title="The first numbers of the vector">[${v.head.slice(0, 5).map(x => x.toFixed(3)).join(", ")}, …] ${v.dims}</span>`
+        : `<span class="vc none" title="The page makes it when the fact is saved. Check the embedding model, or the error above.">no vector</span>`}</div>`; }).join("") : empty}`;
+  document.querySelectorAll("[data-del]").forEach(b => b.disabled = busy);
+  renderTabs();
+}
+document.addEventListener("click", async e => {
+  const d = e.target.closest("[data-del]");
+  if (!d || busy) return;
+  try { await post("/agent-memory/delete", { name: d.dataset.del }); await loadMem(); } catch (err) { $("error").textContent = err.message; }
+  renderFacts();
+});
+$("saveFacts").onclick = async () => {
+  const text = $("msg").value.trim();
+  if (await runItems([text ? { save: text } : "@save"]) && text) { $("msg").value = ""; fit($("msg")); }
+};
+$("loadBook").onclick = async () => {
+  if (busy) return;
+  try {
+    const r = await post("/agent-memory/add", { facts: BOOK_FACTS.map(f => ({ type: "contact", fact: f })) });
+    await loadMem(); justAdded = new Set(r.added);
+    $("loadBook").disabled = true; await indexFacts(); $("loadBook").disabled = false;
+  } catch (e) { $("error").textContent = e.message; }
+  renderFacts();
+};
+$("clearMem").onclick = async () => {
+  if (busy) return;
+  try { await post("/agent-memory/clear", {}); await loadMem(); } catch (e) { $("error").textContent = e.message; }
+  localVecs.clear();
+  setStatus("All saved facts are deleted.");
+  renderFacts();
+};
+
+// ---- Tabs: Chats, and Long-term memory. The page remembers the last tab.
+let tab = "chats", unseen = 0;  // unseen: facts saved while the Chats tab was open
+function renderTabs() {
+  document.querySelectorAll(".tabs [data-tab]").forEach(b => b.setAttribute("aria-selected", b.dataset.tab === tab));
+  $("pane-chats").hidden = tab !== "chats"; $("pane-mem").hidden = tab !== "mem";
+  const n = facts().length;
+  $("memCount").textContent = `· ${n} fact${n === 1 ? "" : "s"}`;
+  $("memNew").hidden = !unseen; $("memNew").textContent = `+${unseen} new`;
+}
+function setTab(v) {
+  tab = v;
+  if (v === "mem") unseen = 0;
+  try { localStorage.setItem("memoryTab", v); } catch {}
+  renderTabs();
+}
+document.querySelectorAll(".tabs [data-tab]").forEach(b => b.onclick = () => setTab(b.dataset.tab));
+try { const v = localStorage.getItem("memoryTab"); if (v === "mem" || v === "chats") tab = v; } catch {}
+
+// ---- Examples
+$("preset").replaceChildren(...PRESETS.map((p, i) => new Option(p.name, i)));
+function applyPreset() {
+  const p = PRESETS[+$("preset").value];
+  [["A", p.a], ["B", p.b]].forEach(([id, [s, l]]) => { $("stm" + id).value = s; $("ltm" + id).value = l; });
+  $("exCard").innerHTML = `<span class="chip"><b>A</b> ${esc(methodLabel(parse(...p.a)))}</span><span class="vs">vs</span><span class="chip"><b>B</b> ${esc(methodLabel(parse(...p.b)))}</span>
+    <span class="look">Look at ${esc(p.look)}</span><span class="info" tabindex="0" data-tip-title="What to expect" data-tip="${esc(p.what + " " + p.why)}">i</span>`;
+  if (p.a[1] !== "off" || p.b[1] !== "off") loadMem().then(renderFacts); else renderFacts();
+  LANES.forEach(l => renderLane(l));
+  return p;
+}
+$("preset").onchange = () => { if (!busy) { applyPreset(); setStatus(""); } };
+$("toEx4").onclick = () => { if (busy) return; $("preset").value = "3"; applyPreset(); setStatus("Example 4 is selected. Click Run."); };
+$("play").onclick = async () => {
+  if (busy) { ctrl?.abort(); return; }
+  const p = PRESETS[+$("preset").value];
+  $("error").textContent = "";
+  setTab("chats");  // the run happens in the chats
+  let loaded = null, fresh = [];
+  if (p.facts) {
+    try { fresh = (await post("/agent-memory/add", { facts: p.facts })).added; await loadMem(); await indexFacts(); renderFacts(); } catch (e) { $("error").textContent = e.message; return; }
+    const want = new Set(p.facts.map(f => f.fact.toLowerCase()));
+    loaded = facts().filter(f => want.has(f.description.toLowerCase())).map(f => ({ name: f.name, text: f.description }));
+  }
+  clearLanes();
+  // Step 1 of the example: the long-term memory, before the first message.
+  if (loaded) LANES.forEach(l => l.chat.push({ saved: loaded, note: "saved", title: "Long-term memory at the start", sub: fresh.length ? `${fresh.length} loaded now` : "already saved" }));
+  LANES.forEach(l => renderLane(l));
+  setStatus(`Running: ${p.name.replace(/^\d · /, "")}`);
+  if (await runItems(p.msgs)) setStatus("Done. Click ▸ under an answer to see what the model got.");
+};
+
+// ---- Send box: your own message goes to both sides
+$("sendBtn").onclick = () => {
+  if (busy) { ctrl?.abort(); return; }
+  const text = $("msg").value.trim();
+  if (!text) return;
+  $("msg").value = ""; fit($("msg"));
+  setStatus("");
+  runItems([text]);
+};
+$("msg").addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); $("sendBtn").click(); } });
+$("msg").addEventListener("input", () => fit($("msg")));
+$("newChat").onclick = () => { if (busy) return; LANES.forEach(divide); LANES.forEach(l => renderLane(l, true)); setStatus("New chat on both sides. The saved facts stay."); };
+
+// ---- Tooltip: one shared box for every element with data-tip.
+const tip = Object.assign(document.createElement("div"), { id: "tip", role: "tooltip" });
+document.body.append(tip);
+document.addEventListener("mouseover", e => {
+  const el = e.target.closest("[data-tip]");
+  if (!el) return tip.classList.remove("show");
+  tip.innerHTML = `<b>${esc(el.dataset.tipTitle || "")}</b><span>${esc(el.dataset.tip)}</span>`;
+  tip.classList.add("show");
+  const r = el.getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight;
+  tip.style.left = Math.max(8, Math.min(r.left, innerWidth - w - 8)) + "px";
+  tip.style.top = (r.bottom + 8 + h > innerHeight ? r.top - h - 8 : r.bottom + 8) + "px";
+});
+document.addEventListener("scroll", () => tip.classList.remove("show"), true);
+document.addEventListener("focusin", e => { const el = e.target.closest?.("[data-tip]"); if (el) el.dispatchEvent(new MouseEvent("mouseover", { bubbles: true })); });
+document.addEventListener("focusout", () => tip.classList.remove("show"));
+
+const waitIdle = () => new Promise(r => { const f = () => busy ? setTimeout(f, 50) : r(); f(); });
+$("resetAll").onclick = async () => {
+  ctrl?.abort();
+  await waitIdle();
+  clearLanes(); setStatus(""); $("error").textContent = "";
+  LANES.forEach(l => renderLane(l));
+};
+$("sideToggle").onclick = () => {
+  const v = document.documentElement.dataset.side === "closed" ? "open" : "closed";
+  document.documentElement.dataset.side = v;
+  if (!narrow.matches) try { localStorage.setItem("sidebar", v); } catch {}
+};
+function setTheme(v, save) {
+  document.documentElement.dataset.theme = v;
+  document.querySelectorAll("#theme button").forEach(b => b.setAttribute("aria-pressed", b.dataset.theme === v));
+  if (save) try { localStorage.setItem("theme", v); } catch {}
+}
+document.querySelectorAll("#theme button").forEach(b => { b.onclick = () => setTheme(b.dataset.theme, true); });
+setTheme(document.documentElement.dataset.theme, false);
+
+LANES.forEach(laneShell);
+applyPreset();
+renderFacts();
+loadModels().then(() => loadMem()).then(() => indexFacts()).then(() => { renderFacts(); LANES.forEach(l => renderLane(l)); });
+</script>
+</body>
+</html>

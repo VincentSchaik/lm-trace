@@ -422,13 +422,14 @@
   <a href="/" title="Trace: tokens and their probabilities"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 6h5M12 6h8M4 12h10M17 12h3M4 18h3M10 18h10"/></svg><span>Trace</span></a>
   <a href="/embeddings.html" title="Tokens and embeddings: the input of the model"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="5" height="5" rx="1"/><rect x="3" y="14" width="5" height="5" rx="1"/><path d="M11 7.5h10M11 16.5h10M14 5v5M17 5v5M14 14v5M17 14v5"/></svg><span>Embeddings</span></a>
   <a href="/rag.html" aria-current="page" title="RAG: answers from your documents"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h10M4 9h7M4 13h5"/><circle cx="15.5" cy="15.5" r="4"/><path d="M18.5 18.5 21 21"/></svg><span>RAG</span></a>
+  <a href="/memory.html" title="Memory: what the agent remembers"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 3 8l9 5 9-5-9-5z"/><path d="M3 12.5l9 5 9-5"/><path d="M3 17l9 5 9-5"/></svg><span>Memory</span></a>
 </nav>
 <div class="app">
   <header class="top">
-    <h1><label for="embModel">Embedding model</label></h1>
-    <select id="embModel" class="field" aria-label="Embedding model"></select>
-    <label for="chatModel" class="hdr-lbl">Chat model</label>
+    <h1><label for="chatModel">Chat model</label></h1>
     <select id="chatModel" class="field" aria-label="Chat model"></select>
+    <label for="embModel" class="hdr-lbl">Embedding model</label>
+    <select id="embModel" class="field" aria-label="Embedding model"></select>
     <span class="spacer"></span>
     <button type="button" id="resetAll" class="hdr-btn" title="Clear the documents, the question and the output">Reset all</button>
     <span class="seg" id="theme" role="group" aria-label="Theme">

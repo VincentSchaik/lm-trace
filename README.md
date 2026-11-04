@@ -107,9 +107,12 @@ The **Reasoning** section shows how the model decided between the instruction an
 
 - macOS, Windows or Linux.
 - LM Studio, with one or more models downloaded.
-- Python 3. The server uses only the Python standard library.
+- Python 3.10 or later. The server uses only the Python standard library.
+- Optional: [uv](https://docs.astral.sh/uv/), to install the optional packages below.
 - Optional: the `lms` command-line tool. It comes with LM Studio. LM Trace needs it to show the model input.
 - Optional: the LM Studio Python SDK (`lmstudio`). The Embeddings page needs it to show the tokens. LM Studio has no tokenize endpoint over HTTP.
+- Optional: Chroma (`chromadb`). The Memory page uses it as the vector database. Without it, the page keeps the vectors in the browser.
+- For the Memory page: an embedding model in LM Studio, for example EmbeddingGemma.
 
 ## Set up LM Studio
 
@@ -133,13 +136,17 @@ python3 server.py
 
 Open http://localhost:8765 in your browser.
 
-To see the tokens on the Embeddings page, install the LM Studio SDK in a virtual environment and start the server with it:
+To install the optional packages, use uv. The extras are in `pyproject.toml`:
 
 ```sh
-python3 -m venv .venv
-.venv/bin/pip install lmstudio
-.venv/bin/python server.py
+uv sync --extra embeddings --extra memory   # LM Studio SDK and Chroma
+uv run server.py
 ```
+
+| Extra | Package | Used by |
+|---|---|---|
+| `embeddings` | `lmstudio` | Tokens on the Embeddings page |
+| `memory` | `chromadb` | Vector database on the Memory page |
 
 To change the defaults, set these environment variables before you start the server:
 
@@ -187,6 +194,56 @@ Click a token to see its whole vector. The same token always gets the same row, 
 
 The page reads the embedding table directly from the model files, because LM Studio does not return it. This works for models in safetensors (MLX) format, plain or quantized. It does not work for GGUF models yet.
 
+## Memory
+
+Open **Memory** in the sidebar. A language model has no memory: the harness decides what goes into each request. The page sends the same messages to two chats, A and B, with a different memory method on each side. You compare the answers, the prompt tokens and the extra LLM calls.
+
+| Type | Methods |
+|---|---|
+| Short-term memory (this chat) | None, Full history, Trimming (last N turns), Summary (a running summary, written by an extra LLM call) |
+| Long-term memory (saved facts) | Off, Memory files (one `.md` file per fact and a `MEMORY.md` index in the system prompt, as Claude Code does), RAG (the top k facts from a vector search in Chroma) |
+
+How to use it:
+
+1. Select an example, then click **Run**. The five examples follow chapter 4 of *An Illustrated Guide to AI Agents*.
+2. Under each answer, click ▸ to see exactly what the model got.
+3. Click **Save facts** to save the facts from the chat, or from the text in the message box. The model lists the facts, and the server writes them as files.
+4. Open the **Long-term memory** tab to see the files and the vectors in Chroma.
+
+The facts are in the `agent-memory/` folder. Git ignores this folder.
+
+### Memory examples
+
+All examples use Gemma 3 12B and EmbeddingGemma.
+
+**1 · Does the model remember?** A (None) gets only the new message, so it does not know the names: 31 prompt tokens. B (Full history) answers "Maarten and Jay": 87 tokens.
+
+![Example 1: None vs Full history](docs/memory-1-names.png)
+
+**2 · What does trimming forget?** A keeps only the last 2 turns, so it does not know the book. B knows the book, but its prompt grows from 40 to 211 tokens.
+
+![Example 2: Trimming vs Full history](docs/memory-2-trimming.png)
+
+**3 · Can a summary replace the history?** Both know the name Sarah. A sends a running summary: 39 → 119 tokens, with 5 extra LLM calls. B sends all messages: 39 → 242 tokens.
+
+![Example 3: Summary vs Full history](docs/memory-3-summary.png)
+
+**4 · Which saved facts go to the model?** The 10 facts of the book are in the long-term memory first. A (RAG: top 3) sends the 3 nearest facts: about 70 tokens. B (Memory files) sends all 10 facts in the system prompt: about 480 tokens. Both answers are correct.
+
+![Example 4: RAG vs Memory files](docs/memory-4-rag.png)
+
+The **Long-term memory** tab shows the two stores: the .md files that B uses, and the vectors in Chroma that A uses.
+
+![Example 4: the Files and Chroma stores](docs/memory-4-stores.png)
+
+**5 · Does it remember you in a new chat?** The facts about Sam are saved, then a new chat starts. A (Memory files) knows Sam. B (long-term memory Off) knows nothing.
+
+![Example 5: Memory files vs Off after a new chat](docs/memory-5-new-chat.png)
+
+The 3 new facts are in both stores: the page writes the file and embeds the fact when it saves it.
+
+![Example 5: the new facts in the stores](docs/memory-5-stores.png)
+
 ## Limitations
 
 These limitations come from LM Studio:
@@ -207,4 +264,4 @@ Thank you to the authors of these works. They are the basis of the ideas and exa
 - Wei et al. (2022). [Chain-of-Thought Prompting Elicits Reasoning in Large Language Models](https://arxiv.org/abs/2201.11903).
 - Kojima et al. (2022). [Large Language Models are Zero-Shot Reasoners](https://arxiv.org/abs/2205.11916).
 - Renze & Guven (2024). [The Benefits of a Concise Chain of Thought on Problem-Solving in Large Language Models](https://arxiv.org/abs/2401.05618).
-- Jay Alammar and Maarten Grootendorst. [An Illustrated Guide to AI Agents](https://learning.oreilly.com/library/view/an-illustrated-guide/9798341662681/). O'Reilly. The book explains how language models reason, from chain-of-thought prompting to reasoning models trained with reinforcement learning. The penguin and flamingo examples in LM Trace come from this book.
+- Jay Alammar and Maarten Grootendorst. [An Illustrated Guide to AI Agents](https://learning.oreilly.com/library/view/an-illustrated-guide/9798341662681/). O'Reilly. The book explains how language models reason, from chain-of-thought prompting to reasoning models trained with reinforcement learning. The penguin and flamingo examples in LM Trace come from this book. The examples on the Memory page come from chapter 4 ([code](https://github.com/HandsOnLLM/An-Illustrated-Guide-To-AI-Agents/tree/main/chapter04)).

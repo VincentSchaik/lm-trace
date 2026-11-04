@@ -12,3 +12,4 @@ lm-trace.log
 .venv/
 rag-docs.json
 rag-questions.json
+agent-memory/

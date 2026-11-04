@@ -9,8 +9,12 @@ LM Studio has no tokenize endpoint over HTTP; only its SDK can tokenize.
 
 POST /embed-rows reads the input embeddings of tokens (rows of the model's embedding table)
 straight from the model's safetensors files. LM Studio does not expose them.
+
+/agent-memory/* is the long-term memory of the Memory page: one .md file per fact plus a
+MEMORY.md index (as Claude Code does it), and, with the optional `chromadb` package, the same
+facts as vectors in a Chroma collection on disk. The page sends the vectors (from LM Studio).
 """
-import atexit, glob, http.server, json, math, os, shutil, signal, struct, subprocess, sys, threading, time, urllib.parse, urllib.request, urllib.error
+import atexit, glob, http.server, json, math, os, re, shutil, signal, struct, subprocess, sys, threading, time, urllib.parse, urllib.request, urllib.error
 
 LMS = os.environ.get("LMS_URL", "http://localhost:1234")
 TOKEN = os.environ.get("LM_API_TOKEN")
@@ -19,7 +23,8 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 # Saved lists: user prompts and system prompts, one JSON file each.
 LISTS = {k: os.path.join(ROOT, k.strip("/") + ".json") for k in ("/prompts", "/system-prompts", "/few-shot", "/schemas", "/presets",
                                                                    "/embed-texts", "/rag-docs", "/rag-questions")}
-PAGES = ("/index.html", "/embeddings.html", "/rag.html")
+PAGES = ("/index.html", "/embeddings.html", "/rag.html", "/memory.html")
+MEM_DIR = os.path.join(ROOT, "agent-memory")  # long-term memory of the Memory page
 LMS_CLI = shutil.which("lms") or os.path.expanduser("~/.lmstudio/bin/lms")
 # Only local names: a different Host means DNS rebinding; a different Origin means another website.
 LOCAL = ("localhost", "127.0.0.1", "[::1]")
@@ -264,6 +269,156 @@ def tokenize(key, texts, count=False):
                     return 502, {"error": {"message": f"Tokenizer: {e}"}}
 
 
+# ---- Long-term memory of the Memory page
+mem_lock = threading.Lock()
+chroma_col = None  # the Chroma collection, opened at first use
+
+
+def mem_files():
+    """The fact files: [{"name": "user-name.md", "type": ..., "description": ..., "body": ...}], oldest first."""
+    out = []
+    for path in sorted(glob.glob(os.path.join(MEM_DIR, "*.md")), key=os.path.getmtime):
+        name = os.path.basename(path)
+        if name == "MEMORY.md":
+            continue
+        try:
+            with open(path) as f:
+                text = f.read()
+        except OSError:
+            continue
+        meta, body = {}, text
+        m = re.match(r"---\n(.*?)\n---\n?(.*)", text, re.S)
+        if m:
+            body = m.group(2)
+            for line in m.group(1).splitlines():
+                k, _, v = line.partition(":")
+                meta[k.strip()] = v.strip()
+        out.append({"name": name, "type": meta.get("type", ""), "description": meta.get("description", ""), "body": body.strip()})
+    return out
+
+
+def mem_write_index(files):
+    """MEMORY.md: one line per file. The Memory page puts this index into the system prompt."""
+    lines = [f"- [{f['name'][:-3]}]({f['name']}) — {f['description']}" for f in files]
+    tmp = os.path.join(MEM_DIR, "MEMORY.md.tmp")
+    with open(tmp, "w") as f:
+        f.write("# Memory index\n\n" + "\n".join(lines) + ("\n" if lines else ""))
+    os.replace(tmp, os.path.join(MEM_DIR, "MEMORY.md"))
+
+
+def mem_state():
+    files = mem_files()
+    try:
+        with open(os.path.join(MEM_DIR, "MEMORY.md")) as f:
+            index = f.read()
+    except OSError:
+        index = ""
+    return {"dir": MEM_DIR, "files": files, "index": index}
+
+
+def mem_add(facts):
+    """Write one file per new fact. A fact that is already saved (same text) is skipped."""
+    os.makedirs(MEM_DIR, exist_ok=True)
+    files = mem_files()
+    known = {f["description"].lower() for f in files}
+    added = []
+    for x in facts:
+        fact = " ".join(x["fact"].split())
+        if not fact or fact.lower() in known:
+            continue
+        kind = re.sub(r"[^a-z]", "", x["type"].lower()) or "user"
+        slug = "-".join(re.findall(r"[a-z0-9]+", fact.lower())[:6]) or "fact"
+        name, n = f"{slug}.md", 2
+        while os.path.exists(os.path.join(MEM_DIR, name)):
+            name, n = f"{slug}-{n}.md", n + 1
+        with open(os.path.join(MEM_DIR, name), "w") as f:
+            f.write(f"---\nname: {name[:-3]}\ndescription: {fact}\ntype: {kind}\n---\n\n{fact}\n\n"
+                    f"Saved by the Memory page on {time.strftime('%Y-%m-%d %H:%M')}.\n")
+        known.add(fact.lower())
+        added.append(name)
+        time.sleep(0.01)  # distinct file times keep the order
+    mem_write_index(mem_files())
+    return added
+
+
+def chroma():
+    """The Chroma collection, or None if the chromadb package is not installed."""
+    global chroma_col
+    if chroma_col is None:
+        try:
+            import chromadb
+        except ImportError:
+            return None
+        client = chromadb.PersistentClient(path=os.path.join(MEM_DIR, "chroma"))
+        # embedding_function=None: Chroma stores the vectors that the page sends (from LM Studio) and downloads no model.
+        chroma_col = client.get_or_create_collection("memories", embedding_function=None, metadata={"hnsw:space": "cosine"})
+    return chroma_col
+
+
+NO_CHROMA = {"error": {"message": "Chroma is not installed. Install it with: uv sync --extra memory"}}
+
+
+def vec_ids(model):
+    """{file name: {text, dims, head}} of the vectors that this embedding model made.
+    head = the first numbers of the vector, so the page can show what Chroma stores."""
+    col = chroma()
+    if col is None:
+        return None
+    r = col.get(where={"model": model}, include=["documents", "metadatas", "embeddings"])
+    return {m["file"]: {"text": d, "dims": len(e), "head": [round(float(x), 4) for x in e[:8]]}
+            for d, m, e in zip(r["documents"], r["metadatas"], r["embeddings"])}
+
+
+def vec_add(model, items):
+    col = chroma()
+    if col is None:
+        return 501, NO_CHROMA
+    # One id per file and model: the same fact can have vectors from two embedding models.
+    col.upsert(ids=[f"{model}::{x['id']}" for x in items], embeddings=[x["embedding"] for x in items],
+               documents=[x["text"] for x in items], metadatas=[{"model": model, "file": x["id"], "type": x["type"]} for x in items])
+    return 200, {"count": col.count()}
+
+
+def vec_query(model, embedding, k, kind):
+    col = chroma()
+    if col is None:
+        return 501, NO_CHROMA
+    where = {"model": model} if not kind else {"$and": [{"model": model}, {"type": kind}]}
+    r = col.query(query_embeddings=[embedding], n_results=k, where=where, include=["documents", "distances", "metadatas"])
+    hits = [{"id": m["file"], "text": d, "type": m["type"], "score": round(1 - dist, 4)}
+            for d, dist, m in zip(r["documents"][0], r["distances"][0], r["metadatas"][0])]
+    return 200, {"hits": hits, "count": col.count(), "path": os.path.join(MEM_DIR, "chroma")}
+
+
+def mem_delete(name):
+    path = os.path.join(MEM_DIR, os.path.basename(name))
+    if name != os.path.basename(name) or not name.endswith(".md") or name == "MEMORY.md":
+        return 400, {"error": {"message": "not a memory file"}}
+    try:
+        os.remove(path)
+    except FileNotFoundError:
+        pass
+    mem_write_index(mem_files())
+    col = chroma()
+    if col is not None:
+        col.delete(where={"file": name})
+    return 200, mem_state()
+
+
+def mem_clear():
+    global chroma_col
+    for path in glob.glob(os.path.join(MEM_DIR, "*.md")):
+        os.remove(path)
+    if chroma() is not None:
+        import chromadb
+        client = chromadb.PersistentClient(path=os.path.join(MEM_DIR, "chroma"))
+        client.delete_collection("memories")
+        chroma_col = None
+    if os.path.isdir(MEM_DIR):
+        mem_write_index([])
+    return 200, mem_state()
+
+
 class Handler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *a, **kw):
         super().__init__(*a, directory=ROOT, **kw)
@@ -341,6 +496,15 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             with inputs_lock:
                 hit = next((x for x in reversed(inputs) if x["t"] >= since), None)
             return self._json(200, {"available": log_ok, "entry": hit})
+        if self.path.startswith("/agent-memory?") or self.path == "/agent-memory":
+            q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            with mem_lock:
+                st = mem_state()
+                try:
+                    st["vectors"] = vec_ids(q.get("model", [""])[0])  # None: Chroma not installed
+                except Exception as e:
+                    st["vectors"], st["vectorError"] = None, str(e)
+            return self._json(200, st)
         if self.path.startswith(("/v1/", "/api/v1/models")):  # api/v1/models lists reasoning options
             return self._proxy("GET")
         path = urllib.parse.urlparse(self.path).path
@@ -398,6 +562,51 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             if len(ids) > 512:
                 return self._json(400, {"error": {"message": "Embeddings: at most 512 tokens"}})
             return self._json(*embed_rows(key, ids))
+        if self.path.startswith("/agent-memory/"):
+            return self._memory(self.path[len("/agent-memory/"):])
+        self.send_error(404)
+
+    def _memory(self, action):
+        """Long-term memory: add, delete, clear (files and vectors); vectors/add and vectors/query (Chroma)."""
+        bad = lambda: self._json(400, {"error": {"message": f"Memory: bad request for {action}"}})
+        try:
+            req = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
+            if not isinstance(req, dict):
+                raise ValueError
+        except ValueError:
+            return bad()
+        isstr = lambda v, n: isinstance(v, str) and 0 < len(v) <= n
+        vec = lambda v: isinstance(v, list) and 0 < len(v) <= 8192 and all(type(x) in (int, float) for x in v)
+        with mem_lock:
+            try:
+                if action == "add":
+                    facts = req.get("facts")
+                    if not isinstance(facts, list) or len(facts) > 50 or \
+                            not all(isinstance(x, dict) and isstr(x.get("fact"), 500) and isstr(x.get("type"), 40) for x in facts):
+                        return bad()
+                    if len(mem_files()) + len(facts) > 300:
+                        return self._json(400, {"error": {"message": "Memory: at most 300 facts. Clear the memory first."}})
+                    added = mem_add(facts)
+                    return self._json(200, {**mem_state(), "added": added})
+                if action == "delete":
+                    return self._json(*mem_delete(req.get("name", ""))) if isstr(req.get("name"), 200) else bad()
+                if action == "clear":
+                    return self._json(*mem_clear())
+                if action == "vectors/add":
+                    items = req.get("items")
+                    if not isstr(req.get("model"), 200) or not isinstance(items, list) or not 0 < len(items) <= 300 or \
+                            not all(isinstance(x, dict) and isstr(x.get("id"), 200) and isstr(x.get("text"), 500)
+                                    and isstr(x.get("type"), 40) and vec(x.get("embedding")) for x in items):
+                        return bad()
+                    return self._json(*vec_add(req["model"], items))
+                if action == "vectors/query":
+                    k, kind = req.get("k", 3), req.get("type") or ""
+                    if not isstr(req.get("model"), 200) or not vec(req.get("embedding")) or type(k) is not int or not 1 <= k <= 20 \
+                            or not isinstance(kind, str):
+                        return bad()
+                    return self._json(*vec_query(req["model"], req["embedding"], k, kind))
+            except Exception as e:  # Chroma errors, for example vectors of a different length
+                return self._json(502, {"error": {"message": f"Memory: {e}"}})
         self.send_error(404)
 
 
