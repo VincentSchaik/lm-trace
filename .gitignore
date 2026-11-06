@@ -13,3 +13,6 @@ lm-trace.log
 rag-docs.json
 rag-questions.json
 agent-memory/
+
+# Private files: the book and article drafts. Never push.
+private/

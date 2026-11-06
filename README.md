@@ -110,7 +110,7 @@ The **Reasoning** section shows how the model decided between the instruction an
 - Python 3.10 or later. The server uses only the Python standard library.
 - Optional: [uv](https://docs.astral.sh/uv/), to install the optional packages below.
 - Optional: the `lms` command-line tool. It comes with LM Studio. LM Trace needs it to show the model input.
-- Optional: the LM Studio Python SDK (`lmstudio`). The Embeddings page needs it to show the tokens. LM Studio has no tokenize endpoint over HTTP.
+- Optional: the LM Studio Python SDK (`lmstudio`). The Tokenizer page needs it to show the tokens. LM Studio has no tokenize endpoint over HTTP.
 - Optional: Chroma (`chromadb`). The Memory page uses it as the vector database. Without it, the page keeps the vectors in the browser.
 - For the Memory page: an embedding model in LM Studio, for example EmbeddingGemma.
 
@@ -145,7 +145,7 @@ uv run server.py
 
 | Extra | Package | Used by |
 |---|---|---|
-| `embeddings` | `lmstudio` | Tokens on the Embeddings page |
+| `embeddings` | `lmstudio` | Tokens on the Tokenizer page |
 | `memory` | `chromadb` | Vector database on the Memory page |
 
 To change the defaults, set these environment variables before you start the server:
@@ -183,9 +183,9 @@ Each field has a list of examples. You can save your own prompts, system prompts
 
 The server keeps these items in JSON files in the project folder. Git ignores these files.
 
-## Tokens and embeddings
+## Tokenizer
 
-Open **Embeddings** in the sidebar. The page shows the input of the model in two steps, with the real data of the selected model:
+Open **Tokenizer** in the sidebar. The page shows the input of the model in two steps, with the real data of the selected model:
 
 1. **Tokens:** the tokenizer cuts your text into tokens and gives each token an ID. The model receives only the list of IDs.
 2. **Embeddings:** the model takes the row of each ID from its embedding table: a list of numbers. For Gemma 3 12B, the table has 262,208 rows of 3,840 numbers. These lists are the input of the first layer.
