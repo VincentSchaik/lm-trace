@@ -87,6 +87,7 @@
   .side a[aria-current="page"] svg { color: var(--red); }
   :root[data-side="closed"] .side { width: 57px; }
   :root[data-side="closed"] .side a span { display: none; }
+  .side a.side-foot { margin-top: auto; }  /* Settings: at the bottom of the sidebar */
 
   /* Top bar */
   .top { display: flex; align-items: center; gap: 12px; height: 64px; border-bottom: 1px solid var(--line); }
@@ -511,6 +512,8 @@
   <a href="/embeddings.html" title="Tokenizer: tokens, IDs and embeddings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="5" height="5" rx="1"/><rect x="3" y="14" width="5" height="5" rx="1"/><path d="M11 7.5h10M11 16.5h10M14 5v5M17 5v5M14 14v5M17 14v5"/></svg><span>Tokenizer</span></a>
   <a href="/rag.html" title="RAG: answers from your documents"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h10M4 9h7M4 13h5"/><circle cx="15.5" cy="15.5" r="4"/><path d="M18.5 18.5 21 21"/></svg><span>RAG</span></a>
   <a href="/memory.html" aria-current="page" title="Memory: what the agent remembers"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 3 8l9 5 9-5-9-5z"/><path d="M3 12.5l9 5 9-5"/><path d="M3 17l9 5 9-5"/></svg><span>Memory</span></a>
+  <a href="/tools.html" title="Tools: how a model uses tools"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.1L3 17.7 6.3 21l6.3-6.3a4 4 0 0 0 5.1-5.4l-2.6 2.6-2.4-.5-.5-2.4z"/></svg><span>Tools</span></a>
+  <a href="/settings.html" class="side-foot" title="Settings: model formats"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>Settings</span></a>
 </nav>
 <div class="app">
   <header class="top">

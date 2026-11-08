@@ -10,6 +10,9 @@ LM Studio has no tokenize endpoint over HTTP; only its SDK can tokenize.
 POST /embed-rows reads the input embeddings of tokens (rows of the model's embedding table)
 straight from the model's safetensors files. LM Studio does not expose them.
 
+POST /tool-run runs one tool of the Tools page: a built-in tool (Python, below) or a URL tool
+(a GET request to a public API, with the arguments in the URL). The page never calls other websites.
+
 /agent-memory/* is the long-term memory of the Memory page: one .md file per fact plus a
 MEMORY.md index (as Claude Code does it), and, with the optional `chromadb` package, the same
 facts as vectors in a Chroma collection on disk. The page sends the vectors (from LM Studio).
@@ -22,8 +25,15 @@ PORT = int(os.environ.get("PORT", "8765"))
 ROOT = os.path.dirname(os.path.abspath(__file__))
 # Saved lists: user prompts and system prompts, one JSON file each.
 LISTS = {k: os.path.join(ROOT, k.strip("/") + ".json") for k in ("/prompts", "/system-prompts", "/few-shot", "/schemas", "/presets",
-                                                                   "/embed-texts", "/rag-docs", "/rag-questions")}
-PAGES = ("/index.html", "/embeddings.html", "/rag.html", "/memory.html")
+                                                                   "/embed-texts", "/rag-docs", "/rag-questions", "/tools", "/model-formats")}
+# Starting values of a list, until you save it. Model formats: where the thinking starts and ends in the raw text
+# of the model, as each model wrote it in a real run. You can edit them in Settings.
+LIST_START = {"/model-formats": [
+    {"name": "google/gemma-4-12b", "thinkStart": "<|channel>thought", "thinkEnd": "<channel|>"},
+    {"name": "zai-org/glm-4.6v-flash", "thinkStart": "<think>", "thinkEnd": "</think>"},
+    {"name": "lmstudio-community/gpt-oss-20b", "thinkStart": "<|channel|>analysis<|message|>", "thinkEnd": "<|end|>"},
+]}
+PAGES = ("/index.html", "/embeddings.html", "/rag.html", "/memory.html", "/tools.html", "/settings.html")
 MEM_DIR = os.path.join(ROOT, "agent-memory")  # long-term memory of the Memory page
 LMS_CLI = shutil.which("lms") or os.path.expanduser("~/.lmstudio/bin/lms")
 # Only local names: a different Host means DNS rebinding; a different Origin means another website.
@@ -32,17 +42,18 @@ HOSTS = {h for n in LOCAL for h in (n, f"{n}:{PORT}")}
 ORIGINS = {f"http://{n}:{PORT}" for n in LOCAL}
 
 inputs = []  # [{"t": ms received, "input": str, "model": str}], newest last
+outputs = []  # [{"t": ms received, "output": str, "model": str}]: the raw text the model generated, with its special tokens
 inputs_lock = threading.Lock()
 log_ok = False
 log_proc = None
 
 
 def tail_model_log():
-    """Keep `lms log stream` running and record every formatted model input."""
+    """Keep `lms log stream` running and record every formatted model input and raw model output."""
     global log_ok, log_proc
     while True:
         try:
-            proc = log_proc = subprocess.Popen([LMS_CLI, "log", "stream", "-s", "model", "--filter", "input", "--json"],
+            proc = log_proc = subprocess.Popen([LMS_CLI, "log", "stream", "-s", "model", "--filter", "input,output", "--json"],
                                     stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
             log_ok = True
             for line in proc.stdout:
@@ -50,11 +61,12 @@ def tail_model_log():
                     d = json.loads(line).get("data", {})
                 except ValueError:
                     continue
-                if d.get("type") == "llm.prediction.input":
+                kind = {"llm.prediction.input": "input", "llm.prediction.output": "output"}.get(d.get("type"))
+                if kind:
+                    log = inputs if kind == "input" else outputs
                     with inputs_lock:
-                        inputs.append({"t": int(time.time() * 1000), "input": d.get("input", ""),
-                                       "model": d.get("modelIdentifier", "")})
-                        del inputs[:-20]
+                        log.append({"t": int(time.time() * 1000), kind: d.get(kind, ""), "model": d.get("modelIdentifier", "")})
+                        del log[:-20]
         except OSError:
             pass
         log_ok = False
@@ -419,6 +431,176 @@ def mem_clear():
     return 200, mem_state()
 
 
+# ---- Model card of the Tools page: what LM Studio says about the model, plus its Hugging Face pages.
+card_cache = {}
+
+
+def model_card(key):
+    info = lms_models().get(key)
+    if not info:
+        return 404, {"error": {"message": f"LM Studio has no model {key}"}}
+    out = {"key": key, "hf": None, "base": None}
+    d = model_dir(key)
+    repo = "/".join(d.rstrip("/").split("/")[-2:]) if d else None  # the download folder is <user>/<repo> on Hugging Face
+    if repo and repo not in card_cache:
+        def hf(r):
+            j = get_json("https://huggingface.co/api/models/" + urllib.parse.quote(r, safe="/"))
+            card = j.get("cardData") or {}
+            lic = card.get("license") or next((t[8:] for t in j.get("tags", []) if t.startswith("license:")), None)
+            return {"id": j.get("id"), "url": f"https://huggingface.co/{j.get('id')}", "license": lic, "downloads": j.get("downloads"),
+                    "likes": j.get("likes"), "updated": (j.get("lastModified") or "")[:10], "base_model": card.get("base_model")}
+        try:
+            h = hf(repo)
+            base = h["base_model"][0] if isinstance(h["base_model"], list) and h["base_model"] else h["base_model"]
+            b = hf(base) if isinstance(base, str) else None
+            card_cache[repo] = (h, b)
+        except Exception as e:
+            card_cache[repo] = ({"id": repo, "url": f"https://huggingface.co/{repo}", "error": str(e)}, None)
+    if repo:
+        out["hf"], out["base"] = card_cache[repo]
+    return 200, out
+
+
+# ---- Tools of the Tools page. A tool returns text: that text is what the model gets back.
+UA = "LM-Trace/0.1 (local learning tool)"
+WMO = {0: "clear sky", 1: "mainly clear", 2: "partly cloudy", 3: "overcast", 45: "fog", 48: "fog", 51: "light drizzle", 53: "drizzle",
+       55: "heavy drizzle", 61: "light rain", 63: "rain", 65: "heavy rain", 66: "freezing rain", 67: "freezing rain", 71: "light snow",
+       73: "snow", 75: "heavy snow", 77: "snow grains", 80: "rain showers", 81: "rain showers", 82: "heavy rain showers",
+       85: "snow showers", 86: "heavy snow showers", 95: "thunderstorm", 96: "thunderstorm with hail", 99: "thunderstorm with hail"}
+
+
+def public_url(url):
+    """Only http(s) to public addresses: a URL tool must not reach this computer or the local network."""
+    import ipaddress, socket
+    u = urllib.parse.urlparse(url)
+    if u.scheme not in ("http", "https") or not u.hostname:
+        return False
+    try:
+        addrs = {a[4][0] for a in socket.getaddrinfo(u.hostname, u.port or (443 if u.scheme == "https" else 80))}
+    except OSError:
+        return False
+    return all(ipaddress.ip_address(a.split("%")[0]).is_global for a in addrs)
+
+
+def fetch(url, limit=200000):
+    """GET a public URL. Returns (status, text). A redirect is checked again, so it cannot lead to a local address."""
+    class NoLocalRedirect(urllib.request.HTTPRedirectHandler):
+        def redirect_request(self, req, fp, code, msg, headers, newurl):
+            if not public_url(newurl):
+                raise urllib.error.URLError("redirect to a local address")
+            return super().redirect_request(req, fp, code, msg, headers, newurl)
+    if not public_url(url):
+        raise ValueError("only public http(s) addresses are allowed")
+    opener = urllib.request.build_opener(NoLocalRedirect)
+    req = urllib.request.Request(url, headers={"User-Agent": UA, "Accept": "application/json, text/plain, */*"})
+    try:
+        with opener.open(req, timeout=12) as r:
+            return r.status, r.read(limit).decode("utf-8", "replace")
+    except urllib.error.HTTPError as e:
+        return e.code, e.read(2000).decode("utf-8", "replace")
+
+
+def get_json(url):
+    status, text = fetch(url)
+    if status != 200:
+        raise ValueError(f"HTTP {status}: {text[:200]}")
+    return json.loads(text)
+
+
+def num(v, name):
+    """The model writes text; the book's multiply turns it into numbers with float()."""
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        raise ValueError(f"{name} must be a number, got {json.dumps(v)}")
+
+
+def t_multiply(a=None, b=None, **_):
+    return str(num(a, "a") * num(b, "b"))  # Python's float result, as in the book: 3.1 * 6.5 = 20.150000000000002
+
+
+def t_get_weather(city=None, **_):
+    if not isinstance(city, str) or not city.strip():
+        raise ValueError("city is required")
+    g = get_json("https://geocoding-api.open-meteo.com/v1/search?count=1&name=" + urllib.parse.quote(city.split(",")[0].strip()))
+    if not g.get("results"):
+        return json.dumps({"error": f"no place named {city}"})
+    p = g["results"][0]
+    w = get_json(f"https://api.open-meteo.com/v1/forecast?latitude={p['latitude']}&longitude={p['longitude']}"
+                 "&current=temperature_2m,wind_speed_10m,weather_code&timezone=auto")["current"]
+    return json.dumps({"place": ", ".join(x for x in (p.get("name"), p.get("admin1"), p.get("country")) if x),
+                       "time": w["time"], "temperature": f"{w['temperature_2m']} °C", "wind": f"{w['wind_speed_10m']} km/h",
+                       "conditions": WMO.get(w["weather_code"], f"code {w['weather_code']}")}, ensure_ascii=False)
+
+
+def t_top_tech_news(count=3, **_):
+    n = max(1, min(10, int(num(count, "count"))))
+    ids = get_json("https://hacker-news.firebaseio.com/v0/topstories.json")[:n]
+    items = [None] * n
+    def one(i):
+        items[i] = get_json(f"https://hacker-news.firebaseio.com/v0/item/{ids[i]}.json")
+    threads = [threading.Thread(target=one, args=(i,)) for i in range(len(ids))]
+    [t.start() for t in threads]
+    [t.join(15) for t in threads]
+    return json.dumps([{"title": x.get("title"), "points": x.get("score"), "url": x.get("url", "")} for x in items if x], ensure_ascii=False)
+
+
+def t_search_memory(query=None, k=3, **_):
+    """Retrieval as a tool: the saved facts of the Memory page nearest to the query (cosine, as the book's RAGMemory)."""
+    if not isinstance(query, str) or not query.strip():
+        raise ValueError("query is required")
+    files = [f for f in mem_files() if f["description"]]
+    if not files:
+        return "No facts are saved. Save facts on the Memory page first."
+    models = json.loads(urllib.request.urlopen(LMS + "/v1/models", timeout=10).read())["data"]
+    emb = [m["id"] for m in models if "embed" in m["id"].lower()]
+    model = next((m for m in emb if "embeddinggemma" in m.lower()), emb[0] if emb else None)
+    if not model:
+        raise ValueError("LM Studio has no embedding model")
+    q, d = ("task: search result | query: ", "title: none | text: ") if "embeddinggemma" in model.lower() else ("", "")
+    body = json.dumps({"model": model, "input": [q + query] + [d + f["description"] for f in files]}).encode()
+    r = json.loads(urllib.request.urlopen(urllib.request.Request(LMS + "/v1/embeddings", data=body,
+                                                                 headers={"Content-Type": "application/json"}), timeout=60).read())
+    vs = [x["embedding"] for x in sorted(r["data"], key=lambda x: x["index"])]
+    cos = lambda a, b: sum(x * y for x, y in zip(a, b)) / (math.sqrt(sum(x * x for x in a) * sum(y * y for y in b)) or 1)
+    ranked = sorted(((cos(vs[0], v), f["description"]) for v, f in zip(vs[1:], files)), reverse=True)
+    n = max(1, min(10, int(num(k, "k"))))
+    return "\n".join(text for _, text in ranked[:n])
+
+
+BUILTIN = {"multiply": t_multiply, "get_weather": t_get_weather, "top_tech_news": t_top_tech_news, "search_memory": t_search_memory}
+
+
+def tool_run(tool, args):
+    """Run one tool call. Returns {"ok", "result", "request"}: request is what the server did, for the page to show."""
+    t0, request = time.time(), ""
+    try:
+        if tool.get("kind") == "builtin":
+            fn = BUILTIN.get(tool.get("builtin") or tool["name"])
+            if not fn:
+                raise ValueError(f"no built-in tool {tool.get('builtin')}")
+            request = f"Python: {tool.get('builtin') or tool['name']}({', '.join(f'{k}={json.dumps(v)}' for k, v in args.items())})"
+            result = fn(**args)
+        elif tool.get("kind") == "url":
+            tpl = tool.get("url")
+            if not isinstance(tpl, str) or len(tpl) > 2000:
+                raise ValueError("the tool has no URL")
+            url = re.sub(r"\{(\w+)\}", lambda m: urllib.parse.quote(str(args.get(m.group(1), "")), safe=""), tpl)
+            request = f"GET {url}"
+            status, text = fetch(url)
+            if status != 200:
+                raise ValueError(f"HTTP {status}: {text[:300]}")
+            result = text
+        else:
+            raise ValueError("unknown tool kind")
+    except Exception as e:  # the error text goes back to the model, as LM Studio's SDK does
+        return {"ok": False, "result": f"Error: {e}", "request": request, "ms": int((time.time() - t0) * 1000)}
+    full = len(result)
+    if full > 4000:
+        result = result[:4000] + f"\n… (cut: {full} characters in total)"
+    return {"ok": True, "result": result, "request": request, "ms": int((time.time() - t0) * 1000)}
+
+
 class Handler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *a, **kw):
         super().__init__(*a, directory=ROOT, **kw)
@@ -488,14 +670,19 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 with open(LISTS[self.path]) as f:
                     return self._json(200, json.load(f))
             except FileNotFoundError:
-                return self._json(200, [])
-        if self.path.startswith("/model-input"):
-            # Newest formatted input received at or after `since` (ms epoch), if any.
+                return self._json(200, LIST_START.get(self.path, []))
+        if self.path.startswith(("/model-input", "/model-output")):
+            # Newest formatted input (or raw output) received at or after `since` (ms epoch), if any.
             q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
             since = int(q.get("since", ["0"])[0])
+            log = outputs if self.path.startswith("/model-output") else inputs
+            first = q.get("first") == ["1"]  # the oldest at or after `since`: the Tools page makes several calls in a row
             with inputs_lock:
-                hit = next((x for x in reversed(inputs) if x["t"] >= since), None)
+                hit = next((x for x in (log if first else reversed(log)) if x["t"] >= since), None)
             return self._json(200, {"available": log_ok, "entry": hit})
+        if self.path.startswith("/model-card?"):
+            q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            return self._json(*model_card(q.get("key", [""])[0]))
         if self.path.startswith("/agent-memory?") or self.path == "/agent-memory":
             q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
             with mem_lock:
@@ -564,6 +751,15 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return self._json(*embed_rows(key, ids))
         if self.path.startswith("/agent-memory/"):
             return self._memory(self.path[len("/agent-memory/"):])
+        if self.path == "/tool-run":
+            try:
+                req = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))))
+                tool, args = req["tool"], req.get("args") or {}
+                if not isinstance(tool, dict) or not isinstance(args, dict) or not isinstance(tool.get("name"), str):
+                    raise ValueError
+            except (ValueError, KeyError, TypeError):
+                return self._json(400, {"error": {"message": "expected {\"tool\": {...}, \"args\": {...}}"}})
+            return self._json(200, tool_run(tool, args))
         self.send_error(404)
 
     def _memory(self, action):

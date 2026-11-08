@@ -1,0 +1,1611 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LM Trace · Tools</title>
+<style>
+  :root {
+    color-scheme: light;
+    --paper: #f5f5f7;
+    --field: #ffffff;
+    --paper-2: #eeeef1;
+    --line: #e1e1e6;
+    --stone-2: #c7c7cc;
+    --ink: #1d1d1f;
+    --ink-2: #4b4b52;
+    --ink-3: #8e8e93;
+    --red: #1f6ff2;
+    --red-rgb: 31, 111, 242;
+    --neg-rgb: 71, 85, 105;
+    --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, monospace;
+    --input-bg: #ffffff;
+    --shadow-rgb: 0, 0, 0;
+    --primary: #1f6ff2;
+    --primary-hover: #185ed6;
+    --on-primary: #ffffff;
+    --danger: #d93025;
+    --tip-bg: #1d1d1f;
+    --tip-fg: #f5f5f7;
+    --tip-sub: #c7c7cc;
+    --tip-code: #8ab4ff;
+    --r: 10px;
+    --lift: 0 1px 2px rgba(0, 0, 0, .04), 0 2px 8px -4px rgba(0, 0, 0, .08);
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --paper: #161618;
+    --field: #1f1f22;
+    --paper-2: #2a2a2e;
+    --line: #333338;
+    --stone-2: #4a4a50;
+    --ink: #ececf0;
+    --ink-2: #b9b9c0;
+    --ink-3: #85858c;
+    --red: #4c8dff;
+    --red-rgb: 76, 141, 255;
+    --neg-rgb: 148, 163, 184;
+    --input-bg: #18181a;
+    --primary: #3b7cf5;
+    --primary-hover: #5a90f7;
+    --danger: #ff6b5e;
+    --tip-bg: #f0f0f3;
+    --tip-fg: #1d1d1f;
+    --tip-sub: #4b4b52;
+    --tip-code: #185ed6;
+    --lift: 0 1px 2px rgba(0, 0, 0, .3), 0 2px 10px -4px rgba(0, 0, 0, .5);
+  }
+  * { font-variant-ligatures: none !important; font-feature-settings: "calt" 0, "liga" 0 !important; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--paper); color: var(--ink);
+    font: 14px/1.5 var(--sans); -webkit-font-smoothing: antialiased;
+  }
+  .app {
+    height: 100vh; max-width: 1280px; margin: 0 auto; padding: 0 24px 20px;
+    display: grid; grid-template-rows: auto auto 1fr; grid-template-columns: minmax(0, 1fr); gap: 16px;
+  }
+
+  /* Sidebar, as in LM Studio: one row per page. The toggle folds it to a rail of icons. Same block in index.html. */
+  body { display: flex; }
+  .app { flex: 1; min-width: 0; }
+  .side {
+    position: sticky; top: 0; flex: none; width: 200px; height: 100vh; display: flex; flex-direction: column; gap: 2px;
+    padding: 0 10px 12px; background: var(--paper-2); border-right: 1px solid var(--line); overflow: hidden; transition: width .15s;
+  }
+  .side-top { display: flex; align-items: center; height: 64px; }
+  .side a, .side-toggle {
+    display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 9px; border-radius: 8px; flex: none;
+    color: var(--ink); text-decoration: none; font: 500 14px var(--sans); white-space: nowrap;
+  }
+  .side-toggle { width: 36px; justify-content: center; padding: 0; border: 0; background: transparent; color: var(--ink-2); cursor: pointer; }
+  .side a:hover, .side-toggle:hover { background: rgba(var(--shadow-rgb), .06); }
+  .side a[aria-current="page"] { background: rgba(var(--red-rgb), .14); }
+  .side svg { width: 18px; height: 18px; flex: none; color: var(--ink-2); }
+  .side a[aria-current="page"] svg { color: var(--red); }
+  :root[data-side="closed"] .side { width: 57px; }
+  :root[data-side="closed"] .side a span { display: none; }
+  .side a.side-foot { margin-top: auto; }  /* Settings: at the bottom of the sidebar */
+
+  /* Top bar */
+  .top { display: flex; align-items: center; gap: 12px; height: 64px; border-bottom: 1px solid var(--line); }
+  h1 { font-size: 17px; font-weight: 600; margin: 0; display: flex; align-items: center; gap: 10px; white-space: nowrap; }
+  h1::before { content: ""; width: 14px; height: 14px; background: var(--red); }
+  .top .spacer { flex: 1; }
+  .hdr-lbl { font-size: 15px; font-weight: 600; margin-left: 12px; white-space: nowrap; }
+  .hdr-btn {
+    height: 32px; padding: 0 14px; white-space: nowrap; flex: none; border-radius: 8px; cursor: pointer; margin-right: 4px;
+    border: 1px solid var(--line); background: var(--field); color: var(--ink-2); font: 500 13px var(--sans);
+  }
+  .hdr-btn:hover { color: var(--ink); border-color: var(--stone-2); }
+
+  .field {
+    font: 15px var(--sans); color: var(--ink);
+    background: var(--field); border: 1px solid var(--line); border-radius: 8px;
+    height: 40px; padding: 0 12px; outline: none;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .field:hover { border-color: var(--stone-2); }
+  .field:focus { border-color: var(--ink); box-shadow: 0 0 0 3px rgba(var(--red-rgb), .18); }
+  select.field {
+    appearance: none; cursor: pointer; padding-right: 34px; min-width: 240px; font-weight: 500;
+    background: var(--field) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%232a2927' stroke-width='1.6'/%3E%3C/svg%3E") no-repeat right 12px center;
+  }
+  :root[data-theme="dark"] select.field { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23b9b9c0' stroke-width='1.6'/%3E%3C/svg%3E"); }
+  select.field.ex { height: 48px; min-width: 0; width: 100%; font-weight: 400; }
+  #embModel { min-width: 400px; }  /* the select measures its options at weight 400, so a long name at 500 was cut */
+  #chatModel { min-width: 220px; }
+
+  /* Composer */
+  .composer { background: var(--field); border: 1px solid var(--line); border-radius: var(--r); padding: 16px 18px; box-shadow: var(--lift); }
+  .prompt-grid { display: grid; grid-template-columns: 260px 1fr auto; gap: 8px 12px; align-items: start; }
+  .prompt-grid.grp { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--paper-2); }
+  .settings.in { margin-top: 2px; padding-top: 0; border-top: 0; }  /* the settings sit under the input that they change */
+  .lbl { font-size: 14px; font-weight: 600; color: var(--ink); }
+  .lbl-s { font-size: 12px; color: var(--ink-3); }
+  .opts { margin-top: 12px; border-top: 1px solid var(--paper-2); }
+  .opt > summary {
+    list-style: none; cursor: pointer; user-select: none; display: flex; align-items: center; gap: 8px;
+    height: 40px; padding: 0; font-size: 14px;
+  }
+  .opt > summary::-webkit-details-marker { display: none; }
+  .opt > summary:hover .opt-title, .opt > summary:hover .chev { color: var(--red); }
+  .opt[open] > summary .chev { transform: rotate(90deg); }
+  .opt-title { font-weight: 600; color: var(--ink); }
+  .opt-state { color: var(--ink-3); font-size: 13px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .opt-body { display: grid; grid-template-columns: 260px 1fr 124px; gap: 6px 12px; padding: 0 0 14px; align-items: start; }
+  .chev { width: 16px; height: 16px; flex: none; display: grid; place-items: center; color: var(--ink-3); transition: transform .15s; }
+  .chev::before { content: ""; width: 6px; height: 6px; border: solid currentColor; border-width: 0 1.6px 1.6px 0; transform: rotate(-45deg); }
+
+  .input {
+    flex: 1; min-width: 0; resize: none; display: block;
+    font: 16px/1.5 var(--sans); color: var(--ink);
+    background: var(--input-bg); border: 1px solid var(--stone-2); border-radius: 8px;
+    padding: 11px 14px; min-height: 48px; outline: none;
+    box-shadow: inset 0 1px 2px rgba(var(--shadow-rgb), .06);
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .input:hover { border-color: var(--ink-3); }
+  .input:focus { border-color: var(--ink); box-shadow: 0 0 0 3px rgba(var(--red-rgb), .18); }
+  .input::placeholder { color: var(--ink-3); }
+  #docs { font-size: 14px; }
+  .input-wrap { position: relative; min-width: 0; }
+  .input-wrap .input { width: 100%; padding-right: 140px; }
+  .input-tools { position: absolute; top: 9px; right: 22px; display: flex; gap: 6px; }  /* clear of the scroll bar of a long text */
+  .input-tools .copy { margin: 0; }
+  .input-tools .copy[hidden] { display: none; }
+
+  .copy {
+    flex: none; display: inline-grid; place-items: center; width: 30px; height: 30px; margin-left: auto; padding: 0;
+    border: 1px solid var(--line); border-radius: 7px; cursor: pointer; color: var(--ink-2);
+    background: var(--field); box-shadow: 0 1px 0 rgba(var(--shadow-rgb), .06);
+    transition: color .15s, background .15s, border-color .15s;
+  }
+  .copy svg { width: 15px; height: 15px; }
+  .copy:hover { color: var(--ink); border-color: var(--stone-2); background: var(--input-bg); }
+  .copy:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+  .copy.done { color: var(--on-primary); background: var(--primary); border-color: var(--primary); }
+  #delDoc:hover, #delQ:hover { color: var(--danger); }
+
+  .btn {
+    font: 600 15px var(--sans); height: 44px; padding: 0 22px; border-radius: 8px; cursor: pointer;
+    border: 1px solid var(--primary); background: var(--primary); color: var(--on-primary);
+    display: inline-flex; align-items: center; gap: 8px; transition: background .15s;
+  }
+  .btn:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .btn.primary { height: 48px; width: 124px; padding: 0; justify-content: center; flex: none; }
+
+  /* Settings row: same controls as index.html */
+  .settings { display: flex; align-items: flex-start; gap: 10px 24px; flex-wrap: wrap; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--paper-2); }
+  .ctl { display: flex; flex-direction: column; gap: 4px; }
+  .ctl.grow { flex: 1 1 150px; max-width: 240px; }
+  .ctl-label { display: flex; align-items: center; gap: 12px; white-space: nowrap; height: 22px; font-size: 14px; font-weight: 500; color: var(--ink-2); }
+  .ctl-row { display: flex; align-items: center; gap: 12px; height: 36px; }
+  .ctl-row input[type=range] { flex: 1; width: 0; min-width: 70px; }
+  .ctl output { font: 500 15px var(--mono); color: var(--ink); min-width: 36px; }
+  .ctl[hidden] { display: none; }
+  .tipped { cursor: help; text-decoration: underline dotted var(--stone-2); text-underline-offset: 4px; }
+  .chat-set { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 10px 24px; padding: 0 0 14px; }
+  .chat-set .ctl { flex: 1 1 200px; max-width: 280px; }
+  .chat-hint { flex-basis: 100%; font-size: 12.5px; line-height: 1.5; }
+  .radio { display: inline-flex; align-items: center; gap: 5px; font-weight: 500; color: var(--ink); cursor: pointer; }
+  .radio input { accent-color: var(--red); width: 15px; height: 15px; margin: 0; cursor: pointer; }
+  .seg { display: inline-flex; background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 3px; }
+  .ctl .seg { height: 36px; align-self: flex-start; }
+  .seg button {
+    font: 500 13px var(--sans); color: var(--ink-2); background: transparent; border: 0;
+    height: 28px; padding: 0 10px; border-radius: 6px; cursor: pointer;
+  }
+  .seg button:hover { color: var(--ink); }
+  .seg button[aria-pressed="true"] { background: var(--primary); color: var(--on-primary); }
+  .seg button:disabled { opacity: .4; cursor: default; }
+  input[type=range] { -webkit-appearance: none; appearance: none; width: 150px; height: 22px; background: transparent; cursor: pointer; margin: 0; }
+  input[type=range]::-webkit-slider-runnable-track { height: 6px; border-radius: 3px; background: linear-gradient(var(--primary), var(--primary)) 0 / var(--fill, 50%) 100% no-repeat, var(--paper-2); }
+  input[type=range]::-moz-range-track { height: 6px; border-radius: 3px; background: var(--paper-2); }
+  input[type=range]::-moz-range-progress { height: 6px; border-radius: 3px; background: var(--primary); }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; margin-top: -7px; border-radius: 50%; background: var(--field); border: 2px solid var(--primary); box-shadow: 0 1px 3px rgba(0,0,0,.15); }
+  input[type=range]::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: var(--field); border: 2px solid var(--primary); }
+  .error { color: var(--danger); font-size: 14px; padding: 8px 2px 0; }
+  .error:empty { display: none; }
+
+  /* Main: the output panel */
+  .main { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; min-height: 0; }
+  .panel { background: var(--field); border: 1px solid var(--line); border-radius: var(--r); display: flex; flex-direction: column; min-height: 0; box-shadow: var(--lift); }
+  .panel-head {
+    display: flex; align-items: center; gap: 20px; padding: 12px 18px; border-bottom: 1px solid var(--paper-2);
+    font-size: 13px; color: var(--ink-3); min-height: 46px; flex-wrap: wrap; flex: none;
+  }
+  .stats b { color: var(--ink); font-weight: 600; font-family: var(--mono); }
+  .stats > span + span { margin-left: 12px; }
+  .output { flex: 1; overflow-y: auto; position: relative; }  /* relative: offsetTop of a step is measured from here */
+  .sec { border-bottom: 1px solid var(--paper-2); }
+  .sec > summary {
+    position: sticky; top: 0; z-index: 2; list-style: none; cursor: pointer; user-select: none;
+    display: flex; align-items: center; gap: 8px; min-height: 46px; padding: 8px 18px 8px 16px;
+    background: var(--field); border-bottom: 1px solid transparent;
+    font: 600 13px var(--sans); color: var(--ink);
+  }
+  .sec[open] > summary { border-bottom-color: var(--paper-2); }
+  .sec > summary:hover { background: color-mix(in srgb, var(--field) 94%, var(--ink)); }
+  .sec > summary::-webkit-details-marker { display: none; }
+  .sec > summary .sub { font: 400 12px var(--sans); color: var(--ink-3); }
+  .sec[open] > summary .chev { transform: rotate(90deg); }
+  .sec-body { padding: 14px 22px 18px; }
+  .hint { color: var(--ink-3); margin: 0; }
+  .empty { display: block; font: 15px/1.6 var(--sans); color: var(--ink-3); }
+
+  /* Explanations stay quiet: small grey text in a light box. The data is the focus. */
+  .lede, .explain {
+    margin: 0 0 16px; padding: 9px 14px; border-radius: 8px;
+    background: rgba(var(--shadow-rgb), .025); font-size: 12.5px; line-height: 1.55; color: var(--ink-3);
+  }
+  .lede code, .explain code { font-size: 11.5px; }
+  .explain p { margin: 0; }
+  .explain > p:first-child { color: var(--ink-2); }
+  .explain ul { margin: 4px 0 0; padding-left: 18px; }
+  .more { margin-top: 4px; }
+  .more > summary { display: inline; cursor: pointer; font-weight: 500; }
+  .more > summary:hover { color: var(--red); }
+  .more p { margin-top: 2px; }
+  .steps { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; margin-right: auto; }
+  .steps button {
+    display: inline-flex; align-items: center; gap: 7px; height: 30px; padding: 0 10px 0 5px; border-radius: 15px;
+    border: 0; background: transparent; color: var(--ink); font: 600 13px var(--sans); cursor: pointer;
+  }
+  .steps button:hover { background: rgba(var(--shadow-rgb), .05); }
+  .steps .arrow { color: var(--stone-2); }
+  .steps .phase { font: 500 10.5px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); margin: 0 4px 0 2px; }
+  .steps .phase + button { margin-left: 0; }
+  .steps .gap { width: 1px; height: 18px; background: var(--line); margin: 0 10px; }
+  .stepnum {
+    display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; flex: none;
+    background: var(--paper-2); color: var(--ink-3); font: 600 11px var(--sans);
+  }
+
+  /* Cards: every output sits in a bordered card with a header bar */
+  .card { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--field); min-width: 0; }
+  .card + .card { margin-top: 16px; }
+  .card-head {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 6px 24px; padding: 10px 14px;
+    background: var(--paper); border-bottom: 1px solid var(--line); font-size: 13px; color: var(--ink-2);
+  }
+  .card-head h3 { margin: 0; font: 600 13px var(--sans); color: var(--ink); }
+  .card-head .right { margin-left: auto; }
+  .card-foot { border-top: 1px solid var(--line); border-bottom: 0; }
+  .card-body { padding: 14px; }
+  .spec { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+  .spec span { font: 500 10.5px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
+  .spec b { font: 500 12.5px var(--mono); color: var(--ink); white-space: pre; }
+  .two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+  .two .card + .card { margin-top: 0; }
+  .col-head { font: 500 10.5px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
+
+  [data-tip] { cursor: help; }
+  #tip {
+    position: fixed; z-index: 50; max-width: 340px; padding: 10px 12px; border-radius: 8px; pointer-events: none;
+    background: var(--tip-bg); color: var(--tip-fg); font: 13px/1.45 var(--sans); box-shadow: 0 8px 24px -6px rgba(0,0,0,.35);
+    opacity: 0; transform: translateY(2px); transition: opacity .12s, transform .12s;
+  }
+  #tip.show { opacity: 1; transform: none; }
+  #tip b { display: block; font-weight: 600; margin-bottom: 4px; }
+  #tip span { display: block; color: var(--tip-sub); }
+
+  /* ---- Tools page: one chat; under each message, the steps of the harness as cards */
+  .app { height: auto; min-height: 100vh; grid-template-rows: auto; align-self: flex-start; align-content: start; }
+  .panel { flex: none; }
+  html, body { height: auto; min-height: 100vh; }
+  #chatModel { min-width: 300px; }
+  .lede { margin-bottom: 14px; }
+  .lede .more { display: inline; }
+  .lede .more[open] { display: block; }
+  .lede .more > summary { margin-left: 6px; color: var(--red); }
+  .lede .more p { margin: 6px 0 0; }
+  .linkbtn { border: 0; background: none; padding: 0; font: inherit; color: var(--red); cursor: pointer; }
+  .linkbtn:hover { text-decoration: underline; }
+  .preset-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .preset-row select.field { width: 340px; max-width: 100%; height: 36px; font-weight: 400; font-size: 14px; }
+  .btn.small { height: 36px; padding: 0 18px; font-size: 14px; }
+  .btn.ghost { background: var(--field); color: var(--ink); border-color: var(--line); font-weight: 500; }
+  .btn.ghost:hover { background: var(--input-bg); border-color: var(--stone-2); }
+  .btn.ghost.warn:hover { color: var(--danger); }
+  .ex-card { margin-top: 12px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13.5px; color: var(--ink-2); }
+  .chip { display: inline-flex; gap: 6px; align-items: center; height: 28px; padding: 0 10px; border-radius: 14px; background: var(--paper-2); color: var(--ink); }
+  .look { margin-left: 8px; color: var(--ink-3); }
+  .info { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; border: 1px solid var(--stone-2); color: var(--ink-3); font: 600 11px/1 var(--sans); cursor: help; flex: none; }
+  .info:hover, .info:focus { color: var(--ink); border-color: var(--ink-3); outline: none; }
+  .status { font-size: 12.5px; color: var(--ink-3); padding: 10px 2px 0; }
+  .status:empty { display: none; }
+  .cap { font: 500 11.5px/22px var(--sans); padding: 0 9px; border-radius: 11px; white-space: nowrap; background: var(--paper-2); color: var(--ink-2); cursor: help; }
+  .cap.yes { background: rgba(var(--red-rgb), .12); color: var(--red); }
+
+  /* Tabs as folder tabs (same as the Memory page) */
+  .tabbox { display: grid; min-width: 0; }
+  .tabs { display: flex; gap: 2px; padding: 0 10px; position: relative; z-index: 1; }
+  .tabs button {
+    display: inline-flex; align-items: center; gap: 8px; height: 42px; padding: 0 18px; margin-bottom: -1px;
+    border: 1px solid transparent; border-bottom: 0; border-radius: 9px 9px 0 0; background: transparent;
+    font: 600 14px var(--sans); color: var(--ink-3); cursor: pointer;
+  }
+  .tabs button:hover { color: var(--ink); background: rgba(var(--shadow-rgb), .04); }
+  .tabs button[aria-selected="true"] { color: var(--ink); background: var(--paper-2); border-color: var(--line); box-shadow: inset 0 3px 0 var(--primary); }
+  .tabs .cnt { font: 500 12px var(--sans); color: var(--ink-3); }
+  .tabpane { display: grid; gap: 16px; min-width: 0; padding: 16px; background: var(--paper-2); border: 1px solid var(--line); border-radius: var(--r); }
+  .tabpane[hidden] { display: none; }
+  .panel-head h2 { margin: 0; font: 600 14px var(--sans); color: var(--ink); }
+  .panel-head .sub { font-size: 12.5px; color: var(--ink-3); }
+  .panel-head .stats { margin-left: auto; }
+  .panel-head .btn { height: 32px; padding: 0 14px; font-size: 13px; border-radius: 8px; }
+
+  /* The steps of the harness, as in the book: a strip on top, the current step marked */
+  .flow { display: flex; align-items: center; gap: 6px 8px; flex-wrap: wrap; padding: 10px 18px; border-bottom: 1px solid var(--paper-2); }
+  .flow .fs { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink-2); padding: 2px 8px 2px 3px; border-radius: 12px; }
+  .flow .fs.on { background: rgba(var(--red-rgb), .1); color: var(--ink); }
+  .flow .fs.on .stepnum { background: var(--primary); color: var(--on-primary); }
+  .flow .arrow { color: var(--stone-2); font-size: 12px; }
+  .flow .who { font: 500 10.5px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); margin: 0 2px 0 6px; }
+
+  .chatlog { min-height: 260px; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
+  .chat-empty { margin: auto; text-align: center; color: var(--ink-3); font-size: 14px; max-width: 360px; line-height: 1.6; }
+  .bubble { max-width: 80%; padding: 8px 12px; border-radius: 12px; font-size: 14px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+  .bubble.user { align-self: flex-end; background: var(--paper-2); border-bottom-right-radius: 4px; }
+  .bubble.assistant { align-self: flex-start; background: var(--field); border: 1px solid var(--line); border-bottom-left-radius: 4px; }
+  .bubble .wait, .bubble .ph { color: var(--ink-3); }
+  .newchat-line { display: flex; align-items: center; gap: 10px; font-size: 11.5px; color: var(--ink-3); flex: none; }
+  .newchat-line::before, .newchat-line::after { content: ""; flex: 1; border-top: 1px dashed var(--stone-2); }
+
+  /* One card per step. Head: number, step, book step, one-line result. Body: the real data. */
+  .steps-col { display: grid; gap: 8px; margin: 2px 0 4px; }
+  .step { border: 1px solid var(--line); border-radius: 8px; background: var(--field); min-width: 0; overflow: hidden; }
+  .step-hd { display: flex; align-items: center; gap: 8px 10px; flex-wrap: wrap; padding: 8px 12px; background: var(--paper); font-size: 13px; color: var(--ink-2); }
+  .step.has-bd > .step-hd { border-bottom: 1px solid var(--line); }
+  .step-hd b { font-weight: 600; color: var(--ink); }
+  .step-hd .book { font: 500 10.5px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
+  .step-hd .sum { min-width: 0; color: var(--ink-2); }
+  .step-hd .sum code, .step-bd code { font: 12px var(--mono); }
+  .step-hd .right { margin-left: auto; display: inline-flex; gap: 6px; align-items: center; color: var(--ink-3); font-size: 12px; }
+  .step-hd .stepnum { background: var(--ink); color: var(--field); }
+  .step.bad .step-hd .stepnum { background: var(--danger); }
+  .step-bd { padding: 10px 12px; display: grid; gap: 8px; }
+  .step-bd > p { margin: 0; font-size: 13px; color: var(--ink-2); }
+  .badge { font: 500 11px/18px var(--sans); padding: 0 7px; border-radius: 9px; white-space: nowrap; background: var(--paper-2); color: var(--ink-2); }
+  .badge.blue { background: rgba(var(--red-rgb), .12); color: var(--red); }
+  .badge.bad { background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger); }
+  .call { font: 12.5px/1.5 var(--mono); color: var(--ink); padding: 6px 10px; border-radius: 6px; background: rgba(var(--red-rgb), .06); white-space: pre-wrap; word-break: break-word; }
+  .chk { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 2px 6px; font-size: 13px; color: var(--ink-2); }
+  .chk .ok { color: var(--red); font-weight: 700; }
+  .chk .no { color: var(--danger); font-weight: 700; }
+  .chk .fix { color: var(--ink-3); }
+
+  details.x { border-top: 1px solid var(--paper-2); }
+  .step-bd details.x:first-child { border-top: 0; }
+  details.x > summary { list-style: none; cursor: pointer; user-select: none; display: flex; align-items: center; gap: 6px; padding: 6px 0; font-size: 12.5px; color: var(--ink-2); }
+  details.x > summary::-webkit-details-marker { display: none; }
+  details.x > summary:hover { color: var(--red); }
+  details.x[open] > summary .chev { transform: rotate(90deg); }
+  details.x > summary .chev { width: 12px; height: 12px; }
+  details.x > summary .k { color: var(--ink-3); margin-left: 4px; }
+  .raw { margin: 0; padding: 8px 10px; border: 1px solid var(--paper-2); border-radius: 6px; font: 12px/1.65 var(--mono); white-space: pre-wrap; word-break: break-word; color: var(--ink); background: var(--input-bg); }
+  .raw .sp {
+    display: inline-block; line-height: 1.45; padding: 0 5px; margin: 0 1px; border-radius: 5px; cursor: help;
+    color: var(--red); background: rgba(var(--red-rgb), .08); box-shadow: inset 0 0 0 1px rgba(var(--red-rgb), .55);
+  }
+  .raw .sp.bos { color: var(--ink-2); background: var(--paper-2); box-shadow: inset 0 0 0 1px var(--stone-2); }
+  .raw .tx { cursor: help; border-radius: 4px; padding: 0 2px; box-shadow: inset 0 0 0 1px var(--stone-2); background: rgba(var(--shadow-rgb), .03); }
+  .raw .nl { color: var(--stone-2); }
+  .raw .hint, .hint-s { font: 12.5px var(--sans); color: var(--ink-3); }
+  .legend { display: flex; gap: 6px 14px; flex-wrap: wrap; align-items: center; font-size: 12px; color: var(--ink-3); }
+  .legend .raw { display: inline; padding: 0; border: 0; background: none; }
+  .msg { display: grid; grid-template-columns: 80px minmax(0, 1fr); gap: 8px; padding: 6px 10px; }
+  .msg + .msg { border-top: 1px solid var(--paper-2); }
+  .msgs { border: 1px solid var(--paper-2); border-radius: 6px; }
+  .msg.new { box-shadow: inset 3px 0 0 var(--primary); }
+  .role { font: 500 10.5px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); padding-top: 2px; }
+  .msg-text { font: 12px/1.55 var(--mono); white-space: pre-wrap; word-break: break-word; color: var(--ink); }
+  .pre { margin: 0; padding: 8px 10px; border: 1px solid var(--paper-2); border-radius: 6px; font: 12px/1.55 var(--mono); white-space: pre-wrap; word-break: break-word; color: var(--ink-2); background: var(--input-bg); }
+  .note { padding: 8px 12px; border-radius: 6px; background: rgba(var(--shadow-rgb), .025); color: var(--ink-3); font-size: 12.5px; line-height: 1.5; }
+  .note code { font-size: 11.5px; }
+
+  /* Next step (One at a time): where you look, at the end of the chat */
+  .next { display: flex; align-items: center; gap: 10px 14px; flex-wrap: wrap; padding: 10px 12px; border: 1px dashed rgba(var(--red-rgb), .6); border-radius: 8px; background: rgba(var(--red-rgb), .04); font-size: 13.5px; color: var(--ink-2); }
+  .next b { color: var(--ink); font-weight: 600; }
+  .next .btns { margin-left: auto; display: flex; gap: 8px; }
+  .next .btn { height: 34px; padding: 0 16px; font-size: 13.5px; }
+
+  .sendbar { padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+  .send-row { display: flex; gap: 10px; align-items: flex-end; }
+  .send-row .input { flex: 1; }
+  .send-row .btn { height: 48px; width: 96px; justify-content: center; padding: 0; flex: none; }
+  .send-tools { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; font-size: 12.5px; color: var(--ink-3); }
+  .send-tools .btn { height: 32px; padding: 0 12px; font-size: 13px; }
+
+  /* Tools tab */
+  .tool-list { display: grid; gap: 10px; padding: 14px 18px 18px; }
+  .tool { border: 1px solid var(--line); border-radius: 8px; background: var(--field); overflow: hidden; }
+  .tool.off { opacity: .6; }
+  .tool-hd { display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; padding: 8px 12px; background: var(--paper); border-bottom: 1px solid var(--line); }
+  .tool-hd .nm { font: 600 13px var(--mono); color: var(--ink); }
+  .tool-hd .right { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+  .tool-hd label.on { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink-2); cursor: pointer; }
+  .tool-hd input[type=checkbox], .prow input[type=checkbox] { accent-color: var(--red); width: 15px; height: 15px; margin: 0; cursor: pointer; }
+  .tool-bd { padding: 10px 12px; display: grid; gap: 6px; font-size: 13px; color: var(--ink-2); }
+  .tool-bd .sig { font: 12.5px var(--mono); color: var(--ink); }
+  .tool-bd .src { font: 11.5px var(--mono); color: var(--ink-3); word-break: break-all; }
+  .tool .copy { width: 28px; height: 28px; margin: 0; }
+  .tool .copy.del:hover { color: var(--danger); }
+  .edit { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 8px 12px; align-items: start; }
+  .edit > span { font-size: 12.5px; font-weight: 500; color: var(--ink-2); padding-top: 8px; }
+  .edit .field, .edit textarea { width: 100%; min-width: 0; height: 34px; font-size: 13.5px; }
+  .edit textarea.field { height: auto; min-height: 56px; padding: 7px 10px; resize: vertical; font: 13.5px/1.45 var(--sans); }
+  .edit .mono { font-family: var(--mono); font-size: 12.5px; }
+  .ptab { display: grid; gap: 6px; }
+  .prow { display: grid; grid-template-columns: minmax(90px, 140px) 104px 86px minmax(0, 1fr) 28px; gap: 6px; align-items: center; }
+  .prow .field { height: 32px; font-size: 13px; padding: 0 8px; }
+  .prow select.field { min-width: 0; padding-right: 26px; background-position: right 8px center; }
+  .prow label { display: inline-flex; gap: 5px; align-items: center; font-size: 12.5px; color: var(--ink-2); }
+  .prow.hd { font: 500 10.5px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
+  .card-tools { display: flex; gap: 8px; flex-wrap: wrap; padding: 10px 18px; border-top: 1px solid var(--line); background: var(--paper); align-items: center; border-radius: 0 0 var(--r) var(--r); }
+  .card-tools .btn { height: 32px; padding: 0 12px; font-size: 13px; }
+  .card-tools select.field { height: 32px; min-width: 0; width: 230px; font-size: 13px; font-weight: 400; }
+  .card-tools .hint { font-size: 12px; margin-left: auto; color: var(--ink-3); }
+
+  /* Formatted prompt: one block per part, a colour per kind of token (light and dark) */
+  /* Blue and grey only: blue for the tool parts, greys for the rest. */
+  :root { --c-turn: #4b4b52; --c-think: #8e8e93; --c-tool: #1f6ff2; --c-call: #1f6ff2; --c-resp: #4f6fa8; --c-q: #8e8e93; --c-ans: #8e8e93; --c-other: var(--red); }
+  :root[data-theme="dark"] { --c-turn: #b9b9c0; --c-think: #85858c; --c-tool: #4c8dff; --c-call: #4c8dff; --c-resp: #8aa4d6; --c-q: #85858c; --c-ans: #85858c; }
+  .raw .sp, .pv .sp, .legend .sp { --c: var(--c-other); color: var(--c); background: color-mix(in srgb, var(--c) 12%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 55%, transparent); }
+  .raw .tx, .pv .tx, .legend .tx { --c: var(--c-other); color: var(--c); background: transparent; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 45%, transparent); border-radius: 4px; padding: 0 3px; }
+  .pv .tx, .legend .tx { box-shadow: none; outline: 1px dashed color-mix(in srgb, var(--c) 60%, transparent); outline-offset: -1px; }
+  .c-turn { --c: var(--c-turn) !important; } .c-think { --c: var(--c-think) !important; } .c-tool { --c: var(--c-tool) !important; } .c-call { --c: var(--c-call) !important; }
+  .c-resp { --c: var(--c-resp) !important; } .c-q { --c: var(--c-q) !important; } .c-bos { --c: var(--ink-3) !important; }
+  .pv { display: grid; gap: 4px; padding: 10px; border: 1px solid var(--paper-2); border-radius: 6px; background: var(--input-bg); font: 12px/1.75 var(--mono); color: var(--ink); }
+  .pv .sp { display: inline-block; line-height: 1.45; padding: 0 5px; margin: 0 1px; border-radius: 5px; cursor: help; }
+  .pv .tx { cursor: help; }
+  .pl { padding: 0 4px; white-space: pre-wrap; }
+  .pl .rl { color: var(--c-turn); font-weight: 600; margin-left: 2px; }
+  .pb { --c: var(--ink-3); padding: 6px 10px; border-radius: 6px; white-space: pre-wrap; word-break: break-word; background: color-mix(in srgb, var(--c) 7%, transparent); }
+  .pb.k-sys { --c: var(--ink-3); } .pb.k-user { --c: var(--c-turn); } .pb.k-ans { --c: var(--c-ans); } .pb.k-tool { --c: var(--c-tool); }
+  .pb.k-call { --c: var(--c-call); background: color-mix(in srgb, var(--c) 13%, transparent); box-shadow: inset 3px 0 0 var(--c); } .pb.k-resp { --c: var(--c-resp); } .pb.k-think { --c: var(--c-think); }
+  .pb .key { color: var(--ink-3); }
+  .pb .fn { color: var(--c); font-weight: 700; }
+  .pv .nl { color: var(--stone-2); }
+  .pb details.th { border: 0; }
+  .pb details.th > summary { padding: 0; font: inherit; }
+  .pb details.th > summary .k { font-family: var(--sans); font-size: 11.5px; }
+  .pb details.th[open] > summary { margin-bottom: 2px; }
+  .view-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .seg.sm { padding: 2px; } .seg.sm button { height: 24px; font-size: 12px; padding: 0 9px; }
+  /* How it works: a short numbered list */
+  ol.how { margin: 8px 0 2px; padding-left: 20px; display: grid; gap: 3px; }
+  ol.how b { color: var(--ink-2); font-weight: 600; }
+  ol.how i { font-style: normal; color: var(--ink); }
+  /* Model card: a popover under the button, next to the model select */
+  .mc-wrap { position: relative; }
+  .mc-btn { margin: 0; }
+  .mc-btn[aria-expanded="true"] { color: var(--ink); border-color: var(--stone-2); background: var(--paper-2); }
+  .mcard { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--field); }
+  .mcard.pop { position: absolute; z-index: 40; top: calc(100% + 8px); left: 0; width: min(560px, calc(100vw - 40px)); box-shadow: 0 12px 32px -8px rgba(0, 0, 0, .3); }
+  .mcard[hidden] { display: none; }
+  .mcard-hd { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; padding: 9px 14px; background: var(--paper); border-bottom: 1px solid var(--line); font-size: 13px; }
+  .mcard-hd .k { font: 500 10.5px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
+  .mcard-hd b { font-size: 14px; font-weight: 600; color: var(--ink); }
+  .mcard-hd .pub { color: var(--ink-3); }
+  .mcard-hd .src { margin-left: auto; font-size: 12px; color: var(--ink-3); }
+  .tooluse { font: 500 12px/22px var(--sans); padding: 0 9px; border-radius: 11px; background: var(--paper-2); color: var(--ink-2); cursor: help; white-space: nowrap; }
+  .tooluse.yes { background: rgba(var(--red-rgb), .12); color: var(--red); }
+  .mcard-bd { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 18px; padding: 12px 14px; }
+  .mcard-bd .spec b { white-space: normal; word-break: break-word; }
+  .mcard-bd .spec a { color: var(--red); text-decoration: none; }
+  .mcard-bd .spec a:hover { text-decoration: underline; }
+  .mcard-bd .ph { color: var(--ink-3); font-family: var(--sans); }
+  /* What the switches do */
+  .effect { display: flex; flex-wrap: wrap; gap: 2px 18px; padding: 7px 18px; border-bottom: 1px solid var(--paper-2); background: rgba(var(--shadow-rgb), .02); font-size: 12.5px; line-height: 1.5; color: var(--ink-3); }
+  .effect b { color: var(--ink-2); font-weight: 600; }
+  .flow .fs.off { color: var(--ink-3); text-decoration: line-through; text-decoration-color: var(--stone-2); opacity: .7; }
+  /* Example and message, where you type */
+  .ex-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .ex-row select.field { height: 34px; min-width: 0; width: 280px; font-size: 13.5px; font-weight: 400; }
+  .lbl-s2 { font-size: 13px; font-weight: 600; color: var(--ink-2); }
+  .ex-tip { font-size: 12.5px; color: var(--ink-3); }
+  .send-tools .status { padding: 0; }
+  .ctl-inline { margin-left: auto; display: inline-flex; align-items: center; gap: 10px; font-size: 13px; color: var(--ink-2); }
+  .ctl-inline.l { margin-left: 0; }
+  .ctl-inline .seg { padding: 2px; }
+  .ctl-inline .seg button { height: 26px; }
+  .card-tools.top { border-top: 0; border-bottom: 1px solid var(--line); border-radius: 0; }
+  /* One card per model call; one row per event: who, what, meta, Details */
+  .callcard { border: 1px solid var(--line); border-radius: 8px; background: var(--field); overflow: hidden; flex: none; }
+  .callcard-hd { padding: 7px 14px; background: var(--paper); border-bottom: 1px solid var(--line); font-size: 12.5px; color: var(--ink-3); }
+  .ev + .ev { border-top: 1px solid var(--paper-2); }
+  .ev > summary, .ev-row { display: grid; grid-template-columns: 76px minmax(0, 1fr) auto 70px; gap: 12px; align-items: baseline; padding: 9px 14px; font-size: 13.5px; line-height: 1.5; }
+  .ev > summary { list-style: none; cursor: pointer; }
+  .ev > summary::-webkit-details-marker { display: none; }
+  .ev > summary:hover { background: rgba(var(--shadow-rgb), .025); }
+  .ev > summary:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+  .ev .who { color: var(--ink-3); }
+  .ev .what { color: var(--ink); min-width: 0; overflow-wrap: anywhere; }
+  .ev .what code { font: 12.5px var(--mono); }
+  .ev .meta { color: var(--ink-3); font-size: 12.5px; white-space: nowrap; }
+  .ev .more { justify-self: end; display: inline-flex; align-items: center; gap: 2px; color: var(--ink-3); font-size: 12.5px; }
+  .ev > summary:hover .more { color: var(--red); }
+  .ev .more .chev { width: 14px; height: 14px; }
+  .ev[open] > summary .more .chev { transform: rotate(90deg); }
+  .ev-bd { padding: 4px 14px 12px calc(14px + 64px + 12px); display: grid; gap: 8px; }
+  .ev-bd > p { margin: 0; font-size: 13px; color: var(--ink-2); }
+  .ev-bd > p.lbl { font-size: 12.5px; color: var(--ink-3); margin-bottom: -4px; }
+  .ev-bd > details.x:first-child { border-top: 0; }
+  .ev.bad .what { color: var(--danger); }
+  .ev.bad .what code { color: inherit; }
+  .ev.pending .ev-row { grid-template-columns: 76px minmax(0, 1fr) auto auto; background: rgba(var(--red-rgb), .04); }
+  .ev.pending .what { color: var(--ink-2); }
+  .ev.pending .btns { gap: 8px; }
+  .ev.pending .btn { height: 30px; padding: 0 14px; font-size: 13px; }
+  .ev.new { animation: evIn .35s ease-out; }
+  @keyframes evIn { from { opacity: 0; transform: translateY(-3px); } }
+  @media (prefers-reduced-motion: reduce) { .ev.new { animation: none; } }
+  .sampling { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px; padding: 8px 18px; border-bottom: 1px solid var(--paper-2); font-size: 13px; color: var(--ink-2); }
+  .sampling .smp { display: inline-flex; align-items: center; gap: 10px; }
+  .sampling .info + .smp { margin-left: 18px; }
+  .sampling input[type=range] { width: 130px; }
+  .sampling output { font: 12.5px var(--mono); color: var(--ink); min-width: 36px; }
+  .pb-lbl { font: 11.5px var(--sans); color: var(--ink-3); margin-bottom: 2px; }
+  .pb details.th > summary .pb-lbl { display: inline; margin-left: 8px; }
+  /* The chat scrolls inside its panel, so the message box stays in view */
+  .chatlog { height: 420px; overflow-y: auto; overscroll-behavior: contain; }
+  .panel-head .stats span + span { margin-left: 12px; }
+  /* Running: a timer where the model works */
+  .busy-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--primary); margin-right: 6px; animation: pulse 1s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .25; } }
+  @media (prefers-reduced-motion: reduce) { .busy-dot { animation: none; } }
+  .small-btn { height: 30px !important; padding: 0 12px !important; font-size: 12.5px !important; }
+  .note-box { padding: 14px 18px 18px; display: grid; gap: 10px; }
+  .note-box textarea { width: 100%; min-height: 150px; font: 12.5px/1.55 var(--mono); resize: vertical; }
+
+  @media (max-width: 860px) {
+    .app { padding: 0 16px 16px; }
+    select.field, #chatModel { min-width: 0; width: 100%; }
+    .top { flex-wrap: wrap; height: auto; padding: 12px 0; }
+    .msg { grid-template-columns: 1fr; gap: 2px; }
+    .bubble { max-width: 94%; }
+    .ev > summary, .ev-row, .ev.pending .ev-row { grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; }
+    .ev .who { grid-column: 1 / -1; font-size: 12px; }
+    .ev .meta:empty { display: none; }
+    .ev-bd { padding-left: 14px; }
+    .edit { grid-template-columns: 1fr; }
+    .edit > span { padding-top: 0; }
+    .prow { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+<script>
+  // Saved choice, else the system setting. Set before the page draws, so there is no flash.
+  let t = null;
+  try { t = localStorage.getItem("theme"); } catch {}
+  document.documentElement.dataset.theme = t || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+  // Sidebar: always folded on a narrow screen; else the saved choice, or open.
+  const narrow = matchMedia("(max-width: 860px)");
+  const sideFor = () => { let v = null; try { v = localStorage.getItem("sidebar"); } catch {} return narrow.matches ? "closed" : v || "open"; };
+  document.documentElement.dataset.side = sideFor();
+  narrow.addEventListener("change", () => document.documentElement.dataset.side = sideFor());
+</script>
+</head>
+<body>
+<nav class="side" aria-label="Pages">
+  <div class="side-top"><button type="button" class="side-toggle" id="sideToggle" title="Show or hide the sidebar" aria-label="Show or hide the sidebar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/></svg></button></div>
+  <a href="/" title="Trace: tokens and their probabilities"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 6h5M12 6h8M4 12h10M17 12h3M4 18h3M10 18h10"/></svg><span>Trace</span></a>
+  <a href="/embeddings.html" title="Tokenizer: tokens, IDs and embeddings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="5" height="5" rx="1"/><rect x="3" y="14" width="5" height="5" rx="1"/><path d="M11 7.5h10M11 16.5h10M14 5v5M17 5v5M14 14v5M17 14v5"/></svg><span>Tokenizer</span></a>
+  <a href="/rag.html" title="RAG: answers from your documents"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h10M4 9h7M4 13h5"/><circle cx="15.5" cy="15.5" r="4"/><path d="M18.5 18.5 21 21"/></svg><span>RAG</span></a>
+  <a href="/memory.html" title="Memory: what the agent remembers"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 3 8l9 5 9-5-9-5z"/><path d="M3 12.5l9 5 9-5"/><path d="M3 17l9 5 9-5"/></svg><span>Memory</span></a>
+  <a href="/tools.html" aria-current="page" title="Tools: how a model uses tools"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.1L3 17.7 6.3 21l6.3-6.3a4 4 0 0 0 5.1-5.4l-2.6 2.6-2.4-.5-.5-2.4z"/></svg><span>Tools</span></a>
+  <a href="/settings.html" class="side-foot" title="Settings: model formats"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>Settings</span></a>
+</nav>
+<div class="app">
+  <header class="top">
+    <h1><label for="chatModel">Chat model</label></h1>
+    <select id="chatModel" class="field" aria-label="Chat model"></select>
+    <span class="tooluse" id="toolUse" tabindex="0"></span>
+    <span class="mc-wrap"><button type="button" class="hdr-btn mc-btn" id="mcBtn" aria-expanded="false" aria-controls="modelCard" title="Show the model card">Model card</button>
+      <div class="mcard pop" id="modelCard" role="dialog" aria-label="Model card" hidden></div></span>
+    <span class="spacer"></span>
+    <button type="button" id="resetAll" class="hdr-btn" title="Clear the chat. The tools stay.">Reset all</button>
+    <span class="seg" id="theme" role="group" aria-label="Theme">
+      <button data-theme="light" aria-pressed="false">Light</button>
+      <button data-theme="dark" aria-pressed="false">Dark</button>
+    </span>
+  </header>
+
+  <section class="composer" aria-label="Settings">
+    <div class="lede">A model cannot run a tool. It only writes text that asks for a tool. The harness (the program around the model) reads that text, runs the tool and sends the result back.
+      <details class="more"><summary>How it works</summary>
+        <ol class="how">
+          <li><b>Tool creation</b> · Tools tab: Create tool. A tool is a function with a name, a description and parameters.</li>
+          <li><b>Tool definition</b> · <i>Sending request</i>, <i>Applying chat template</i>. LM Studio (structured function calling): the tools go as JSON schemas. Custom note: the tools are text in the system prompt.</li>
+          <li><b>Tool selection</b> · <i>Generating tokens</i>. The model thinks, and selects a tool or no tool.</li>
+          <li><b>Tool calling</b> · <i>Generating tokens</i>: the model writes the call. <i>Parsing output</i>, <i>Serializing JSON</i>: LM Studio parses it. <i>Parsing tool_calls</i>, <i>Validating tool call</i>: the harness parses and validates it. <i>Executing tool</i>: the server executes it. In Step mode, you approve it first.</li>
+          <li><b>Output processing</b> · <i>Appending observation</i>: the result goes back to the model as an observation. In the next model call, the model writes the answer.</li>
+        </ol>
+        <p>Some models learned special tool tokens in training. LM Studio puts the tools into the chat template of these models. Other models get the tools as a text note, and must follow it.</p>
+      </details></div>
+  </section>
+
+  <div class="tabbox">
+  <div class="tabs" role="tablist" aria-label="Views">
+    <button type="button" role="tab" data-tab="chat" aria-selected="true">Chat</button>
+    <button type="button" role="tab" data-tab="tools" aria-selected="false">Tools <span class="cnt" id="toolCount"></span></button>
+  </div>
+
+  <div class="tabpane" id="pane-chat" role="tabpanel">
+  <section class="panel" aria-label="Chat">
+    <div class="panel-head"><h2>Chat</h2>
+      <span class="ctl-inline l"><span>Harness</span><span class="seg" id="harness" role="group" aria-label="Harness"><button data-v="off" aria-pressed="false">Off</button><button data-v="on" aria-pressed="true">On</button></span><span class="info" tabindex="0" data-tip-title="Harness" data-tip="The program around the model. On: it reads the tool call in the reply, checks it, runs the tool and sends the result back. Off: nothing reads the reply, so a tool call stays text and no tool runs.">i</span></span>
+      <span class="ctl-inline l"><span>Mode</span><span class="seg" id="stepMode" role="group" aria-label="Mode"><button data-v="manual" aria-pressed="false">Step</button><button data-v="auto" aria-pressed="true">Auto</button></span><span class="info" tabindex="0" data-tip-title="Mode" data-tip="Step: you click Next step for each step, and you approve or deny each tool before it runs. Auto: the harness does each step by itself, up to 5 model calls.">i</span></span>
+      <span class="stats" id="stats"></span>
+      <button type="button" id="newChat" class="btn ghost" title="Start a new chat. The tools stay.">New chat</button></div>
+    <div class="sampling">
+      <label class="smp"><span>Temperature</span><input type="range" id="temp" min="0" max="2" step="0.1" aria-describedby="tempV"><output id="tempV"></output></label>
+      <span class="info" tabindex="0" data-tip-title="Temperature" data-tip="0: the model always picks the most likely token, so each run is the same. Higher: more random. The model may think more or less, call a tool that is not needed, or write a call with wrong arguments.">i</span>
+      <label class="smp"><span>Max tokens</span><input type="range" id="maxTok" min="0" max="9" step="1" aria-describedby="maxTokV"><output id="maxTokV"></output></label>
+      <span class="info" tabindex="0" data-tip-title="Max tokens" data-tip="The most tokens the model can write in one reply, its thinking included. A low limit cuts the reply: the model may stop in its thinking, before it writes the tool call or the answer.">i</span>
+    </div>
+    <div class="chatlog" id="log"></div>
+  </section>
+  <section class="panel sendbar" aria-label="Your message">
+    <div class="ex-row"><label for="preset" class="lbl-s2">Example</label><select id="preset" class="field"></select><span class="ex-tip" id="exTip"></span></div>
+    <div class="send-row">
+      <textarea id="msg" class="input" rows="1" placeholder="Ask something, or select an example." title="Enter sends the message. Shift + Enter adds a line."></textarea>
+      <button id="sendBtn" class="btn" title="Send the message (Enter)">Send</button>
+    </div>
+    <div class="send-tools">
+      <span class="status" id="status" aria-live="polite"></span>
+    </div>
+    <div class="error" id="error" role="alert"></div>
+  </section>
+  </div>
+
+  <div class="tabpane" id="pane-tools" role="tabpanel" hidden>
+  <section class="panel" aria-label="Tool note">
+    <div class="panel-head"><h2>Tool note</h2><span class="sub">tells the model which tools it has, and how to call one</span>
+      <span class="ctl-inline"><span class="seg" id="noteBy" role="group" aria-label="Tool note"><button data-v="lmstudio" aria-pressed="true" title="LM Studio writes the tool note from the JSON schemas">LM Studio</button><button data-v="page" aria-pressed="false" title="You write the tool note in the system prompt">Custom</button></span>
+        <span class="info" tabindex="0" data-tip-title="Tool note" data-tip="The text that tells the model which tools it has and how to call one. LM Studio: the page sends the tools as JSON schemas, and LM Studio writes the note (the chat template of a model trained for tools, else a text note). Custom: you write the note into the system prompt, and the harness reads the reply itself.">i</span></span></div>
+    <div class="note-box" id="noteBox"></div>
+  </section>
+  <section class="panel" aria-label="Tools">
+    <div class="panel-head"><h2>Tools</h2><span class="sub">a tool is a function: a name, a description and parameters</span></div>
+    <div class="card-tools top">
+      <button type="button" class="btn ghost" id="addTool" title="Create a URL tool: the server calls the URL with the arguments in it">Create tool</button>
+      <select id="library" class="field" aria-label="Add a tool from the library"></select>
+      <button type="button" class="btn ghost warn" id="resetTools" title="Replace the tools with the 5 starter tools">Reset tools</button>
+      <span class="hint">Saved in <code>tools.json</code></span>
+    </div>
+    <div class="tool-list" id="toolList"></div>
+  </section>
+  </div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const fit = (t, max = 160) => { t.style.height = "auto"; t.style.height = Math.min(t.scrollHeight + 2, max) + "px"; };
+const post = (url, body, signal) => fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), signal })
+  .then(async r => { const j = await r.json().catch(() => ({})); if (!r.ok) { const e = new Error(j.error?.message || j.error || `Error ${r.status}`); e.status = r.status; throw e; } return j; });
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+// Model formats (Settings): where the thinking starts and ends in the raw text of each model. No model is built in.
+let FORMATS = [];
+async function loadFormats() { try { FORMATS = await (await fetch("/model-formats")).json(); } catch { FORMATS = []; } }
+const fmtOf = model => FORMATS.find(f => f.name === model && f.thinkStart && f.thinkEnd);
+// The thinking parts of a text: [{s: start of the start text, b: start of the thinking, e: its end, end: after the end text}].
+function thinkSpans(text, model) {
+  const f = fmtOf(model), out = [];
+  if (!f || !text) return out;
+  for (let i = 0, s; (s = text.indexOf(f.thinkStart, i)) >= 0;) {
+    const b = s + f.thinkStart.length, e = text.indexOf(f.thinkEnd, b);
+    out.push({ s, b, e: e < 0 ? text.length : e, end: e < 0 ? text.length : e + f.thinkEnd.length, open: f.thinkStart, close: e < 0 ? "" : f.thinkEnd });
+    i = out.at(-1).end;
+  }
+  return out;
+}
+// The text without the thinking: what the user sees.
+function cleanText(t, model = $("chatModel").value) {
+  let out = "", pos = 0;
+  t = t || "";
+  for (const sp of thinkSpans(t, model)) { out += t.slice(pos, sp.s); pos = sp.end; }
+  return (out + t.slice(pos)).replace(/\n{3,}/g, "\n\n").trim();
+}
+const ICON_DEL = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/></svg>';
+const ICON_EDIT = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>';
+
+const SYSTEM = "You are a helpful assistant.";  // the book's TinyAgent
+const MAX_CALLS = 5;
+// The book's tool note (Tools.prompt, page 182). {tools} becomes one line per tool.
+const NOTE_DEFAULT = `You are a helpful assistant.
+
+# Tools
+If needed, you can only use the following tools to assist you in completing tasks:
+{tools}
+
+To use a tool, respond with JSON: {"tool": "name", "kwargs": {"param": "value"}}`;
+
+// ---- Tools: the starter set. Built-in tools run as Python on the server; URL tools are a GET request.
+const P = (name, type, required, description, extra) => ({ name, type, required, description, ...extra });
+const STARTER = [
+  { name: "multiply", kind: "builtin", on: true, description: "Multiply two numbers.",
+    params: [P("a", "number", true, "The first number"), P("b", "number", true, "The second number")] },
+  { name: "get_weather", kind: "builtin", on: true, description: "Get the current weather in a city: temperature, wind and conditions. Live data from Open-Meteo.",
+    params: [P("city", "string", true, "The name of the city, for example Toronto")] },
+  { name: "exchange_rate", kind: "url", on: true, url: "https://api.frankfurter.dev/v1/latest?amount={amount}&base={base}&symbols={target}",
+    description: "Convert an amount of money from one currency to another, with today's rate of the European Central Bank (Frankfurter).",
+    params: [P("amount", "number", true, "The amount of money to convert"), P("base", "string", true, "The currency to convert from, as a 3-letter code, for example USD"),
+      P("target", "string", true, "The currency to convert to, as a 3-letter code, for example CAD")] },
+  { name: "top_tech_news", kind: "builtin", on: true, description: "Get the top stories on Hacker News right now: the title, the points and the link of each story.",
+    params: [P("count", "integer", false, "How many stories, from 1 to 10. The default is 3.")] },
+  { name: "search_memory", kind: "builtin", on: true, description: "Search the saved facts of the Memory page (the long-term memory). Returns the facts nearest to the query.",
+    params: [P("query", "string", true, "What to look for, for example: Where does Ilse live?")] },
+];
+// More free APIs that need no key (each one tested). URL tools, so you can see and change the URL.
+const LIBRARY = [
+  { name: "crypto_price", kind: "url", url: "https://api.coinbase.com/v2/prices/{pair}/spot", description: "Get the current price of a crypto currency (Coinbase).",
+    params: [P("pair", "string", true, "The pair, for example BTC-USD or ETH-CAD")] },
+  { name: "wikipedia_summary", kind: "url", url: "https://en.wikipedia.org/api/rest_v1/page/summary/{title}", description: "Get the summary of an English Wikipedia article.",
+    params: [P("title", "string", true, "The title of the article, for example Rayleigh scattering")] },
+  { name: "mastodon_trends", kind: "url", url: "https://mastodon.social/api/v1/trends/tags?limit={limit}", description: "Get the hashtags that are popular on mastodon.social now.",
+    params: [P("limit", "integer", true, "How many hashtags, from 1 to 10")] },
+  { name: "sample_post", kind: "url", url: "https://jsonplaceholder.typicode.com/posts/{id}", description: "Get a sample blog post (fake test data from JSONPlaceholder).",
+    params: [P("id", "integer", true, "The number of the post, from 1 to 100")] },
+  { name: "corporate_buzzword", kind: "url", url: "https://corporatebs-generator.sameerkumar.website/", description: "Get a random phrase of corporate buzzwords (a joke API).", params: [] },
+];
+const TYPES = ["string", "number", "integer", "boolean"];
+const NAME_RE = /^[A-Za-z_][A-Za-z0-9_]{0,63}$/;
+let tools = [];
+const active = () => tools.filter(t => t.on);
+const clone = x => JSON.parse(JSON.stringify(x));
+// The JSON schema of a tool, in the OpenAI format that the book uses (tool_schema, page 183).
+function schemaOf(t) {
+  const properties = {};
+  t.params.forEach(p => { properties[p.name] = { type: p.type, ...(p.description ? { description: p.description } : {}), ...(p.enum?.length ? { enum: p.enum } : {}) }; });
+  return { type: "function", function: { name: t.name, description: t.description, parameters: { type: "object", properties, required: t.params.filter(p => p.required).map(p => p.name) } } };
+}
+const signature = t => `${t.name}(${t.params.map(p => `${p.name}${p.required ? "" : "?"}: ${p.type}`).join(", ")})`;
+// The text note of the page: one line per tool, as the book's Tools.descriptions.
+const toolLines = () => active().map(t => `\`${t.name}\`: ${t.description.replace(/\.$/, "")}: ${signature(t)}`).join("\n");
+let noteText = NOTE_DEFAULT;
+const pageNote = () => noteText.replace("{tools}", toolLines() || "(no tools)");
+
+async function loadTools() {
+  let list = [];
+  try { list = await fetch("/tools").then(r => r.json()); } catch {}
+  tools = Array.isArray(list) && list.length ? list.filter(t => t && NAME_RE.test(t.name) && Array.isArray(t.params)) : clone(STARTER);
+  if (!tools.length) tools = clone(STARTER);
+}
+let saveTimer = null;
+function saveTools() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => fetch("/tools", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(tools) })
+    .catch(e => { $("error").textContent = `Tools not saved: ${e.message}`; }), 400);
+}
+
+// ---- Settings (remembered in this browser)
+const S = { noteBy: "lmstudio", harness: "on", stepMode: "auto", tab: "chat", temp: 0, maxTokens: 1500 };
+try { Object.assign(S, JSON.parse(localStorage.getItem("toolsPage2") || "{}")); noteText = localStorage.getItem("toolNote") || NOTE_DEFAULT; } catch {}
+if (!["manual", "auto"].includes(S.stepMode)) S.stepMode = "auto";
+const keep = () => { try { localStorage.setItem("toolsPage2", JSON.stringify(S)); localStorage.setItem("toolNote", noteText); } catch {} };
+const TOK_STEPS = [16, 32, 64, 128, 256, 512, 1024, 1500, 2048, 4096];
+function renderSampling() {
+  const t = $("temp"), m = $("maxTok");
+  t.value = S.temp; t.style.setProperty("--fill", (S.temp / 2 * 100) + "%"); $("tempV").textContent = (+S.temp).toFixed(1);
+  const i = Math.max(0, TOK_STEPS.indexOf(S.maxTokens)); m.value = i; m.style.setProperty("--fill", (i / 9 * 100) + "%"); $("maxTokV").textContent = TOK_STEPS[i].toLocaleString();
+}
+function setSeg(id, v) {
+  S[id] = v;
+  document.querySelectorAll(`#${id} button`).forEach(b => b.setAttribute("aria-pressed", b.dataset.v === v));
+  keep();
+}
+["noteBy", "harness", "stepMode"].forEach(id => document.querySelectorAll(`#${id} button`).forEach(b => b.onclick = () => {
+  if (busy && id !== "stepMode") return;
+  const was = S[id];
+  setSeg(id, b.dataset.v);
+  if (id === "noteBy" && was !== b.dataset.v && chat.some(x => x.user)) { newChat(); setStatus("New chat: the tool format changed."); }
+  if (id === "stepMode" && pending && b.dataset.v === "auto") { const p = pending; pending = null; p.resolve(true); }
+  renderAll();
+}));
+
+// ---- Models: LM Studio says which models are trained for tool use.
+let modelInfo = [];
+async function loadModels() {
+  try {
+    let list = [];
+    try { list = (await fetch("/api/v1/models").then(r => r.json())).models || []; } catch {}
+    if (!list.length) {
+      const r = await fetch("/v1/models"), j = await r.json();
+      if (!r.ok) throw new Error(j.error?.message || r.status);
+      list = j.data.map(m => ({ key: m.id, type: /embed/i.test(m.id) ? "embedding" : "llm" }));
+    }
+    modelInfo = list.filter(m => m.type === "llm");
+    const keys = modelInfo.map(m => m.key);
+    $("chatModel").replaceChildren(...keys.map(k => new Option(k)));
+    let saved = null; try { saved = localStorage.getItem("toolsModel"); } catch {}
+    $("chatModel").value = keys.includes(saved) ? saved : keys.find(k => /gemma-4-e4b/i.test(k)) || keys.find(k => k === "google/gemma-4-12b") || keys.find(k => trained(k)) || keys[0];
+    renderCard();
+  } catch (e) { $("error").textContent = `LM Studio unreachable: ${e.message || e}`; }
+}
+const trained = k => modelInfo.find(m => m.key === k)?.capabilities?.trained_for_tool_use;
+// The model card: what LM Studio says about the model, and its pages on Hugging Face (fetched by the server).
+const cards = new Map();
+const fmtBytes = n => n >= 1e9 ? (n / 1e9).toFixed(1) + " GB" : Math.round(n / 1e6) + " MB";
+const fmtNum = n => n >= 1e6 ? (n / 1e6).toFixed(1) + " M" : n >= 1e3 ? Math.round(n / 1e3) + " k" : String(n);
+async function renderCard() {
+  const key = $("chatModel").value, m = modelInfo.find(x => x.key === key), el = $("modelCard");
+  if (!m) { el.innerHTML = ""; return; }
+  const cap = m.capabilities || {}, tool = cap.trained_for_tool_use, ctx = m.loaded_instances?.[0]?.config?.context_length;
+  const spec = (k, v, tip) => v == null || v === "" ? "" : `<div class="spec"${tip ? ` tabindex="0" data-tip-title="${esc(k)}" data-tip="${esc(tip)}"` : ""}><span>${esc(k)}</span><b>${v}</b></div>`;
+  let hf = cards.get(key);
+  // A Hugging Face card can name a wrong base model; show it only when it is of the same family as the model.
+  const family = (m.architecture || "").replace(/[\d_].*$/, "").toLowerCase();
+  const base = hf?.base && family && hf.base.id.toLowerCase().includes(family) ? hf.base : null;
+  const link = (h, label) => `<a href="${esc(h.url)}" target="_blank" rel="noopener noreferrer">${esc(label || h.id)}</a>`;
+  const tu = $("toolUse");
+  tu.className = "tooluse" + (tool ? " yes" : "");
+  tu.textContent = tool ? "Tool use: Native" : tool === false ? "Tool use: Text note" : "Tool use: Unknown";
+  tu.dataset.tipTitle = tu.textContent;
+  tu.dataset.tip = tool ? "This model learned tool calling in training. LM Studio puts the tools into its chat template, with its own special tool tokens."
+    : tool === false ? "This model did not learn tool calling. LM Studio gives it the tools as a text note, and reads its reply for [TOOL_REQUEST]."
+    : "LM Studio does not say if this model learned tool calling.";
+  el.innerHTML = `<div class="mcard-hd"><b>${esc(m.display_name || key)}</b><span class="pub">${esc(m.publisher || "")}</span>
+      <span class="src">${hf && !hf.error ? "LM Studio · Hugging Face" : "LM Studio"}</span></div>
+    <div class="mcard-bd">
+      ${spec("Parameters", esc(m.params_string || ""))}
+      ${spec("Architecture", esc(m.architecture || ""))}
+      ${spec("Quantization", esc(m.quantization?.name || ""), "How many bits each weight of the model uses. Fewer bits: a smaller file, and a little less quality.")}
+      ${spec("Format", esc((m.format || "").toUpperCase()))}
+      ${spec("Size", m.size_bytes ? fmtBytes(m.size_bytes) : "")}
+      ${spec("Context", m.max_context_length ? (ctx ? `${ctx.toLocaleString()} of ${m.max_context_length.toLocaleString()}` : `${m.max_context_length.toLocaleString()} max`) : "", "How many tokens fit in one request: the loaded setting, and the maximum of the model. The tool definitions use part of it.")}
+      ${spec("Tool use", tool ? "Native" : tool === false ? "Text note" : "Unknown")}
+      ${spec("Reasoning", cap.reasoning ? "Yes" : "No")}
+      ${spec("Vision", cap.vision ? "Yes" : "No")}
+      ${!cards.has(key) ? `<div class="spec"><span>Hugging Face</span><b class="ph">loading…</b></div>` : ""}
+      ${hf && !hf.error ? spec("License", esc(hf.license || base?.license || "")) : ""}
+      ${base ? spec("Base model", link(base), "The original model. The file in LM Studio is a converted copy of it.") : ""}
+      ${base?.downloads ? spec("Downloads", fmtNum(base.downloads), "Downloads of the base model on Hugging Face in the last 30 days.") : ""}
+      ${hf ? spec("Files", link(hf, hf.id.split("/")[0]), "The Hugging Face repository of the file that LM Studio downloaded.") : ""}
+    </div>`;
+  if (hf === undefined) {
+    cards.set(key, null);
+    try { const j = await fetch(`/model-card?key=${encodeURIComponent(key)}`).then(r => r.json()); cards.set(key, j.hf ? { ...j.hf, base: j.base } : null); }
+    catch { cards.set(key, null); }
+    if ($("chatModel").value === key) renderCard();
+  }
+}
+$("chatModel").onchange = () => { try { localStorage.setItem("toolsModel", $("chatModel").value); } catch {} renderCard(); };
+function showCard(on) { $("modelCard").hidden = !on; $("mcBtn").setAttribute("aria-expanded", on); }
+$("mcBtn").onclick = e => { e.stopPropagation(); showCard($("modelCard").hidden); };
+document.addEventListener("click", e => { if (!e.target.closest(".mc-wrap")) showCard(false); });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("modelCard").hidden) { showCard(false); $("mcBtn").focus(); } });
+
+// ---- Special tokens: the page asks the tokenizer of the model if a tag is ONE token (a control token)
+// or plain text in several tokens. Real data: for Gemma 3, [TOOL_REQUEST] is 5 ordinary tokens.
+const TAG_RE = /(<[^<>\s]{1,40}>|\[(?:END_)?TOOL_[A-Z]+\])/;
+// No names per model: a tag is one special token, or plain text in several tokens. The tokenizer of the model decides.
+const SPECIAL = ["Special token · 1 token", "One token from the vocabulary of the model. The model learned it in training."];
+const tokCounts = new Map();  // model -> Map(tag -> number of tokens), null when the tokenizer is not available
+async function countTags(model, texts) {
+  const tags = [...new Set(texts.flatMap(t => (t || "").split(TAG_RE).filter((p, i) => i % 2)))];
+  let m = tokCounts.get(model);
+  if (m === null) return;
+  if (!m) tokCounts.set(model, m = new Map());
+  const miss = tags.filter(t => !m.has(t));
+  if (!miss.length) return;
+  try {
+    const j = await post("/tokenize", { model, texts: miss, count: true });
+    miss.forEach((t, i) => m.set(t, j.counts[i]));
+  } catch { tokCounts.set(model, null); }
+}
+function renderRaw(text, model) {
+  const m = tokCounts.get(model);
+  return (text || "").split(TAG_RE).map((part, i) => {
+    if (!(i % 2)) return esc(part).replace(/\n/g, '<span class="nl">↵</span>\n');
+    const n = m?.get(part);
+    if (n === 1 || (m === null && part.startsWith("<"))) {
+      return `<span class="sp${part === "<bos>" ? " bos" : ""}" tabindex="0" data-tip-title="${SPECIAL[0]}" data-tip="${SPECIAL[1]}">${esc(part)}</span>`;
+    }
+    const tip = n ? `Not a special token: the model reads this tag as ${n} ordinary tokens of text. It learned nothing special about it; it must follow the note.` : "Text in the prompt.";
+    return `<span class="tx" tabindex="0" data-tip-title="Plain text${n ? ` · ${n} tokens` : ""}" data-tip="${esc(tip)}">${esc(part)}</span>`;
+  }).join("");
+}
+
+// ---- Formatted view of a prompt or a reply, for any model. No list of model tags: the page finds the data that
+// it knows (the messages of the request, the fields of the reply) in the exact text. All other text is what the chat
+// template adds. Display only: the indentation is added for reading. ↵ marks a line break that is really in the text.
+function chip(tag, model) {
+  const m = tokCounts.get(model), n = m?.get(tag), one = n === 1 || (m === null && tag.startsWith("<"));
+  const tip = one ? SPECIAL : [`Plain text${n ? ` · ${n} tokens` : ""}`, n ? `Not a special token: the model reads this tag as ${n} ordinary tokens of text. It must follow the note to use it.` : "Text in the prompt."];
+  return `<span class="${one ? "sp" : "tx"} c-other" tabindex="0" data-tip-title="${esc(tip[0])}" data-tip="${esc(tip[1])}">${esc(tag)}</span>`;
+}
+// Text: real line breaks get ↵. "json": the keys are grey. U+2028 marks a break added for reading, with no ↵.
+const txt = (t, keys) => (keys === "json" ? esc(t).replace(/(&quot;[^&\n]*?&quot;)(:)/g, '<span class="key">$1</span>$2') : keys ? esc(t).replace(/(^|[{,\s])([A-Za-z_]\w*):(?!\/\/)/g, '$1<span class="key">$2:</span>') : esc(t))
+  .replace(/\n/g, '<span class="nl">↵</span>\n').replace(/\u2028/g, "\n");
+// Code with braces that is not JSON: a line per key, inside braces.
+function braces(units, model) {
+  const close = new Map(), stack = [];
+  units.forEach((u, i) => { if (u.c === "{") stack.push(i); else if (u.c === "}" && stack.length) close.set(stack.pop(), i); });
+  const leaf = i => { const j = close.get(i); if (j == null || j - i > 70) return false; for (let x = i + 1; x < j; x++) if (units[x].c === "{") return false; return true; };
+  let out = "", buf = "", depth = 0, sq = 0, inline = 0;
+  const flush = () => { if (buf) { out += txt(buf, true); buf = ""; } }, nl = () => { flush(); out += "\n" + "  ".repeat(depth); };
+  units.forEach((u, i) => {
+    if (u.tag) { flush(); out += chip(u.tag, model); return; }
+    const c = u.c;
+    if (inline) { buf += c; if (c === "{") inline++; if (c === "}") inline--; return; }
+    if (c === "{") { if (leaf(i)) { buf += c; inline = 1; return; } buf += c; depth++; nl(); return; }
+    if (c === "}") { depth = Math.max(0, depth - 1); nl(); buf += c; return; }
+    if (c === "[") sq++; if (c === "]") sq = Math.max(0, sq - 1);
+    if (c === "," && !sq) { buf += c; nl(); return; }
+    buf += c;
+  });
+  flush();
+  return out;
+}
+// Each line that is JSON is indented.
+const jsonPretty = t => t.split("\n").map(line => { const x = line.trim(); if (!/^[{\[]/.test(x)) return line; try { return JSON.stringify(JSON.parse(x), null, 2).replace(/\n/g, "\u2028"); } catch { return line; } }).join("\n");
+// A piece of exact text: tags are chips; JSON lines are indented.
+function code(t, model) {
+  const items = t.split(TAG_RE).map((x, i) => i % 2 ? { tag: x } : { t: x }).filter(x => x.tag || x.t);
+  const plain = items.filter(x => x.t).map(x => x.t).join("");
+  const json = plain.split("\n").some(l => { const x = l.trim(); if (!/^[{\[]/.test(x)) return false; try { JSON.parse(x); return true; } catch { return false; } });
+  // Braces get a line per key only when the code is on one long line; code that has its own lines stays as it is.
+  if (!json && /\{/.test(plain) && Math.max(...plain.split("\n").map(l => l.length)) > 100) return braces(items.flatMap(x => x.tag ? [{ tag: x.tag }] : [...x.t].map(c => ({ c }))), model);
+  return items.map(x => x.tag ? chip(x.tag, model) : txt(json ? jsonPretty(x.t) : x.t, json ? "json" : false)).join("");
+}
+const tagsLine = (t, model) => t.split(TAG_RE).map((x, i) => !x ? "" : i % 2 ? chip(x, model) : esc(x).replace(/\n/g, '<span class="nl">↵</span>')).join("");
+const LBL_REPLY = { think: "Thinking · not shown to the user" };
+const LBL_MSG = { system: ["sys", "System message"], developer: ["sys", "System message"], user: ["user", "User message"], assistant: ["ans", "Model · text from an earlier reply"], tool: ["resp", "Tool result · from the harness"] };
+// The prompt: each message of the request, found in the exact text, in order. The text between two messages comes
+// from the chat template. If it has the name of a tool, it is the tools (LM Studio writes them from the JSON schema),
+// or an earlier tool call (before a tool result). null: no message is in the text.
+function promptView(text, model, body) {
+  const msgs = body?.messages || [], names = (body?.tools || []).map(t => t.function?.name).filter(Boolean), parts = [];
+  let pos = 0;
+  for (const m of msgs) {
+    const t = (m.role === "assistant" ? cleanText(m.content, model) : typeof m.content === "string" ? m.content : "").trim();
+    const at = t ? text.indexOf(t, pos) : -1;
+    if (at >= 0) { parts.push({ s: at, e: at + t.length, m }); pos = at + t.length; }
+  }
+  if (!parts.length) return null;
+  let out = "", at = 0;
+  // The tags at the two ends of a gap (and a short word between them, as a role name) go on their own line.
+  const edge = x => x.tag || (/^\s*[A-Za-z_]{0,12}\s*$/.test(x.t) && !names.includes(x.t.trim()));  // a tool name is not an edge
+  const gap = (g, next) => {
+    if (!g.trim()) return;
+    const items = g.split(TAG_RE).map((x, i) => i % 2 ? { tag: x } : { t: x }).filter(x => x.tag || x.t), join = a => a.map(x => x.tag ?? x.t).join("");
+    let i = 0, j = items.length;
+    while (i < j && edge(items[i])) i++;
+    while (j > i && edge(items[j - 1])) j--;
+    const head = join(items.slice(0, i)), mid = join(items.slice(i, j)), tail = join(items.slice(j));
+    const line = t => { if (t.trim()) out += `<div class="pl">${tagsLine(t, model)}</div>`; };
+    line(head);
+    const tool = names.some(n => mid.includes(n));
+    if (mid && !tool && (mid.match(/[A-Za-z]/g) || []).length < 3) line(mid);  // only a brace or a mark
+    else if (mid) {
+      const lbl = tool && next?.role === "tool" ? ["call", "Tool call · from an earlier reply, as the chat template writes it"]
+        : tool ? ["tool", "Tools · LM Studio writes them from the JSON schema, in the format of the chat template"] : ["sys", "Chat template · text that the template adds"];
+      out += `<div class="pb k-${lbl[0]}"><div class="pb-lbl">${lbl[1]}</div>${code(mid, model)}</div>`;
+    }
+    line(tail);
+  };
+  for (const p of parts) {
+    gap(text.slice(at, p.s), p.m);
+    const [k, lbl] = LBL_MSG[p.m.role] || ["sys", p.m.role];
+    out += `<div class="pb k-${k}"><div class="pb-lbl">${esc(lbl)}</div>${code(text.slice(p.s, p.e), model)}</div>`;
+    at = p.e;
+  }
+  gap(text.slice(at), null);
+  return `<div class="pv">${out}</div>`;
+}
+// No data to find: the exact text, with tags as chips.
+const plainView = (text, model) => `<div class="pv"><div class="pb k-sys">${code(text || "", model)}</div></div>`;
+// The reply, in parts, for any model: LM Studio already split the tokens into fields (thinking, content,
+// tool_calls). The page finds each field in the raw text, so it needs no list of model tags:
+// Thinking = the thinking field; Text = content; Tool call = from the last tag before the tool name, to the end.
+// The tags between the parts stay as they are, on their own line. null: a part is not in the raw text.
+function replyView(raw, msg, model, key) {
+  const parts = [], calls = msg.tool_calls || [];
+  let pos = 0;
+  const find = (t, from) => { t = (t || "").trim(); if (!t) return null; const i = raw.indexOf(t, from); return i < 0 ? null : { s: i, e: i + t.length }; };
+  // Thinking: LM Studio's field, else the start and end text in Settings.
+  const field = msg.reasoning_content ?? msg.reasoning;
+  let th = find(field, 0);
+  if (!th) { const sp = thinkSpans(raw, model)[0]; if (sp) th = { s: sp.b, e: sp.e }; }
+  if (typeof field === "string" && field.trim() && !th) return null;
+  if (th) { parts.push({ kind: "think", ...th }); pos = th.e; }
+  // Text: content, without the thinking when LM Studio left it in content.
+  const text = cleanText(msg.content, model);
+  if (text) { const t = find(text, pos); if (!t) return null; parts.push({ kind: calls.length ? "text" : "ans", ...t }); pos = t.e; }
+  // Tool call: LM Studio took it out of content. It starts at the last tag before the first tool name.
+  if (calls.length) {
+    const name = calls[0].function?.name, i = name ? raw.indexOf(name, pos) : -1;
+    if (i < 0) return null;
+    let s0 = i;
+    for (const m of raw.slice(pos, i).matchAll(new RegExp(TAG_RE.source, "g"))) s0 = pos + m.index;
+    parts.push({ kind: "call", s: s0, e: raw.length });
+  }
+  // Draw: the parts in the order that the model wrote them, and the tags between them.
+  const LBL = { ans: "Answer · shown to the user", text: "Text · not shown: the reply has a tool call, so the harness runs the tool", call: "Tool call · LM Studio took it out, as tool_calls" };
+  let out = "", at = 0;
+  parts.forEach((p, n) => {
+    const gap = raw.slice(at, p.s);
+    if (gap.trim()) out += `<div class="pl">${tagsLine(gap, model)}</div>`;
+    const body = raw.slice(p.s, p.e);
+    if (p.kind === "think") {
+      const words = body.split(/\s+/).filter(Boolean).length, k2 = `${key}.th${n}`, open = words <= 60 || openKeys.has(k2);
+      out += `<div class="pb k-think"><details class="x th" data-key="${k2}"${open ? " open" : ""}><summary><span class="pb-lbl">${LBL_REPLY.think} · ${words ? `${words} word${words === 1 ? "" : "s"}` : "empty: the model closed it at once"}</span></summary>${txt(body.replace(/^\n/, ""))}</details></div>`;
+    } else if (p.kind === "call") {
+      const html = code(body, model);
+      out += `<div class="pb k-call"><div class="pb-lbl">${LBL.call}</div>${html}</div>`;
+    } else out += `<div class="pb k-${p.kind === "text" ? "sys" : "ans"}"><div class="pb-lbl">${LBL[p.kind]}</div>${txt(body)}</div>`;
+    at = p.e;
+  });
+  if (raw.slice(at).trim()) out += `<div class="pl">${tagsLine(raw.slice(at), model)}</div>`;
+  return `<div class="pv">${out}</div>`;
+}
+// The prompt or the reply, Formatted (blocks) or Raw (the exact text).
+const rawKeys = new Set();  // the views switched to Raw; each view has its own switch
+function textView(text, model, key, msg, body) {
+  const fmt = !rawKeys.has(key);
+  return `<div class="view-bar" data-anchor="${esc(key)}"><span class="seg sm" role="group" aria-label="View"><button type="button" data-view="fmt" aria-pressed="${fmt}">Formatted</button><button type="button" data-view="raw" aria-pressed="${!fmt}">Raw</button></span>
+    <span class="hint-s">${fmt ? "Blocks and indentation are added for reading. ↵ is a real line break." : "The exact text, as LM Studio logged it."}</span></div>`
+    + (fmt ? (msg && replyView(text, msg, model, key)) || (body && promptView(text, model, body)) || plainView(text, model) : `<pre class="raw">${renderRaw(text, model)}</pre>`)
+    + `<div class="legend"><span class="raw"><span class="sp c-other">&lt;tag&gt;</span></span> one special token <span class="raw"><span class="tx c-other">&lt;tag&gt;</span></span> plain text: several tokens</div>`;
+}
+// Formatted / Raw: the switch that you clicked stays at the same place on the screen.
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-view]"); if (!b) return;
+  const bar = b.closest("[data-anchor]"), key = bar?.dataset.anchor, log = $("log"), y = bar?.getBoundingClientRect().top, winY = scrollY;
+  b.dataset.view === "raw" ? rawKeys.add(key) : rawKeys.delete(key);
+  renderChat(true);
+  const el = [...log.querySelectorAll("[data-anchor]")].find(x => x.dataset.anchor === key);
+  if (el) {
+    const want = log.scrollTop + el.getBoundingClientRect().top - y, max = log.scrollHeight - log.clientHeight;
+    if (want > max) log.style.paddingBottom = `${16 + want - max}px`;  // a shorter text near the end: space, so the view does not jump
+    log.scrollTop = want;
+  }
+  scrollTo(scrollX, winY);
+});
+// The exact text that LM Studio gave to the model, and the raw text that the model generated, from `lms log stream`.
+// LM Studio logs the prompt when the model starts; the first time, it loads the model first, so the page waits
+// as long as the model works (keepWaiting), plus 4 s.
+async function logEntry(kind, since, keepWaiting = () => false) {
+  for (let i = 0, end = Date.now() + 4000; Date.now() < end || keepWaiting(); i++) {
+    if (keepWaiting()) end = Date.now() + 4000;
+    try {
+      const j = await (await fetch(`/model-${kind}?first=1&since=${since}`)).json();
+      if (j.entry) return j.entry[kind];
+      if (!j.available) return null;
+    } catch { return null; }
+    await sleep(250);
+  }
+  return null;
+}
+
+// ---- Chat state. chat = list of turns; each turn has the steps of the harness.
+// history = the messages that the harness sends to the model (the conversation memory of the book: the full history).
+let chat = [], history = [], busy = false, ctrl = null, pending = null;
+const openKeys = new Set();  // the open ▸ sections, kept when the chat draws again
+let stats = { calls: 0, tools: 0, tokens: 0 };
+function newChat() {
+  if (chat.length && !chat.at(-1).divider) chat.push({ divider: true });
+  history = [];
+}
+
+// The request of one model call. LM Studio note: the tools parameter. Page note: the tools as text in the system prompt.
+function buildRequest() {
+  const model = $("chatModel").value, list = active();
+  const sys = S.noteBy === "page" ? pageNote() : SYSTEM;
+  const messages = [{ role: "system", content: sys }, ...history];
+  const body = { model, messages, temperature: +S.temp, max_tokens: S.maxTokens, stream: false };
+  if (S.noteBy === "lmstudio" && list.length) body.tools = list.map(schemaOf);
+  return body;
+}
+
+// Parse: find the tool calls in the reply.
+// LM Studio note: LM Studio already read them from the tokens (tool_calls). Page note: the book's parse (page 187).
+function parseReply(msg) {
+  if (S.noteBy === "lmstudio") {
+    return (msg.tool_calls || []).map(c => {
+      const raw = c.function?.arguments ?? "";
+      let args = null, error = null;
+      try { args = typeof raw === "string" ? (raw.trim() ? JSON.parse(raw) : {}) : raw; } catch (e) { error = `The arguments are not valid JSON: ${e.message}`; }
+      return { id: c.id, name: c.function?.name || "", raw: typeof raw === "string" ? raw : JSON.stringify(raw), args, error };
+    });
+  }
+  const text = cleanText(msg.content);
+  if (!/"tool"\s*:/.test(text)) return [];
+  const s = text.indexOf("{"), e = text.lastIndexOf("}") + 1, raw = text.slice(s, e);
+  try {
+    const j = JSON.parse(raw);
+    return [{ name: String(j.tool ?? ""), raw, args: j.kwargs ?? {}, error: null }];
+  } catch (err) { return [{ name: "", raw: raw || text, args: null, error: `The reply has "tool", but the JSON is not valid: ${err.message}` }]; }
+}
+
+// Check: the call against the schema of the tool. Small mistakes are fixed (text "5.1" becomes the number 5.1, as the
+// book's float() does); real mistakes go back to the model as an error, so it can try again.
+function checkCall(c) {
+  const errors = [], fixes = [];
+  if (c.error) return { errors: [c.error], fixes, args: null };
+  const t = active().find(x => x.name === c.name);
+  if (!t) return { errors: [`There is no tool named "${c.name}". The tools are: ${active().map(x => x.name).join(", ") || "none"}.`], fixes, args: null };
+  if (!c.args || typeof c.args !== "object" || Array.isArray(c.args)) return { errors: ["The arguments must be a JSON object."], fixes, args: null };
+  const args = { ...c.args };
+  for (const p of t.params) {
+    let v = args[p.name];
+    if (v === undefined || v === null || v === "") { if (p.required) errors.push(`"${p.name}" is required.`); delete args[p.name]; continue; }
+    if (p.type === "number" || p.type === "integer") {
+      if (typeof v === "string" && v.trim() !== "" && isFinite(+v)) { fixes.push(`"${p.name}": the text "${v}" becomes the number ${+v}`); v = args[p.name] = +v; }
+      if (typeof v !== "number") errors.push(`"${p.name}" must be a number, not ${JSON.stringify(v)}.`);
+      else if (p.type === "integer" && !Number.isInteger(v)) errors.push(`"${p.name}" must be a whole number, not ${v}.`);
+    } else if (p.type === "boolean") {
+      if (v === "true" || v === "false") { fixes.push(`"${p.name}": the text "${v}" becomes ${v}`); v = args[p.name] = v === "true"; }
+      if (typeof v !== "boolean") errors.push(`"${p.name}" must be true or false, not ${JSON.stringify(v)}.`);
+    } else if (typeof v !== "string") {
+      if (typeof v === "number") { fixes.push(`"${p.name}": the number ${v} becomes the text "${v}"`); v = args[p.name] = String(v); }
+      else errors.push(`"${p.name}" must be text, not ${JSON.stringify(v)}.`);
+    }
+    if (p.enum?.length && !p.enum.includes(v)) errors.push(`"${p.name}" must be one of: ${p.enum.join(", ")}.`);
+  }
+  for (const k of Object.keys(args)) if (!t.params.some(p => p.name === k))
+    errors.push(`"${k}" is not a parameter of ${t.name}. The parameters are: ${t.params.map(p => p.name).join(", ") || "none"}.`);
+  return { errors, fixes, args, tool: t };
+}
+
+// Step: the harness waits for your click before each step. Auto: a short pause, so each row comes in one at a time.
+const PACE = 300;
+function gate(next, approve) {
+  if (S.stepMode !== "manual") return sleep(PACE).then(() => true);
+  return new Promise(resolve => { pending = { next, approve, resolve }; renderChat(); });
+}
+function step(turn, s) { s.born = Date.now(); turn.steps.push(s); renderChat(); return s; }
+const aborted = () => { const e = new Error("Stopped."); e.name = "AbortError"; return e; };
+async function must(next, approve) {
+  const ok = await gate(next, approve);
+  pending = null;
+  if (ok === null || ctrl?.signal.aborted) throw aborted();
+  return ok;
+}
+
+// ---- The harness: one user message, up to MAX_CALLS model calls.
+async function runTurn(text) {
+  const model = $("chatModel").value;
+  if (!model) throw new Error("Select a chat model.");
+  const turn = { user: text, steps: [], answer: null, done: false };
+  chat.push(turn);
+  const before = history.length;
+  history.push({ role: "user", content: text });
+  try {
+    let lastResults = 0;
+    for (let call = 1; ; call++) {
+      if (call > MAX_CALLS) { step(turn, { type: "stop", call: call - 1 }); break; }
+      if (call > 1) await must({ call, who: "Harness", text: "Sending request" });
+      const body = buildRequest();
+      const req = step(turn, { type: "request", call, body: clone(body), model, noteBy: S.noteBy, results: lastResults });
+      step(turn, { type: "template", call, req });  // LM Studio puts the request into the chat template of the model
+      const t0 = Date.now() - 50;
+      const reply = step(turn, { type: "reply", call, wait: true, model, noteBy: S.noteBy, t0: Date.now(), max: body.max_tokens });
+      // LM Studio logs the prompt when the model starts, so "What the model gets" can show it while the model writes.
+      const inpP = logEntry("input", t0, () => reply.wait && !ctrl?.signal.aborted).then(async inp => { req.formatted = inp; await countTags(model, [inp]); req.kind = replyKind(req); renderChat(); return inp; });
+      const j = await post("/v1/chat/completions", body, ctrl.signal);
+      stats.calls++; stats.tokens += j.usage?.total_tokens || 0;
+      const msg = j.choices?.[0]?.message || {}, finish = j.choices?.[0]?.finish_reason;
+      const calls = parseReply(msg);
+      const answerText = cleanText(msg.content);
+      Object.assign(reply, { wait: false, msg, finish, usage: j.usage, calls });
+      // The log of LM Studio: what the model got, and what it really wrote (before LM Studio parsed it).
+      const [inp, out] = await Promise.all([inpP, logEntry("output", t0)]);
+      reply.raw = out;
+      await countTags(model, [inp, out]);
+      step(turn, { type: "json", call, msg, finish });  // LM Studio makes JSON from the tokens
+      if (S.harness === "off") {
+        history.push({ role: "assistant", content: answerText || "(tool call)" });
+        if (calls.length) { await sleep(PACE); step(turn, { type: "nothing", call, calls }); }
+        else turn.answer = answerText;
+        break;
+      }
+      await must({ call, who: "Harness", text: S.noteBy === "page" ? "Parsing content" : "Parsing tool_calls" });
+      // The assistant message goes into the history, as the book's TinyAgent adds it to its memory.
+      if (S.noteBy === "lmstudio" && msg.tool_calls?.length) history.push({ role: "assistant", content: answerText, tool_calls: msg.tool_calls });
+      else history.push({ role: "assistant", content: answerText });
+      const lost = !calls.length && /\[TOOL_REQUEST\]|<tool_call>|"tool"\s*:|tool_call/i.test(msg.content || "");
+      step(turn, { type: "parse", call, calls, noteBy: S.noteBy, lost, kind: req.kind, cut: finish === "length", text: answerText });
+      if (!calls.length) { turn.answer = answerText; break; }
+      await must({ call, who: "Harness", text: "Validating tool call" });
+      const checks = calls.map(checkCall);
+      step(turn, { type: "check", call, calls, checks });
+      const results = [];
+      for (let i = 0; i < calls.length; i++) {
+        const c = calls[i], ck = checks[i];
+        if (ck.errors.length) {
+          const t = `Error: ${ck.errors.join(" ")}`;
+          results.push({ call: c, ok: false, text: t });
+          await must({ call, who: "Harness", text: "Skipping tool" });
+          step(turn, { type: "skip", call, c, text: t });
+          continue;
+        }
+        const ok = await must({ call, who: "You", text: `Run ${c.name}(${argText(ck.args)})?` }, true);
+        if (S.stepMode === "manual") step(turn, { type: "decide", call, c, args: ck.args, ok });
+        if (!ok) { results.push({ call: c, ok: false, text: `Tool '${c.name}' was denied by the user.` }); continue; }
+        const run = step(turn, { type: "run", call, c, args: ck.args, wait: true });
+        const r = await post("/tool-run", { tool: ck.tool, args: ck.args }, ctrl.signal);
+        stats.tools++;
+        Object.assign(run, { wait: false, r });
+        renderChat();
+        results.push({ call: c, ok: r.ok, text: r.result });
+      }
+      await must({ call, who: "Harness", text: "Appending observation" });
+      // Output processing: the tool role for the tools parameter; the book's OBSERVATION as a user message for the custom note.
+      const added = results.map(r => S.noteBy === "lmstudio" ? { role: "tool", tool_call_id: r.call.id, content: r.text } : { role: "user", content: `OBSERVATION: ${r.text}` });
+      history.push(...added);
+      step(turn, { type: "back", call, added });
+      lastResults = added.length;
+    }
+  } catch (e) {
+    history.length = before;  // a stopped or failed turn does not stay in the conversation
+    throw e;
+  } finally { turn.done = true; pending = null; renderChat(); }
+}
+
+// What kind of tool note the model got, from the real prompt.
+function replyKind(req) {
+  if (req.noteBy === "page") return "page";
+  if (!req.body.tools) return "none";
+  if (req.formatted == null) return "unknown";
+  return /\[TOOL_REQUEST\]/.test(req.formatted) ? "lmnote" : "native";
+}
+
+// ---- Rendering: one card per model call; in it, one row per event of the loop, in time order.
+const det = (key, title, body, extra = "") => `<details class="x" data-key="${key}"${openKeys.has(key) ? " open" : ""}><summary><span class="chev"></span>${title}${extra ? `<span class="k">${extra}</span>` : ""}</summary>${body}</details>`;
+function row(key, who, what, meta, body, cls = "") {
+  const head = `<span class="who">${who}</span><span class="what">${what}</span><span class="meta">${meta || ""}</span>`;
+  return body
+    ? `<details class="ev${cls ? " " + cls : ""}" data-key="${key}"${openKeys.has(key) ? " open" : ""}><summary>${head}<span class="more">Details<span class="chev"></span></span></summary><div class="ev-bd">${body}</div></details>`
+    : `<div class="ev${cls ? " " + cls : ""}"><div class="ev-row">${head}<span class="more"></span></div></div>`;
+}
+function msgRows(messages, newFrom = Infinity) {
+  return `<div class="msgs">${messages.map((m, i) => {
+    let text = m.content ?? "";
+    if (m.tool_calls?.length) text = (text ? text + "\n" : "") + m.tool_calls.map(c => `tool_calls: ${c.function.name}(${c.function.arguments})`).join("\n");
+    return `<div class="msg${i >= newFrom ? " new" : ""}"><span class="role">${esc(m.role)}</span><div class="msg-text">${esc(text)}</div></div>`;
+  }).join("")}</div>`;
+}
+const argText = a => Object.entries(a || {}).map(([k, v]) => `${k}: ${JSON.stringify(v)}`).join(", ");
+const plural = (k, one, many = one + "s") => `${k} ${k === 1 ? one : many}`;
+const short = (t, max = 90) => { t = String(t ?? "").replace(/\s+/g, " ").trim(); return t.length > max ? t.slice(0, max - 1) + "…" : t; };
+const tipped = (label, text) => tipSpan(label, label, text);
+const tipSpan = (label, title, tip) => `<span tabindex="0" data-tip-title="${esc(title)}" data-tip="${esc(tip)}">${esc(label)}</span>`;
+const KIND = {
+  native: ["Native format", "The model learned tools in training. LM Studio puts the tools into its chat template, with the special tool tokens of the model. Click Details to see what the model gets."],
+  lmnote: ["LM Studio text note", "The model did not learn tools in training. LM Studio adds a text note with the tools and the [TOOL_REQUEST] format. The model must follow it as plain text."],
+  page: ["Custom note", "Your tool note is in the system prompt, as plain text. The model must follow it."],
+  none: ["", ""], unknown: ["", ""],
+};
+function bodyOf(s, k) {
+  const raw = s.raw != null ? textView(s.raw, s.model, k + "r", s.msg) : `<p class="hint-s">The raw text is not available (needs the model log). The text from the API:</p><pre class="raw">${esc(s.msg.content || "")}</pre>`;
+  return `<p class="lbl">${tipped("Output tokens", "What the model writes, token by token.")}</p>${raw}`;
+}
+function jsonOf(s) {
+  return `<pre class="pre">${esc(JSON.stringify(s.msg, null, 2))}</pre>`;
+}
+// One row per step, in the order of the steps. Present tense: the rows describe the workflow.
+function rowHtml(s, k) {
+  if (s.type === "created") {
+    const on = s.tools.filter(t => t.on).length;
+    const list = s.tools.map(t => `<div class="msg"><span class="role">${t.on ? "on" : "off"}</span><div class="msg-text"><code>${esc(signature(t))}</code> ${esc(t.description || "")}</div></div>`).join("");
+    return row(k, "You", tipped(`Tool creation: ${plural(s.tools.length, "tool")}, ${on} on`, "A tool is a function with a name, a description and parameters. You create it in the Tools tab, and turn it on or off."), "", `<div class="msgs">${list}</div>`);
+  }
+  if (s.type === "defined") {
+    const page = s.noteBy === "page", names = s.list.map(t => t.name).join(", ");
+    const label = s.list.length ? `Tool definition: ${names}` : "Tool definition: no tools";
+    const help = (page ? "Custom note: the harness puts the tools into the system prompt, as text."
+      : "LM Studio: the harness sends the tools as JSON schemas, and the chat template puts them into the prompt.")
+      + " The harness writes the definitions before the chat, and sends them with each request." + (s.list.length ? "" : " With no tools, the model cannot call a tool.");
+    const body = !s.list.length ? "" : page ? `<pre class="pre">${esc(s.note)}</pre>` : `<pre class="pre">${esc(JSON.stringify(s.list.map(schemaOf), null, 2))}</pre>`;
+    return row(k, "Harness", tipped(label, help), s.list.length ? (page ? "Custom note" : "JSON schema") : "", body, s.list.length ? "" : "bad");
+  }
+  if (s.type === "request") {
+    const b = s.body, nt = b.tools?.length || 0;
+    const sentence = tipped("Sending request", nt ? "The harness sends the messages and the tool definitions to LM Studio (POST /v1/chat/completions). It sends them again in each model call." : "The harness sends the messages to LM Studio (POST /v1/chat/completions). No tools are on.");
+    const body = det(k + "m", "Messages", msgRows(b.messages, b.messages.length - 1), `${b.messages.length}`)
+      + (nt ? det(k + "t", "Tools (JSON schema)", `<pre class="pre">${esc(JSON.stringify(b.tools, null, 2))}</pre>`, plural(nt, "tool")) : "");
+    return row(k, "Harness", sentence, "", body);
+  }
+  if (s.type === "template") {
+    const q = s.req, kind = KIND[q.kind] || KIND.unknown;
+    const sentence = tipped("Applying chat template", "LM Studio puts the messages and the tools into the chat template of the model. The result is the prompt.");
+    const body = `<p class="lbl">${tipped("Prompt tokens", "What the model gets, token by token.")}</p>` + (q.formatted == null ? `<p class="hint-s">${q.formatted === null ? "Not available: the server cannot read the model log of LM Studio (needs the lms CLI)." : "Waiting for LM Studio…"}</p>`
+      : textView(q.formatted, q.model, k + "f", null, q.body));
+    return row(k, "LM Studio", sentence, kind[0] ? tipSpan(kind[0], kind[0], kind[1]) : "", body);
+  }
+  if (s.type === "reply") {
+    if (s.wait) return row(k, "Model", `<span class="busy-dot" aria-hidden="true"></span><span data-since="${s.t0}">Generating tokens…</span>`, "", "");
+    const cut = s.finish === "length";
+    const n = s.usage?.completion_tokens ?? 0;
+    const meta = tipSpan(cut ? `${plural(n, "token")} · cut` : plural(n, "token"), "Tokens", `The model generates ${s.usage?.completion_tokens ?? "?"} tokens. finish_reason: ${s.finish || "?"} (tool_calls: it writes a tool call; stop: it is finished; length: it reaches Max tokens, ${s.max}).`);
+    return row(k, "Model", tipped("Generating tokens", "The model generates the reply, one token at a time."), meta, bodyOf(s, k), cut ? "bad" : "");
+  }
+  if (s.type === "json") {
+    return row(k + "p", "LM Studio", tipped("Parsing output", "Looks for the thinking, the text and the tool calls."), "", "")
+      + row(k, "LM Studio", tipped("Serializing JSON", "Writes the chat completion response in the format of the OpenAI Chat Completions API, a de facto standard. LM Studio, llama.cpp, Ollama and vLLM use it."), tipSpan(`finish_reason: ${esc(s.finish || "?")}`, "finish_reason", "Why the model stops: tool_calls (it writes a tool call), stop (it is finished) or length (Max tokens)."), jsonOf(s));
+  }
+  if (s.type === "nothing") return row(k, "Harness", tipped("Off", "The harness is off. Nothing reads the tool call, so no tool runs."), "", "", "bad");
+  if (s.type === "parse") {
+    const page = s.noteBy === "page";
+    if (!s.calls.length) return row(k, "Harness", s.cut && !cleanText(s.text) ? tipped("No tool call, no answer", "The reply is cut: the model reached Max tokens.") : s.lost ? tipped("No valid tool call", "The harness cannot read the tool call. It shows the text as the answer.") : tipped("No tool call", "The harness shows the text in content as the answer."), "", "", s.lost || s.cut ? "bad" : "");
+    const how = page ? 'The harness looks for "tool" in content, and reads the JSON from the first { to the last }.'
+      : "The harness reads tool_calls, and converts the arguments from JSON text to an object.";
+    const got = s.calls.map(c => `<pre class="pre">${esc(c.name || "?")} ${esc(c.args ? JSON.stringify(c.args) : c.raw || "")}</pre>`).join("");
+    return row(k, "Harness", tipped(page ? "Parsing content" : "Parsing tool_calls", how), "", got);
+  }
+  if (s.type === "check") {
+    const bad = s.checks.filter(c => c.errors.length).length, fixes = s.checks.reduce((a, c) => a + c.fixes.length, 0);
+    const what = tipped(bad ? "Validating tool call: error" : `Validating tool call: OK${fixes ? ", with fixes" : ""}`, "The harness checks that the tool exists, and that the arguments match its parameters: required, type and allowed values. It fixes small type errors. An error goes back to the model.");
+    const rows = s.checks.map((ck, i) => `<span class="${ck.errors.length ? "no" : "ok"}">${ck.errors.length ? "✗" : "✓"}</span><span><code>${esc(s.calls[i].name || "?")}</code> ${ck.errors.length ? esc(ck.errors.join(" ")) : "matches the schema of the tool."}</span>`
+      + ck.fixes.map(f => `<span></span><span class="fix">Fixed by the harness: ${esc(f)}</span>`).join("")).join("");
+    return row(k, "Harness", what, "", `<div class="chk">${rows}</div>`, bad ? "bad" : "");
+  }
+  if (s.type === "skip") return row(k, "Harness", tipped("Skipping tool", "The call has an error, so the tool does not run."), "", `<pre class="pre">${esc(s.text)}</pre>`, "bad");
+  if (s.type === "decide") return row(k, "You", s.ok ? tipped("Approved", "You approve the tool call.") : tipped("Denied", "You deny the tool call. The model gets: the tool was denied."), "", "", s.ok ? "" : "bad");
+  if (s.type === "run") {
+    if (s.wait) return row(k, "Tool", `<span class="busy-dot" aria-hidden="true"></span>Executing tool…`, "", "");
+    const r = s.r;
+    const what = tipped(r.ok ? "Executing tool: OK" : "Executing tool: failed", "The server runs the tool, not the model.");
+    const body = `<p class="lbl">${tipped("Request", "What the server does to run the tool.")}</p><pre class="pre">${esc(r.request || "")}</pre>`
+      + `<p class="lbl">Result · ${plural(String(r.result).length, "character")}</p><pre class="pre">${esc(r.result)}</pre>`;
+    return row(k, "Tool", what, `${r.ms} ms`, body, r.ok ? "" : "bad");
+  }
+  if (s.type === "back") {
+    const tool = s.added[0]?.role === "tool";
+    const what = tipped("Appending observation", tool ? "The harness adds the result of the tool to the messages: a message with the role tool and the id of the call. The model reads it in the next model call."
+      : "The harness adds the result of the tool to the messages: a user message that starts with OBSERVATION, as the custom note asks. The model reads it in the next model call.");
+    return row(k, "Harness", what, "", msgRows(s.added, 0));
+  }
+  if (s.type === "stop") return row(k, "Harness", tipped("Stopping", `The limit is ${MAX_CALLS} model calls.`), "", "", "bad");
+  return "";
+}
+function pendingRow(p) {
+  return `<div class="ev pending"><div class="ev-row"><span class="who">${esc(p.next.who)}</span><span class="what">Next: ${esc(p.next.text)}</span><span class="meta"></span><span class="more btns">${p.approve
+    ? `<button type="button" class="btn ghost" data-gate="deny" title="Do not run the tool. The model gets: the tool was denied.">Deny</button><button type="button" class="btn" data-gate="ok">Approve</button>`
+    : `<button type="button" class="btn" data-gate="ok">Next step</button>`}</span></div></div>`;
+}
+const callCard = (call, rows) => `<section class="callcard"><div class="callcard-hd">${call ? `Model call ${call}` : "Tool registry"}</div>${rows}</section>`;
+const fmt = t => esc(t).replace(/\*\*(.+?)\*\*/g, "$1").replace(/^(\s*)[*-]\s+/gm, "$1• ");
+function renderChat(hold) {
+  if (!hold) $("log").style.paddingBottom = "";
+  const log = $("log"), atEnd = !hold && log.scrollHeight - log.scrollTop - log.clientHeight < 80, top = log.scrollTop;
+  const last = chat.length - 1;
+  // Setup, before the chat: the tools that exist now, and their definitions. Each request sends the definitions.
+  const setup = callCard(0, rowHtml({ type: "created", tools }, "setup.c")
+    + rowHtml({ type: "defined", noteBy: S.noteBy, list: active(), note: S.noteBy === "page" ? pageNote() : null }, "setup.d"));
+  if (!chat.length) log.innerHTML = setup + `<div class="chat-empty">Type a message, or select an example.</div>`;
+  else log.innerHTML = setup + chat.map((t, ti) => {
+    if (t.divider) return `<div class="newchat-line">new chat</div>`;
+    const groups = new Map();
+    t.steps.forEach((s, si) => {
+      const cls = Date.now() - s.born < 400 ? " new" : "";
+      const h = rowHtml(s, `${ti}.${si}`).replace(/^<(details|div) class="ev/, m => m + cls);
+      groups.set(s.call, (groups.get(s.call) || "") + h);
+    });
+    if (ti === last && pending) groups.set(pending.next.call, (groups.get(pending.next.call) || "") + pendingRow(pending));
+    const cards = [...groups].map(([c, rows]) => callCard(c, rows)).join("");
+    const ans = t.answer != null ? `<div class="bubble assistant">${t.answer ? fmt(t.answer) : '<span class="ph">No answer.</span>'}</div>`
+      : t.done && t.stopped ? `<div class="bubble assistant"><span class="ph">Stopped.</span></div>` : "";
+    return `<div class="bubble user">${esc(t.user)}</div>${cards}${ans}`;
+  }).join("");
+  log.scrollTop = atEnd ? log.scrollHeight : top;
+  $("stats").innerHTML = `<span>Model calls <b>${stats.calls}</b></span><span>Tool calls <b>${stats.tools}</b></span><span>Tokens <b>${stats.tokens.toLocaleString()}</b></span>`;
+}
+document.addEventListener("toggle", e => { const d = e.target; if (d.matches?.("details.x, details.ev")) d.open ? openKeys.add(d.dataset.key) : openKeys.delete(d.dataset.key); }, true);
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-gate]");
+  if (!b || !pending) return;
+  const p = pending; pending = null; p.resolve(b.dataset.gate === "ok");
+});
+
+// ---- Tools tab
+let editing = null;  // the index of the tool in edit mode
+function renderNote() {
+  const page = S.noteBy === "page";
+  $("noteBox").innerHTML = page
+    ? `<div class="note">Custom: the request has no tools parameter. This note is the system prompt, and <code>{tools}</code> becomes one line per tool that is on. The model must answer in the JSON format of the note; the harness reads it.</div>
+       <textarea id="noteText" class="input" spellcheck="false" aria-label="Tool note">${esc(noteText)}</textarea>
+       <div class="send-tools"><button type="button" class="btn ghost" id="noteReset" title="Use the first note again">Reset note</button></div>
+       ${det("note-prev", "System prompt that the model gets", `<pre class="pre">${esc(pageNote())}</pre>`)}`
+    : `<div class="note">The harness sends the tools as a JSON schema in the <code>tools</code> parameter. LM Studio writes the note: for a model trained for tools, with the special tokens of its chat template; for other models, as a text note with the <code>[TOOL_REQUEST]</code> format. See it in the chat: the LM Studio row → Details. To write the note yourself, select <button type="button" class="linkbtn" id="toPage">Custom</button>.</div>`;
+  if (page) {
+    $("noteText").oninput = e => { noteText = e.target.value; keep(); const pv = document.querySelector('[data-key="note-prev"] .pre'); if (pv) pv.textContent = pageNote(); };
+    $("noteReset").onclick = () => { noteText = NOTE_DEFAULT; keep(); renderNote(); };
+    fit($("noteText"), 400);
+  } else $("toPage").onclick = () => { if (busy) return; document.querySelector('#noteBy [data-v="page"]').click(); };
+}
+function renderTools() {
+  $("toolCount").textContent = `· ${active().length} on`;
+  $("toolList").innerHTML = tools.map((t, i) => {
+    const builtin = t.kind === "builtin";
+    const head = `<div class="tool-hd"><label class="on" title="On: the model gets this tool"><input type="checkbox" data-on="${i}"${t.on ? " checked" : ""}>On</label><span class="nm">${esc(t.name)}</span>
+      <span class="badge${builtin ? "" : " blue"}" tabindex="0" data-tip-title="${builtin ? "Built-in tool" : "URL tool"}" data-tip="${builtin ? "Python code in server.py. You can change the description, not the parameters." : "The server sends a GET request to the URL. Each {name} in the URL becomes the argument of that name."}">${builtin ? "Built-in" : "URL"}</span>
+      <span class="right"><button type="button" class="copy" data-edit="${i}" title="${editing === i ? "Done" : "Edit this tool"}" aria-label="Edit ${esc(t.name)}">${ICON_EDIT}</button><button type="button" class="copy del" data-del="${i}" title="Delete this tool" aria-label="Delete ${esc(t.name)}">${ICON_DEL}</button></span></div>`;
+    if (editing !== i) return `<div class="tool${t.on ? "" : " off"}">${head}<div class="tool-bd"><span class="sig">${esc(signature(t))}</span><span>${esc(t.description)}</span>${t.kind === "url" ? `<span class="src">GET ${esc(t.url)}</span>` : ""}
+      ${det("schema" + i, "JSON schema", `<pre class="pre">${esc(JSON.stringify(schemaOf(t), null, 2))}</pre>`, "what LM Studio gets")}</div></div>`;
+    const prow = (p, j) => `<div class="prow"><input class="field mono" data-p="${i}.${j}.name" value="${esc(p.name)}" aria-label="Parameter name"${builtin ? " disabled" : ""}>
+      <select class="field" data-p="${i}.${j}.type" aria-label="Type"${builtin ? " disabled" : ""}>${TYPES.map(y => `<option${y === p.type ? " selected" : ""}>${y}</option>`).join("")}</select>
+      <label><input type="checkbox" data-p="${i}.${j}.required"${p.required ? " checked" : ""}${builtin ? " disabled" : ""}>required</label>
+      <input class="field" data-p="${i}.${j}.description" value="${esc(p.description || "")}" placeholder="What the model must give" aria-label="Description">
+      ${builtin ? "<span></span>" : `<button type="button" class="copy del" data-pdel="${i}.${j}" title="Delete this parameter" aria-label="Delete parameter">${ICON_DEL}</button>`}</div>`;
+    return `<div class="tool">${head}<div class="tool-bd"><div class="edit">
+      <span>Name</span><input class="field mono" data-f="${i}.name" value="${esc(t.name)}"${builtin ? " disabled" : ""} aria-label="Tool name">
+      <span>Description</span><textarea class="field" data-f="${i}.description" aria-label="Description">${esc(t.description)}</textarea>
+      ${t.kind === "url" ? `<span>URL</span><input class="field mono" data-f="${i}.url" value="${esc(t.url || "")}" placeholder="https://api.example.com/x?city={city}" aria-label="URL">` : ""}
+      <span>Parameters</span><div class="ptab"><div class="prow hd"><span>Name</span><span>Type</span><span></span><span>Description</span><span></span></div>${t.params.map(prow).join("")}
+        ${builtin ? "" : `<div><button type="button" class="btn ghost small-btn" data-padd="${i}">Add parameter</button></div>`}</div>
+      </div><div class="error" id="terr${i}"></div></div></div>`;
+  }).join("") || `<div class="hint-s">No tools. Click Create tool, or Reset tools.</div>`;
+  $("library").replaceChildren(new Option("Add from the library…", ""), ...LIBRARY.filter(l => !tools.some(t => t.name === l.name)).map(l => new Option(`${l.name} · ${l.description.split(" (")[0]}`, l.name)));
+  renderNote();
+}
+function toolError(i) {
+  const t = tools[i], names = t.params.map(p => p.name);
+  if (!NAME_RE.test(t.name)) return "The name must be letters, digits or _ (no spaces), for example get_time.";
+  if (tools.some((x, j) => j !== i && x.name === t.name)) return "Two tools have the same name.";
+  if (names.some(n => !NAME_RE.test(n))) return "A parameter name must be letters, digits or _ (no spaces).";
+  if (new Set(names).size !== names.length) return "Two parameters have the same name.";
+  if (t.kind === "url" && !/^https?:\/\//.test(t.url || "")) return "The URL must start with https:// or http://.";
+  return "";
+}
+document.addEventListener("input", e => {
+  const f = e.target.dataset?.f, p = e.target.dataset?.p;
+  if (!f && !p) return;
+  if (f) { const [i, k] = f.split("."); tools[+i][k] = e.target.value; }
+  else { const [i, j, k] = p.split("."); tools[+i].params[+j][k] = e.target.type === "checkbox" ? e.target.checked : e.target.value; }
+  const i = +(f || p).split(".")[0], err = toolError(i);
+  $("terr" + i).textContent = err;
+  if (!err) saveTools();
+});
+document.addEventListener("change", e => {
+  if (e.target.dataset?.on !== undefined) { tools[+e.target.dataset.on].on = e.target.checked; saveTools(); renderTools(); renderChat(); }
+  else if (e.target.dataset?.p?.endsWith(".required") || e.target.dataset?.p?.endsWith(".type")) e.target.dispatchEvent(new Event("input", { bubbles: true }));
+});
+document.addEventListener("click", e => {
+  const ed = e.target.closest("[data-edit]"), del = e.target.closest("[data-del]"), padd = e.target.closest("[data-padd]"), pdel = e.target.closest("[data-pdel]");
+  if (ed) { const i = +ed.dataset.edit; if (editing === i && toolError(i)) return; editing = editing === i ? null : i; renderTools(); }
+  else if (del) { const i = +del.dataset.del; tools.splice(i, 1); editing = null; saveTools(); renderTools(); renderChat(); }
+  else if (padd) { tools[+padd.dataset.padd].params.push(P(`param${tools[+padd.dataset.padd].params.length + 1}`, "string", true, "")); renderTools(); }
+  else if (pdel) { const [i, j] = pdel.dataset.pdel.split(".").map(Number); tools[i].params.splice(j, 1); if (!toolError(i)) saveTools(); renderTools(); }
+});
+$("addTool").onclick = () => {
+  let n = 1; while (tools.some(t => t.name === `my_tool_${n}`)) n++;
+  tools.push({ name: `my_tool_${n}`, kind: "url", on: true, url: "https://", description: "What the tool does. The model reads this to decide when to use the tool.", params: [P("city", "string", true, "")] });
+  editing = tools.length - 1; renderTools();
+};
+$("library").onchange = e => {
+  const l = LIBRARY.find(x => x.name === e.target.value);
+  if (!l) return;
+  tools.push({ ...clone(l), on: true }); saveTools(); renderTools(); renderChat();
+};
+$("resetTools").onclick = () => { tools = clone(STARTER); editing = null; saveTools(); renderTools(); renderChat(); };
+
+// ---- Examples from chapter 5. Each one sets the switches and sends one message in a new chat.
+const PRESETS = [
+  { name: "Multiply two numbers", msg: "What is 5.1 times 7.3?", tip: "Try it with the Harness Off, then On." },
+  { name: "Live data: the weather", msg: "What is the weather in Toronto right now?", tip: "The model has no live data. A tool gets it." },
+  { name: "Two tools for one question", msg: "How much is 100 US dollars in Canadian dollars? And what is the weather in Vancouver?", tip: "Count the tool calls and the model calls." },
+  { name: "Top tech news", msg: "What are the top 3 stories on Hacker News right now?", tip: "A tool with an optional parameter: count." },
+  { name: "Search the saved facts", msg: "Search my saved facts: where do I live?", tip: "Retrieval as a tool. It searches the facts saved on the Memory page." },
+  { name: "No tool needed", msg: "Why is the sky blue? Answer in one sentence.", tip: "Does the model ask for a tool?" },
+];
+$("preset").replaceChildren(new Option("Select an example…", ""), ...PRESETS.map((p, i) => new Option(p.name, i)));
+// Back to "Select an example…", so the same example loads again when you select it.
+function resetExample() { $("preset").value = ""; $("exTip").textContent = ""; }
+$("preset").onchange = () => {
+  const p = PRESETS[+$("preset").value];
+  $("exTip").textContent = p ? p.tip : "";
+  if (!p) return;
+  $("msg").value = p.msg; fit($("msg")); $("msg").focus();
+};
+
+// Seconds while the model writes. After 6 s: LM Studio may be loading the model into memory first.
+setInterval(() => document.querySelectorAll("[data-since]").forEach(el => {
+  const sec = Math.round((Date.now() - +el.dataset.since) / 1000);
+  el.textContent = `Writing… ${sec} s${sec >= 6 ? " (LM Studio may be loading the model first)" : ""}`;
+}), 500);
+
+// ---- Send
+async function send(text) {
+  if (busy) return false;
+  busy = true; ctrl = new AbortController(); $("error").textContent = ""; setBusy(); setStatus("Running…");
+  try { await runTurn(text); setStatus(""); return true; }
+  catch (e) {
+    const t = chat.filter(x => x.user).at(-1);
+    if (t) t.stopped = true;
+    if (e.name !== "AbortError") $("error").textContent = String(e.message || e); else setStatus("Stopped.");
+    return false;
+  } finally { busy = false; ctrl = null; setBusy(); renderChat(); }
+}
+function stop() { ctrl?.abort(); if (pending) { const p = pending; pending = null; p.resolve(null); } }
+function setBusy() {
+  $("sendBtn").textContent = busy ? "Stop" : "Send";
+  ["newChat", "preset", "chatModel", "resetTools", "addTool", "library", "temp", "maxTok"].forEach(id => $(id).disabled = busy);
+  document.querySelectorAll("#noteBy button, #harness button").forEach(b => b.disabled = busy);
+}
+function setStatus(t) { $("status").innerHTML = t === "Running…" ? `<span class="busy-dot" aria-hidden="true"></span>Running…` : esc(t); }
+$("sendBtn").onclick = () => {
+  if (busy) { stop(); return; }
+  const text = $("msg").value.trim();
+  if (!text) return;
+  $("msg").value = ""; fit($("msg")); setStatus(""); resetExample();
+  send(text);
+};
+$("msg").addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); $("sendBtn").click(); } });
+$("msg").addEventListener("input", () => fit($("msg")));
+$("newChat").onclick = () => { if (busy) return; newChat(); resetExample(); renderChat(); setStatus("New chat. The tools stay."); };
+const waitIdle = () => new Promise(r => { const f = () => busy ? setTimeout(f, 50) : r(); f(); });
+$("resetAll").onclick = async () => { stop(); await waitIdle(); chat = []; history = []; stats = { calls: 0, tools: 0, tokens: 0 }; resetExample(); openKeys.clear(); rawKeys.clear(); setStatus(""); $("error").textContent = ""; renderChat(); };
+
+// The chat fills the window above the message box: the box stays in view, and the chat scrolls.
+function sizeChat() {
+  const log = $("log"), bar = document.querySelector(".sendbar");
+  if (!log.offsetParent) return;
+  const top = log.getBoundingClientRect().top + scrollY;
+  log.style.height = Math.max(320, innerHeight - top - bar.offsetHeight - 52) + "px";
+}
+addEventListener("resize", sizeChat);
+new ResizeObserver(sizeChat).observe(document.querySelector(".composer"));
+
+// ---- Tabs
+function setTab(v) {
+  S.tab = v; keep();
+  document.querySelectorAll(".tabs [data-tab]").forEach(b => b.setAttribute("aria-selected", b.dataset.tab === v));
+  $("pane-chat").hidden = v !== "chat"; $("pane-tools").hidden = v !== "tools";
+  if (v === "tools") renderNote(); else { sizeChat(); renderChat(true); }
+}
+document.querySelectorAll(".tabs [data-tab]").forEach(b => b.onclick = () => setTab(b.dataset.tab));
+
+// ---- Tooltip: one shared box for every element with data-tip.
+const tip = Object.assign(document.createElement("div"), { id: "tip", role: "tooltip" });
+document.body.append(tip);
+document.addEventListener("mouseover", e => {
+  const el = e.target.closest("[data-tip]");
+  if (!el) return tip.classList.remove("show");
+  tip.innerHTML = `<b>${esc(el.dataset.tipTitle || "")}</b><span>${esc(el.dataset.tip)}</span>`;
+  tip.classList.add("show");
+  const r = el.getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight;
+  tip.style.left = Math.max(8, Math.min(r.left, innerWidth - w - 8)) + "px";
+  tip.style.top = (r.bottom + 8 + h > innerHeight ? r.top - h - 8 : r.bottom + 8) + "px";
+});
+document.addEventListener("scroll", () => tip.classList.remove("show"), true);
+document.addEventListener("focusin", e => { const el = e.target.closest?.("[data-tip]"); if (el) el.dispatchEvent(new MouseEvent("mouseover", { bubbles: true })); });
+document.addEventListener("focusout", () => tip.classList.remove("show"));
+
+$("sideToggle").onclick = () => {
+  const v = document.documentElement.dataset.side === "closed" ? "open" : "closed";
+  document.documentElement.dataset.side = v;
+  if (!narrow.matches) try { localStorage.setItem("sidebar", v); } catch {}
+};
+function setTheme(v, save) {
+  document.documentElement.dataset.theme = v;
+  document.querySelectorAll("#theme button").forEach(b => b.setAttribute("aria-pressed", b.dataset.theme === v));
+  if (save) try { localStorage.setItem("theme", v); } catch {}
+}
+document.querySelectorAll("#theme button").forEach(b => { b.onclick = () => setTheme(b.dataset.theme, true); });
+setTheme(document.documentElement.dataset.theme, false);
+
+["noteBy", "harness", "stepMode"].forEach(id => setSeg(id, S[id]));
+if (!TOK_STEPS.includes(S.maxTokens)) S.maxTokens = 1500;
+renderSampling();
+$("temp").oninput = e => { S.temp = Math.round(+e.target.value * 10) / 10; keep(); renderSampling(); };
+$("maxTok").oninput = e => { S.maxTokens = TOK_STEPS[+e.target.value]; keep(); renderSampling(); };
+setTab(S.tab === "tools" ? "tools" : "chat");
+renderAll();
+loadModels();
+loadTools().then(renderAll);
+// Settings can change in another tab: read the model formats again when you come back.
+loadFormats().then(renderChat);
+addEventListener("focus", () => loadFormats().then(() => renderChat(true)));
+function renderAll() { renderTools(); renderChat(); }
+</script>
+</body>
+</html>
