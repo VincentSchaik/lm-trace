@@ -413,9 +413,67 @@
   .next .btn { height: 34px; padding: 0 16px; font-size: 13.5px; }
 
   .sendbar { padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
-  .send-row { display: flex; gap: 10px; align-items: flex-end; }
-  .send-row .input { flex: 1; }
-  .send-row .btn { height: 48px; width: 96px; justify-content: center; padding: 0; flex: none; }
+  /* The message box: the text on top, the tools under it (permissions left, Send right), in one rounded box */
+  .cbox { border: 1px solid var(--stone-2); border-radius: 16px; background: var(--input-bg); padding: 10px 12px 10px; transition: border-color .15s, box-shadow .15s; }
+  .cbox:hover { border-color: var(--ink-3); }
+  .cbox:focus-within { border-color: var(--ink); box-shadow: 0 0 0 3px rgba(var(--red-rgb), .18); }
+  .cbox-input { display: block; width: 100%; resize: none; border: 0; outline: none; background: transparent; padding: 2px 4px; min-height: 28px; font: 16px/1.5 var(--sans); color: var(--ink); }
+  .cbox-input::placeholder { color: var(--ink-3); }
+  .cbox-bar { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+  .mp-wrap { position: relative; margin-left: auto; min-width: 0; }
+  .mp-btn { display: inline-flex; align-items: center; gap: 8px; height: 36px; max-width: 100%; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; color: var(--ink); font: 14px var(--sans); cursor: pointer; }
+  .mp-btn:hover, .mp-btn[aria-expanded="true"] { background: var(--paper); }
+  .mp-btn:disabled { opacity: .5; cursor: default; }
+  .mp-btn .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mp-btn .ld, .mp-menu .ld { font-size: 12.5px; color: var(--ink-3); }
+  .mp-btn svg, .mp-menu svg { width: 18px; height: 18px; flex: none; color: var(--ink-2); }
+  .mp-btn .updown { width: 14px; height: 14px; color: var(--ink-3); }
+  .perm-menu.mp-menu { left: auto; right: 0; width: 380px; }
+  .perm-menu.mp-menu { width: 440px; }
+  .perm-menu.mp-menu button { grid-template-columns: 20px minmax(0, 1fr) auto auto; }
+  .mp-menu .list { max-height: 260px; overflow-y: auto; }
+  .mp-menu .nmc { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mp-menu .caps { display: flex; justify-content: flex-end; gap: 4px; }
+  .mp-menu .sec { display: flex; align-items: center; gap: 4px; padding: 8px 10px 4px; font-size: 12.5px; font-weight: 600; color: var(--ink-2); }
+  .mp-menu .sec .n { font-weight: 400; color: var(--ink-3); }
+  .mp-menu .lrow { display: flex; align-items: center; gap: 6px; border-radius: 7px; }
+  .mp-menu .lrow.sel { background: rgba(var(--red-rgb), .08); }
+  .mp-menu .lrow > button[data-model] { flex: 1; min-width: 0; }
+  .mp-menu .lrow.sel > button[data-model], .mp-menu .lrow > button[data-model]:hover { background: transparent; }
+  .perm-menu.mp-menu button.eject { display: inline-flex; align-items: center; gap: 6px; width: auto; flex: none; height: 30px; margin-right: 6px; padding: 0 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--field); color: var(--ink-2); font: 500 13px var(--sans); }
+  .perm-menu.mp-menu button.eject:hover { color: var(--ink); border-color: var(--stone-2); background: var(--field); }
+  .perm-menu.mp-menu button.eject:disabled { opacity: .5; cursor: default; }
+  .perm-menu.mp-menu button.eject svg { width: 15px; height: 15px; color: inherit; }
+  .mp-menu .none-l { padding: 6px 10px 8px; font-size: 13px; color: var(--ink-3); }
+  .mp-menu .cap { display: inline-grid; place-items: center; width: 22px; height: 18px; padding: 0; border: 1px solid var(--line); border-radius: 5px; background: none; color: var(--ink-3); flex: none; }
+  .mp-menu .cap svg { width: 12px; height: 12px; color: inherit; }
+  .mp-menu .cap { border-color: rgba(var(--red-rgb), .5); color: var(--red); }  /* all blue: grey would look unavailable */
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .perm-menu.mp-menu { max-height: none; overflow: visible; }
+  .mp-menu .foot { border-top: 1px solid var(--line); margin-top: 4px; padding-top: 4px; }
+  .mp-menu .frow { display: flex; align-items: center; gap: 10px; min-height: 38px; padding: 4px 10px; font-size: 14px; color: var(--ink-3); }
+  .mp-menu .frow .v { margin-left: auto; color: var(--ink); }
+  .mp-menu .frow .seg { margin-left: auto; padding: 2px; }
+  .mp-menu .frow .seg button { display: inline-block; width: auto; height: 26px; padding: 0 10px; font: 500 13px var(--sans); border-radius: 6px; }
+  .mp-menu .frow .seg button[aria-pressed="true"] { background: var(--primary); color: var(--on-primary); }
+  .mp-wrap .mcard.pop { top: auto; bottom: calc(100% + 8px); left: auto; right: 0; }
+  .send-round { flex: none; width: 40px; height: 40px; border-radius: 50%; border: 0; display: grid; place-items: center; background: var(--primary); color: var(--on-primary); cursor: pointer; transition: background .15s; }
+  .send-round:hover { background: var(--primary-hover); }
+  .send-round svg { width: 20px; height: 20px; }
+  /* Permissions: an icon button next to the message box, with a menu that opens upward */
+  .perm-wrap { position: relative; flex: none; }
+  .perm-btn { width: 36px; height: 36px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 50%; background: var(--field); color: var(--ink-2); cursor: pointer; }
+  .perm-btn:hover, .perm-btn[aria-expanded="true"] { color: var(--ink); background: var(--paper); border-color: var(--stone-2); }
+  .perm-btn svg { width: 18px; height: 18px; }
+  .perm-menu { position: absolute; z-index: 40; bottom: calc(100% + 8px); left: 0; width: 320px; padding: 6px; border: 1px solid var(--line); border-radius: 10px; background: var(--field); box-shadow: 0 12px 32px -8px rgba(0, 0, 0, .3); }
+  .perm-menu[hidden] { display: none; }
+  .perm-menu .hd { padding: 6px 10px 4px; font-size: 12.5px; color: var(--ink-3); }
+  .perm-menu button { display: grid; grid-template-columns: 20px 1fr 16px; gap: 2px 10px; align-items: center; width: 100%; padding: 8px 10px; border: 0; border-radius: 7px; background: transparent; text-align: left; cursor: pointer; color: var(--ink); font: 14px var(--sans); }
+  .perm-menu button:hover, .perm-menu button:focus-visible { background: var(--paper); outline: none; }
+  .perm-menu button[aria-checked="true"] { background: rgba(var(--red-rgb), .08); color: var(--primary); }
+  .perm-menu button svg { width: 18px; height: 18px; }
+  .perm-menu .d { grid-column: 2; font-size: 12.5px; color: var(--ink-3); }
+  .perm-menu .ck { grid-row: 1; grid-column: 3; color: var(--ink); }
   .send-tools { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; font-size: 12.5px; color: var(--ink-3); }
   .send-tools .btn { height: 32px; padding: 0 12px; font-size: 13px; }
 
@@ -425,8 +483,6 @@
   .tool.off { opacity: .6; }
   .tool-hd { display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; padding: 8px 12px; background: var(--paper); border-bottom: 1px solid var(--line); }
   .tool-hd .nm { font: 600 13px var(--mono); color: var(--ink); }
-  .tool-hd .seg.run { padding: 2px; }
-  .tool-hd .seg.run button { height: 24px; padding: 0 8px; font-size: 12px; }
   .tool-hd .right { margin-left: auto; display: flex; gap: 6px; align-items: center; }
   .tool-hd label.on { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink-2); cursor: pointer; }
   .tool-hd input[type=checkbox], .prow input[type=checkbox] { accent-color: var(--red); width: 15px; height: 15px; margin: 0; cursor: pointer; }
@@ -482,9 +538,6 @@
   ol.how b { color: var(--ink-2); font-weight: 600; }
   ol.how i { font-style: normal; color: var(--ink); }
   /* Model card: a popover under the button, next to the model select */
-  .mc-wrap { position: relative; }
-  .mc-btn { margin: 0; }
-  .mc-btn[aria-expanded="true"] { color: var(--ink); border-color: var(--stone-2); background: var(--paper-2); }
   .mcard { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--field); }
   .mcard.pop { position: absolute; z-index: 40; top: calc(100% + 8px); left: 0; width: min(560px, calc(100vw - 40px)); box-shadow: 0 12px 32px -8px rgba(0, 0, 0, .3); }
   .mcard[hidden] { display: none; }
@@ -493,8 +546,6 @@
   .mcard-hd b { font-size: 14px; font-weight: 600; color: var(--ink); }
   .mcard-hd .pub { color: var(--ink-3); }
   .mcard-hd .src { margin-left: auto; font-size: 12px; color: var(--ink-3); }
-  .tooluse { font: 500 12px/22px var(--sans); padding: 0 9px; border-radius: 11px; background: var(--paper-2); color: var(--ink-2); cursor: help; white-space: nowrap; }
-  .tooluse.yes { background: rgba(var(--red-rgb), .12); color: var(--red); }
   .mcard-bd { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 18px; padding: 12px 14px; }
   .mcard-bd .spec b { white-space: normal; word-break: break-word; }
   .mcard-bd .spec a { color: var(--red); text-decoration: none; }
@@ -599,11 +650,8 @@
 </nav>
 <div class="app">
   <header class="top">
-    <h1><label for="chatModel">Chat model</label></h1>
-    <select id="chatModel" class="field" aria-label="Chat model"></select>
-    <span class="tooluse" id="toolUse" tabindex="0"></span>
-    <span class="mc-wrap"><button type="button" class="hdr-btn mc-btn" id="mcBtn" aria-expanded="false" aria-controls="modelCard" title="Show the model card">Model card</button>
-      <div class="mcard pop" id="modelCard" role="dialog" aria-label="Model card" hidden></div></span>
+    <h1>Tools</h1>
+    <select id="chatModel" class="field" aria-label="Chat model" hidden></select>
     <span class="spacer"></span>
     <button type="button" id="resetAll" class="hdr-btn" title="Clear the chat. The tools stay.">Reset all</button>
     <span class="seg" id="theme" role="group" aria-label="Theme">
@@ -620,7 +668,7 @@
           <li><b>Tool creation</b> · <i>Tool registry</i>. You create a tool in the Tools tab: a function with a name, a description and parameters.</li>
           <li><b>Tool definition</b> · <i>Tool registry</i>. The harness defines each tool that is on. LM Studio (structured function calling): a JSON schema. Custom note: text in the system prompt. <i>Sending request</i> sends the definitions in each model call, and <i>Applying chat template</i> puts them into the prompt.</li>
           <li><b>Tool selection</b> · <i>Generating tokens</i>. The model thinks, and selects a tool or no tool.</li>
-          <li><b>Tool calling</b> · <i>Generating tokens</i>: the model writes the call. <i>Parsing output</i>, <i>Serializing JSON</i>: LM Studio parses it. <i>Parsing tool_calls</i>, <i>Validating tool call</i>: the harness parses and validates it. <i>Executing tool</i>: the server executes it. A tool set to Ask (every tool in Step mode) waits for you first: Allow or Deny.</li>
+          <li><b>Tool calling</b> · <i>Generating tokens</i>: the model writes the call. <i>Parsing output</i>, <i>Serializing JSON</i>: LM Studio parses it. <i>Parsing tool_calls</i>, <i>Validating tool call</i>: the harness parses and validates it. <i>Executing tool</i>: the server executes it. With Permissions set to Ask every time, the harness asks you first: Allow or Deny.</li>
           <li><b>Output processing</b> · <i>Appending observation</i>: the result goes back to the model as an observation. In the next model call, the model writes the answer.</li>
         </ol>
         <p>Some models learned special tool tokens in training. LM Studio puts the tools into the chat template of these models. Other models get the tools as a text note, and must follow it.</p>
@@ -637,7 +685,7 @@
   <section class="panel" aria-label="Chat">
     <div class="panel-head"><h2>Chat</h2>
       <span class="ctl-inline l"><span>Harness</span><span class="seg" id="harness" role="group" aria-label="Harness"><button data-v="off" aria-pressed="false">Off</button><button data-v="on" aria-pressed="true">On</button></span><span class="info" tabindex="0" data-tip-title="Harness" data-tip="The program around the model. On: it reads the tool call in the reply, checks it, runs the tool and sends the result back. Off: nothing reads the reply, so a tool call stays text and no tool runs.">i</span></span>
-      <span class="ctl-inline l"><span>Mode</span><span class="seg" id="stepMode" role="group" aria-label="Mode"><button data-v="manual" aria-pressed="false">Step</button><button data-v="auto" aria-pressed="true">Auto</button></span><span class="info" tabindex="0" data-tip-title="Mode" data-tip="Step: you click Next step for each step, and you allow or deny each tool before it runs. Auto: the harness does each step by itself, up to 5 model calls.">i</span></span>
+      <span class="ctl-inline l"><span>Mode</span><span class="seg" id="stepMode" role="group" aria-label="Mode"><button data-v="manual" aria-pressed="false">Step</button><button data-v="auto" aria-pressed="true">Auto</button></span><span class="info" tabindex="0" data-tip-title="Mode" data-tip="Step: you click Next step for each step. Auto: the harness does each step by itself, up to 5 model calls.">i</span></span>
       <span class="stats" id="stats"></span>
       <span class="ctl-inline l ex-ctl"><label for="preset">Example</label><select id="preset" class="field"></select></span>
       <button type="button" id="newChat" class="btn ghost" title="Start a new chat. The tools stay.">New chat</button></div>
@@ -650,9 +698,16 @@
     <div class="chatlog" id="log"></div>
   </section>
   <section class="panel sendbar" aria-label="Your message">
-    <div class="send-row">
-      <textarea id="msg" class="input" rows="1" placeholder="Ask something, or select an example." title="Enter sends the message. Shift + Enter adds a line."></textarea>
-      <button id="sendBtn" class="btn" title="Send the message (Enter)">Send</button>
+    <div class="cbox">
+      <textarea id="msg" class="cbox-input" rows="1" placeholder="Ask something, or select an example." title="Enter sends the message. Shift + Enter adds a line."></textarea>
+      <div class="cbox-bar">
+        <div class="perm-wrap"><button type="button" class="perm-btn" id="permBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="permMenu"></button>
+          <div class="perm-menu" id="permMenu" role="menu" aria-label="Permissions" hidden></div></div>
+        <div class="mp-wrap"><button type="button" class="mp-btn" id="mpBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="mpMenu" title="Chat model"></button>
+          <div class="perm-menu mp-menu" id="mpMenu" role="menu" aria-label="Chat model" hidden></div>
+          <div class="mcard pop" id="modelCard" role="dialog" aria-label="Model card" hidden></div></div>
+        <button id="sendBtn" class="send-round" title="Send the message (Enter)" aria-label="Send"></button>
+      </div>
     </div>
     <div class="send-tools">
       <span class="status" id="status" aria-live="polite"></span>
@@ -740,12 +795,12 @@ const STARTER = [
     params: [P("count", "integer", false, "How many stories, from 1 to 10. The default is 3.")] },
   { name: "search_memory", kind: "builtin", on: true, description: "Search the saved facts of the Memory page (the long-term memory). Returns the facts nearest to the query.",
     params: [P("query", "string", true, "What to look for, for example: Where does Ilse live?")] },
-  { name: "search_wikipedia", kind: "builtin", on: true, run: "ask", description: "Search English Wikipedia. Returns the title, a short snippet and the link of each page found.",
+  { name: "search_wikipedia", kind: "builtin", on: true, description: "Search English Wikipedia. Returns the title, a short snippet and the link of each page found.",
     params: [P("query", "string", true, "What to search for, for example: Model Context Protocol"), P("count", "integer", false, "How many pages, from 1 to 10. The default is 3.")] },
 ];
 // More free APIs that need no key (each one tested). URL tools, so you can see and change the URL.
 const LIBRARY = [
-  { name: "search_wikipedia", kind: "builtin", on: true, run: "ask", description: "Search English Wikipedia. Returns the title, a short snippet and the link of each page found.",
+  { name: "search_wikipedia", kind: "builtin", on: true, description: "Search English Wikipedia. Returns the title, a short snippet and the link of each page found.",
     params: [P("query", "string", true, "What to search for, for example: Model Context Protocol"), P("count", "integer", false, "How many pages, from 1 to 10. The default is 3.")] },
   { name: "crypto_price", kind: "url", url: "https://api.coinbase.com/v2/prices/{pair}/spot", description: "Get the current price of a crypto currency (Coinbase).",
     params: [P("pair", "string", true, "The pair, for example BTC-USD or ETH-CAD")] },
@@ -788,7 +843,7 @@ function saveTools() {
 }
 
 // ---- Settings (remembered in this browser)
-const S = { noteBy: "lmstudio", harness: "on", stepMode: "auto", tab: "chat", temp: 0, maxTokens: 1500 };
+const S = { noteBy: "lmstudio", harness: "on", stepMode: "auto", perm: "allow", tab: "chat", temp: 0, maxTokens: 1500 };
 try { Object.assign(S, JSON.parse(localStorage.getItem("toolsPage2") || "{}")); noteText = localStorage.getItem("toolNote") || NOTE_DEFAULT; } catch {}
 if (!["manual", "auto"].includes(S.stepMode)) S.stepMode = "auto";
 const keep = () => { try { localStorage.setItem("toolsPage2", JSON.stringify(S)); localStorage.setItem("toolNote", noteText); } catch {} };
@@ -828,7 +883,7 @@ async function loadModels() {
     $("chatModel").replaceChildren(...keys.map(k => new Option(k)));
     let saved = null; try { saved = localStorage.getItem("toolsModel"); } catch {}
     $("chatModel").value = keys.includes(saved) ? saved : keys.find(k => /gemma-4-e4b/i.test(k)) || keys.find(k => k === "google/gemma-4-12b") || keys.find(k => trained(k)) || keys[0];
-    renderCard();
+    renderCard(); renderPicker();
   } catch (e) { $("error").textContent = `LM Studio unreachable: ${e.message || e}`; }
 }
 const trained = k => modelInfo.find(m => m.key === k)?.capabilities?.trained_for_tool_use;
@@ -838,6 +893,7 @@ const fmtBytes = n => n >= 1e9 ? (n / 1e9).toFixed(1) + " GB" : Math.round(n / 1
 const fmtNum = n => n >= 1e6 ? (n / 1e6).toFixed(1) + " M" : n >= 1e3 ? Math.round(n / 1e3) + " k" : String(n);
 async function renderCard() {
   const key = $("chatModel").value, m = modelInfo.find(x => x.key === key), el = $("modelCard");
+  renderPicker();
   if (!m) { el.innerHTML = ""; return; }
   const cap = m.capabilities || {}, tool = cap.trained_for_tool_use, ctx = m.loaded_instances?.[0]?.config?.context_length;
   const spec = (k, v, tip) => v == null || v === "" ? "" : `<div class="spec"${tip ? ` tabindex="0" data-tip-title="${esc(k)}" data-tip="${esc(tip)}"` : ""}><span>${esc(k)}</span><b>${v}</b></div>`;
@@ -846,13 +902,6 @@ async function renderCard() {
   const family = (m.architecture || "").replace(/[\d_].*$/, "").toLowerCase();
   const base = hf?.base && family && hf.base.id.toLowerCase().includes(family) ? hf.base : null;
   const link = (h, label) => `<a href="${esc(h.url)}" target="_blank" rel="noopener noreferrer">${esc(label || h.id)}</a>`;
-  const tu = $("toolUse");
-  tu.className = "tooluse" + (tool ? " yes" : "");
-  tu.textContent = tool ? "Tool use: Native" : tool === false ? "Tool use: Text note" : "Tool use: Unknown";
-  tu.dataset.tipTitle = tu.textContent;
-  tu.dataset.tip = tool ? "This model learned tool calling in training. LM Studio puts the tools into its chat template, with its own special tool tokens."
-    : tool === false ? "This model did not learn tool calling. LM Studio gives it the tools as a text note, and reads its reply for [TOOL_REQUEST]."
-    : "LM Studio does not say if this model learned tool calling.";
   el.innerHTML = `<div class="mcard-hd"><b>${esc(m.display_name || key)}</b><span class="pub">${esc(m.publisher || "")}</span>
       <span class="src">${hf && !hf.error ? "LM Studio · Hugging Face" : "LM Studio"}</span></div>
     <div class="mcard-bd">
@@ -878,11 +927,85 @@ async function renderCard() {
     if ($("chatModel").value === key) renderCard();
   }
 }
-$("chatModel").onchange = () => { try { localStorage.setItem("toolsModel", $("chatModel").value); } catch {} renderCard(); };
-function showCard(on) { $("modelCard").hidden = !on; $("mcBtn").setAttribute("aria-expanded", on); }
-$("mcBtn").onclick = e => { e.stopPropagation(); showCard($("modelCard").hidden); };
-document.addEventListener("click", e => { if (!e.target.closest(".mc-wrap")) showCard(false); });
-document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("modelCard").hidden) { showCard(false); $("mcBtn").focus(); } });
+$("chatModel").onchange = () => { try { localStorage.setItem("toolsModel", $("chatModel").value); } catch {} renderCard(); renderPicker(); };
+// ---- Model picker in the message box: the language models of LM Studio. The hidden select keeps the value.
+const ICON_CHIP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2"/><rect x="9" y="9" width="6" height="6" rx="1"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/></svg>';
+const ICON_UPDOWN = '<svg class="updown" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 9l5-5 5 5M7 15l5 5 5-5"/></svg>';
+const ICON_EJECT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5l7 8H5l7-8z"/><path d="M5 18h14"/></svg>';
+const ICON_SEND = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>';
+const ICON_STOP = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="2" fill="currentColor"/></svg>';
+$("sendBtn").innerHTML = ICON_SEND;
+// Capability icons, as LM Studio shows them: from the capabilities that LM Studio reports for each model.
+const CAPS = [
+  ["tool", c => c.trained_for_tool_use, "Tool use", "The model learned tool calling in training. LM Studio puts the tools into its chat template, with its own tool tokens. A model without it gets the tools as a text note.",
+    '<path d="M14.7 6.3a4 4 0 0 0-5.4 5.1L3 17.7 6.3 21l6.3-6.3a4 4 0 0 0 5.1-5.4l-2.6 2.6-2.4-.5-.5-2.4z"/>'],
+  ["eye", c => c.vision, "Vision", "The model can read images.", '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>'],
+  ["brain", c => c.reasoning, "Reasoning", "The model can think before it answers.", '<path d="M9 4a3 3 0 0 0-3 3 3 3 0 0 0-2 5 3 3 0 0 0 2 5 3 3 0 0 0 6 1V5a2 2 0 0 0-3-1z"/><path d="M15 4a3 3 0 0 1 3 3 3 3 0 0 1 2 5 3 3 0 0 1-2 5 3 3 0 0 1-6 1"/>'],
+];
+// Only the capabilities that the model has, flush right.
+const capIcons = m => CAPS.filter(([, has]) => has(m.capabilities || {})).map(([cls, , title, tip, d]) =>
+  `<span class="cap ${cls}" tabindex="-1" data-tip-title="${title}" data-tip="${esc(tip)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg><span class="sr">${title}</span></span>`).join("");
+const isLoaded = k => !!modelInfo.find(m => m.key === k)?.loaded_instances?.length;
+function renderPicker() {
+  const k = $("chatModel").value;
+  $("mpBtn").innerHTML = k ? `${ICON_CHIP}<span class="nm">${esc(k)}</span>${isLoaded(k) ? '<span class="ld">loaded</span>' : ""}${ICON_UPDOWN}` : `<span class="nm">No model</span>`;
+  $("mpBtn").removeAttribute("title");  // the model card shows on hover
+  const m = modelInfo.find(x => x.key === k), r = m?.capabilities?.reasoning;
+  if (r) $("mpBtn").querySelector(".updown")?.insertAdjacentHTML("beforebegin", `<span class="ld">Reasoning ${reasonOf(k)}</span>`);
+  const reasonRow = !r ? "" : r.allowed_options.length > 1
+    ? `<div class="frow"><span tabindex="0" data-tip-title="Reasoning" data-tip="The model thinks before it answers. LM Studio says which settings this model allows. Off sends reasoning_effort: none in the request.">Reasoning</span><span class="seg" role="group" aria-label="Reasoning">${r.allowed_options.map(o => `<button type="button" data-reason="${esc(o)}" aria-pressed="${reasonOf(k) === o}">${o === "on" ? "On" : o === "off" ? "Off" : esc(o)}</button>`).join("")}</span></div>`
+    : `<div class="frow"><span tabindex="0" data-tip-title="Reasoning" data-tip="This model always thinks before it answers. LM Studio allows no other setting.">Reasoning</span><span class="v">${esc(r.allowed_options[0] === "on" ? "On" : r.allowed_options[0])}</span></div>`;
+  // As LM Studio: the loaded models first, each with Eject; then all the models.
+  const loadedNow = modelInfo.filter(x => x.loaded_instances?.length);
+  const row = x => `<button type="button" role="menuitemradio" aria-checked="${x.key === k}" data-model="${esc(x.key)}">${ICON_CHIP}<span class="nmc">${esc(x.key)}</span><span></span><span class="caps">${capIcons(x)}</span></button>`;
+  const lrow = x => `<div class="lrow${x.key === k ? " sel" : ""}"><button type="button" role="menuitemradio" aria-checked="${x.key === k}" data-model="${esc(x.key)}">${ICON_CHIP}<span class="nmc">${esc(x.key)}</span><span></span><span class="caps">${capIcons(x)}</span></button>`
+    + `<button type="button" class="eject" data-eject="${esc(x.loaded_instances[0].id)}" title="Unload this model from memory. LM Studio loads it again at the next Send."${busy ? " disabled" : ""}>${ICON_EJECT}<span>Eject</span></button></div>`;
+  $("mpMenu").innerHTML = `<div class="sec">Currently loaded <span class="n">(${loadedNow.length})</span></div>`
+    + (loadedNow.length ? loadedNow.map(lrow).join("") : `<div class="none-l">No model is loaded. LM Studio loads the model at the next Send.</div>`)
+    + `<div class="sec">Your models</div><div class="list">` + modelInfo.map(row).join("") + `</div>`
+    + (m && reasonRow ? `<div class="foot">${reasonRow}</div>` : "");
+}
+// Reasoning, per model: LM Studio's default until you choose. Saved in this browser.
+let reasonSet = {}; try { reasonSet = JSON.parse(localStorage.getItem("toolsReasoning") || "{}"); } catch {}
+const reasonOf = k => { const r = modelInfo.find(x => x.key === k)?.capabilities?.reasoning; if (!r) return null; return r.allowed_options.includes(reasonSet[k]) ? reasonSet[k] : r.default; };
+function openPicker(open) {
+  $("mpMenu").hidden = !open; $("mpBtn").setAttribute("aria-expanded", open);
+  if (open) $("mpMenu").querySelector('[aria-checked="true"]')?.focus();
+}
+// Opening the menu reads the models again: LM Studio loads a model at a Send, and you can eject one in LM Studio too.
+$("mpBtn").onclick = () => { showCard(false); const open = $("mpMenu").hidden; openPicker(open); if (open) loadModels().then(() => { if (!$("mpMenu").hidden) { renderPicker(); $("mpMenu").querySelector('[aria-checked="true"]')?.focus(); } }); };
+$("mpMenu").onclick = async e => {
+  const ej = e.target.closest("[data-eject]");
+  if (ej) {
+    ej.disabled = true; ej.querySelector("span").textContent = "Ejecting…";
+    try { await post("/api/v1/models/unload", { instance_id: ej.dataset.eject }); }
+    catch (err) { $("error").textContent = `Eject failed: ${err.message}`; }
+    await loadModels(); renderPicker(); $("mpMenu").querySelector("button")?.focus();
+    return;
+  }
+  const rb = e.target.closest("[data-reason]");
+  if (rb) { reasonSet[$("chatModel").value] = rb.dataset.reason; try { localStorage.setItem("toolsReasoning", JSON.stringify(reasonSet)); } catch {} renderPicker(); $("mpMenu").querySelector(`[data-reason="${rb.dataset.reason}"]`)?.focus(); return; }
+  const b = e.target.closest("[data-model]"); if (!b) return;
+  $("chatModel").value = b.dataset.model; $("chatModel").dispatchEvent(new Event("change")); openPicker(false); $("mpBtn").focus();
+};
+// composedPath: a click on Reasoning draws the menu again, so the target is no longer in the page.
+document.addEventListener("click", e => { if (!e.composedPath().some(n => n.classList?.contains("mp-wrap"))) openPicker(false); });
+$("mpMenu").addEventListener("keydown", e => {
+  const items = [...$("mpMenu").querySelectorAll("button")], i = items.indexOf(document.activeElement);
+  if (e.key === "Escape") { openPicker(false); $("mpBtn").focus(); }
+  else if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); items[(i + (e.key === "ArrowDown" ? 1 : items.length - 1)) % items.length]?.focus(); }
+});
+// The model card: a hover card on the model button. It stays open while the pointer is on it, so its links work.
+let cardTimer = null;
+function showCard(on) { clearTimeout(cardTimer); $("modelCard").hidden = !on; }
+function cardSoon(on) {
+  clearTimeout(cardTimer);
+  cardTimer = setTimeout(() => { if (on && !$("mpMenu").hidden) return; $("modelCard").hidden = !on; }, on ? 350 : 200);
+}
+["mpBtn", "modelCard"].forEach(id => { $(id).addEventListener("mouseenter", () => cardSoon(true)); $(id).addEventListener("mouseleave", () => cardSoon(false)); });
+$("mpBtn").addEventListener("focus", () => { if ($("mpMenu").hidden) cardSoon(true); });
+$("mpBtn").addEventListener("blur", e => { if (!$("modelCard").contains(e.relatedTarget)) cardSoon(false); });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("modelCard").hidden) showCard(false); });
 
 // ---- Special tokens: the page asks the tokenizer of the model if a tag is ONE token (a control token)
 // or plain text in several tokens. Real data: for Gemma 3, [TOOL_REQUEST] is 5 ordinary tokens.
@@ -1104,6 +1227,7 @@ function buildRequest() {
   const messages = [{ role: "system", content: sys }, ...history];
   const body = { model, messages, temperature: +S.temp, max_tokens: S.maxTokens, stream: false };
   if (S.noteBy === "lmstudio" && list.length) body.tools = list.map(schemaOf);
+  if (reasonOf(model) === "off") body.reasoning_effort = "none";  // tested: turns the thinking off (Qwen3, Gemma 4)
   return body;
 }
 
@@ -1229,10 +1353,12 @@ async function runTurn(text) {
           step(turn, { type: "skip", call, c, text: t });
           continue;
         }
-        // Human in the loop: a tool set to Ask (and every tool in Step mode) waits for you: Allow or Deny.
-        const ask = ck.tool.run === "ask";
-        const ok = await must({ call, who: "You", text: `Allow ${c.name}? ${c.name}(${argText(ck.args)})` }, true, ask);
-        if (ask || S.stepMode === "manual") step(turn, { type: "decide", call, c, args: ck.args, ok });
+        // Human in the loop: with Permissions Ask, the harness asks you before each tool runs: Allow or Deny.
+        // Permissions: Ask every time waits for your click; Deny all never runs a tool; Allow all runs it.
+        const ask = S.perm === "ask";
+        const ok = ask ? await must({ call, who: "You", text: `Allow ${c.name}? ${c.name}(${argText(ck.args)})` }, true, true)
+          : S.perm === "deny" ? false : await must({ call, who: "Tool", text: "Executing tool" });
+        if (S.perm !== "allow") step(turn, { type: "decide", call, c, args: ck.args, ok, auto: S.perm === "deny" });
         if (!ok) { results.push({ call: c, ok: false, text: `Tool '${c.name}' was denied by the user.` }); continue; }
         const run = step(turn, { type: "run", call, c, args: ck.args, wait: true });
         const r = await post("/tool-run", { tool: ck.tool, args: ck.args }, ctrl.signal);
@@ -1315,7 +1441,8 @@ function rowHtml(s, k) {
     const b = s.body, nt = b.tools?.length || 0;
     const sentence = tipped("Sending request", nt ? "The harness sends the messages and the tool definitions to LM Studio (POST /v1/chat/completions). It sends them again in each model call." : "The harness sends the messages to LM Studio (POST /v1/chat/completions). No tools are on.");
     const body = det(k + "m", "Messages", msgRows(b.messages, b.messages.length - 1), `${b.messages.length}`)
-      + (nt ? det(k + "t", "Tools (JSON schema)", `<pre class="pre">${esc(JSON.stringify(b.tools, null, 2))}</pre>`, plural(nt, "tool")) : "");
+      + (nt ? det(k + "t", "Tools (JSON schema)", `<pre class="pre">${esc(JSON.stringify(b.tools, null, 2))}</pre>`, plural(nt, "tool")) : "")
+      + (() => { const { messages, tools, ...rest } = b; return det(k + "p", "Parameters", `<pre class="pre">${esc(JSON.stringify(rest, null, 2))}</pre>`, `${Object.keys(rest).length}`); })();
     return row(k, "Harness", sentence, "", body);
   }
   if (s.type === "template") {
@@ -1353,7 +1480,7 @@ function rowHtml(s, k) {
     return row(k, "Harness", what, "", `<div class="chk">${rows}</div>`, bad ? "bad" : "");
   }
   if (s.type === "skip") return row(k, "Harness", tipped("Skipping tool", "The call has an error, so the tool does not run."), "", `<pre class="pre">${esc(s.text)}</pre>`, "bad");
-  if (s.type === "decide") return row(k, "You", s.ok ? tipped("Allowed", "You allow the tool call, so the tool runs.") : tipped("Denied", "You deny the tool call. The model gets: the tool was denied by the user."), "", "", s.ok ? "" : "bad");
+  if (s.type === "decide") return row(k, s.auto ? "Harness" : "You", s.ok ? tipped("Allowed", "You allow the tool call, so the tool runs.") : tipped("Denied", (s.auto ? "Permissions is Deny all, so the harness denies the call." : "You deny the tool call.") + " The model gets: the tool was denied by the user."), "", "", s.ok ? "" : "bad");
   if (s.type === "run") {
     if (s.wait) return row(k, "Tool", `<span class="busy-dot" aria-hidden="true"></span>Executing tool…`, "", "");
     const r = s.r;
@@ -1430,7 +1557,6 @@ function renderTools() {
   $("toolList").innerHTML = tools.map((t, i) => {
     const builtin = t.kind === "builtin";
     const head = `<div class="tool-hd"><label class="on" title="On: the model gets this tool"><input type="checkbox" data-on="${i}"${t.on ? " checked" : ""}>On</label><span class="nm">${esc(t.name)}</span>
-      <span class="seg run" role="group" aria-label="Before ${esc(t.name)} runs" data-tip-title="Before the tool runs" data-tip="Allow: the harness runs the tool. Ask: the harness asks you first, and you allow or deny the call (human in the loop). Use Ask for a tool that sends data out or acts in the world."><button type="button" data-run="${i}" data-v="allow" aria-pressed="${t.run !== "ask"}">Allow</button><button type="button" data-run="${i}" data-v="ask" aria-pressed="${t.run === "ask"}">Ask</button></span>
       <span class="badge${builtin ? "" : " blue"}" tabindex="0" data-tip-title="${builtin ? "Built-in tool" : "URL tool"}" data-tip="${builtin ? "Python code in server.py. You can change the description, not the parameters." : "The server sends a GET request to the URL. Each {name} in the URL becomes the argument of that name."}">${builtin ? "Built-in" : "URL"}</span>
       <span class="right"><button type="button" class="copy" data-edit="${i}" title="${editing === i ? "Done" : "Edit this tool"}" aria-label="Edit ${esc(t.name)}">${ICON_EDIT}</button><button type="button" class="copy del" data-del="${i}" title="Delete this tool" aria-label="Delete ${esc(t.name)}">${ICON_DEL}</button></span></div>`;
     if (editing !== i) return `<div class="tool${t.on ? "" : " off"}">${head}<div class="tool-bd"><span class="sig">${esc(signature(t))}</span><span>${esc(t.description)}</span>${t.kind === "url" ? `<span class="src">GET ${esc(t.url)}</span>` : ""}
@@ -1490,10 +1616,6 @@ $("library").onchange = e => {
   if (!l) return;
   tools.push({ ...clone(l), on: true }); saveTools(); renderTools(); renderChat();
 };
-document.addEventListener("click", e => {
-  const b = e.target.closest("[data-run]"); if (!b) return;
-  tools[+b.dataset.run].run = b.dataset.v; saveTools(); renderTools();
-});
 $("resetTools").onclick = () => { tools = clone(STARTER); editing = null; saveTools(); renderTools(); renderChat(); };
 
 // ---- Examples from chapter 5. Each one sets the switches and sends one message in a new chat.
@@ -1503,7 +1625,7 @@ const PRESETS = [
   { name: "Two tools: currency and weather", msg: "How much is 100 US dollars in Canadian dollars? And what is the weather in Vancouver?", tip: "Count the tool calls and the model calls." },
   { name: "Top tech news", msg: "What are the top 3 stories on Hacker News right now?", tip: "A tool with an optional parameter: count." },
   { name: "Search the saved facts", msg: "Search my saved facts: where do I live?", tip: "Retrieval as a tool. It searches the facts saved on the Memory page." },
-  { name: "Ask before a tool runs", msg: "Search Wikipedia: what is the Model Context Protocol?", tip: "search_wikipedia is set to Ask: the harness asks you before the query leaves your computer. Try Deny." },
+  { name: "Ask before a tool runs", msg: "Search Wikipedia: what is the Model Context Protocol?", tip: "Set Permissions (the shield next to the message box) to Ask every time: the harness then asks you before the query leaves your computer. Try Deny." },
   { name: "No tool needed", msg: "Why is the sky blue? Answer in one sentence.", tip: "Does the model ask for a tool?" },
 ];
 $("preset").replaceChildren(new Option("Select an example…", ""), ...PRESETS.map((p, i) => new Option(p.name, i)));
@@ -1536,8 +1658,10 @@ async function send(text) {
 }
 function stop() { ctrl?.abort(); if (pending) { const p = pending; pending = null; p.resolve(null); } }
 function setBusy() {
-  $("sendBtn").textContent = busy ? "Stop" : "Send";
-  ["newChat", "preset", "chatModel", "resetTools", "addTool", "library", "temp", "maxTok"].forEach(id => $(id).disabled = busy);
+  $("sendBtn").innerHTML = busy ? ICON_STOP : ICON_SEND;
+  $("sendBtn").title = busy ? "Stop the run" : "Send the message (Enter)";
+  $("sendBtn").setAttribute("aria-label", busy ? "Stop" : "Send");
+  ["newChat", "preset", "chatModel", "mpBtn", "resetTools", "addTool", "library", "temp", "maxTok"].forEach(id => $(id).disabled = busy);
   document.querySelectorAll("#noteBy button, #harness button").forEach(b => b.disabled = busy);
 }
 function setStatus(t) { $("status").innerHTML = t === "Running…" ? `<span class="busy-dot" aria-hidden="true"></span>Running…` : esc(t); }
@@ -1603,6 +1727,34 @@ document.querySelectorAll("#theme button").forEach(b => { b.onclick = () => setT
 setTheme(document.documentElement.dataset.theme, false);
 
 ["noteBy", "harness", "stepMode"].forEach(id => setSeg(id, S[id]));
+// ---- Permissions: how the harness gets your approval before a tool runs (human in the loop).
+const SVG = d => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+const PERMS = [
+  { v: "deny", label: "Deny all", desc: "The harness denies every tool call", icon: SVG('<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/>') },
+  { v: "ask", label: "Ask every time", desc: "Allow or deny each tool call yourself", icon: SVG('<path d="M18 11V6a2 2 0 0 0-4 0v5M14 10V4a2 2 0 0 0-4 0v6M10 10.5V6a2 2 0 0 0-4 0v8a8 8 0 0 0 16 0v-3a2 2 0 0 0-4 0"/>') },
+  { v: "allow", label: "Allow all", desc: "The harness runs every tool call", icon: SVG('<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6l8-3z"/><path d="M9 12l2 2 4-4"/>') },
+];
+if (!PERMS.some(p => p.v === S.perm)) S.perm = "allow";
+function renderPerm() {
+  const cur = PERMS.find(p => p.v === S.perm);
+  $("permBtn").innerHTML = cur.icon;
+  $("permBtn").title = `Permissions: ${cur.label}`;
+  $("permBtn").setAttribute("aria-label", `Permissions: ${cur.label}`);
+  $("permMenu").innerHTML = `<div class="hd">Choose how the harness gets tool approvals</div>` + PERMS.map(p => `<button type="button" role="menuitemradio" aria-checked="${p.v === S.perm}" data-perm="${p.v}">${p.icon}<span>${p.label}</span>${p.v === S.perm ? '<span class="ck">✓</span>' : "<span></span>"}<span class="d">${p.desc}</span></button>`).join("");
+}
+function openPerm(open) {
+  $("permMenu").hidden = !open; $("permBtn").setAttribute("aria-expanded", open);
+  if (open) $("permMenu").querySelector('[aria-checked="true"]')?.focus();
+}
+$("permBtn").onclick = () => openPerm($("permMenu").hidden);
+$("permMenu").onclick = e => { const b = e.target.closest("[data-perm]"); if (!b) return; S.perm = b.dataset.perm; keep(); renderPerm(); openPerm(false); $("permBtn").focus(); };
+document.addEventListener("click", e => { if (!e.target.closest(".perm-wrap")) openPerm(false); });
+$("permMenu").addEventListener("keydown", e => {
+  const items = [...$("permMenu").querySelectorAll("[data-perm]")], i = items.indexOf(document.activeElement);
+  if (e.key === "Escape") { openPerm(false); $("permBtn").focus(); }
+  else if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); items[(i + (e.key === "ArrowDown" ? 1 : items.length - 1)) % items.length].focus(); }
+});
+renderPerm();
 if (!TOK_STEPS.includes(S.maxTokens)) S.maxTokens = 1500;
 renderSampling();
 $("temp").oninput = e => { S.temp = Math.round(+e.target.value * 10) / 10; keep(); renderSampling(); };

@@ -776,7 +776,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     def do_POST(self):
         if self._blocked(write=True):
             return
-        if self.path.startswith("/v1/"):
+        if self.path.startswith("/v1/") or self.path == "/api/v1/models/unload":  # unload: the Eject button of the Tools page
             return self._proxy("POST")
         if self.path == "/tokenize":
             try:
