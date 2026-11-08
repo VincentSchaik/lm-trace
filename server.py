@@ -564,6 +564,20 @@ def t_top_tech_news(count=3, **_):
     return json.dumps([{"title": x.get("title"), "points": x.get("score"), "url": x.get("url", "")} for x in items if x], ensure_ascii=False)
 
 
+def t_search_wikipedia(query=None, count=3, **_):
+    """Search English Wikipedia (no key): the title, a short snippet and the link of each page found."""
+    if not isinstance(query, str) or not query.strip():
+        raise ValueError("query is required")
+    n = max(1, min(10, int(num(count, "count"))))
+    j = get_json("https://en.wikipedia.org/w/api.php?action=query&list=search&format=json&utf8=1"
+                 f"&srlimit={n}&srsearch={urllib.parse.quote(query)}")
+    import html
+    hits = [{"title": x["title"], "snippet": html.unescape(re.sub(r"<[^>]+>", "", x.get("snippet", ""))),
+             "url": "https://en.wikipedia.org/wiki/" + urllib.parse.quote(x["title"].replace(" ", "_"))}
+            for x in j.get("query", {}).get("search", [])]
+    return json.dumps(hits, ensure_ascii=False) if hits else "No Wikipedia pages found."
+
+
 def lms_embed(model, texts):
     """Vectors from the embedding model in LM Studio, in the order of the texts."""
     body = json.dumps({"model": model, "input": texts}).encode()
@@ -604,7 +618,8 @@ def t_search_memory(query=None, k=3, **_):
     return "\n".join(text for _, text in ranked[:n])
 
 
-BUILTIN = {"multiply": t_multiply, "get_weather": t_get_weather, "top_tech_news": t_top_tech_news, "search_memory": t_search_memory}
+BUILTIN = {"multiply": t_multiply, "get_weather": t_get_weather, "top_tech_news": t_top_tech_news, "search_memory": t_search_memory,
+           "search_wikipedia": t_search_wikipedia}
 
 
 def tool_run(tool, args):

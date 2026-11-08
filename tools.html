@@ -425,6 +425,8 @@
   .tool.off { opacity: .6; }
   .tool-hd { display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; padding: 8px 12px; background: var(--paper); border-bottom: 1px solid var(--line); }
   .tool-hd .nm { font: 600 13px var(--mono); color: var(--ink); }
+  .tool-hd .seg.run { padding: 2px; }
+  .tool-hd .seg.run button { height: 24px; padding: 0 8px; font-size: 12px; }
   .tool-hd .right { margin-left: auto; display: flex; gap: 6px; align-items: center; }
   .tool-hd label.on { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink-2); cursor: pointer; }
   .tool-hd input[type=checkbox], .prow input[type=checkbox] { accent-color: var(--red); width: 15px; height: 15px; margin: 0; cursor: pointer; }
@@ -611,14 +613,14 @@
   </header>
 
   <section class="composer" aria-label="Settings">
-    <div class="lede">A playground for tool calling: how tools let a model interact with the world. Try the five ready tools with the examples, or create your own, and see each step of the real run.
+    <div class="lede">A playground for tool calling: how tools let a model interact with the world. Try the ready tools with the examples, or create your own, and see each step of the real run.
       <details class="more"><summary>How it works</summary>
         <p>The model does not call a tool. It only writes a tool call: the intention to use a tool. Two programs do the rest. LM Studio, the inference server, runs the model and parses its output into JSON. The harness (this page and its server) executes the tool and sends the result back.</p>
         <ol class="how">
           <li><b>Tool creation</b> · <i>Tool registry</i>. You create a tool in the Tools tab: a function with a name, a description and parameters.</li>
           <li><b>Tool definition</b> · <i>Tool registry</i>. The harness defines each tool that is on. LM Studio (structured function calling): a JSON schema. Custom note: text in the system prompt. <i>Sending request</i> sends the definitions in each model call, and <i>Applying chat template</i> puts them into the prompt.</li>
           <li><b>Tool selection</b> · <i>Generating tokens</i>. The model thinks, and selects a tool or no tool.</li>
-          <li><b>Tool calling</b> · <i>Generating tokens</i>: the model writes the call. <i>Parsing output</i>, <i>Serializing JSON</i>: LM Studio parses it. <i>Parsing tool_calls</i>, <i>Validating tool call</i>: the harness parses and validates it. <i>Executing tool</i>: the server executes it. In Step mode, you approve it first.</li>
+          <li><b>Tool calling</b> · <i>Generating tokens</i>: the model writes the call. <i>Parsing output</i>, <i>Serializing JSON</i>: LM Studio parses it. <i>Parsing tool_calls</i>, <i>Validating tool call</i>: the harness parses and validates it. <i>Executing tool</i>: the server executes it. A tool set to Ask (every tool in Step mode) waits for you first: Allow or Deny.</li>
           <li><b>Output processing</b> · <i>Appending observation</i>: the result goes back to the model as an observation. In the next model call, the model writes the answer.</li>
         </ol>
         <p>Some models learned special tool tokens in training. LM Studio puts the tools into the chat template of these models. Other models get the tools as a text note, and must follow it.</p>
@@ -635,7 +637,7 @@
   <section class="panel" aria-label="Chat">
     <div class="panel-head"><h2>Chat</h2>
       <span class="ctl-inline l"><span>Harness</span><span class="seg" id="harness" role="group" aria-label="Harness"><button data-v="off" aria-pressed="false">Off</button><button data-v="on" aria-pressed="true">On</button></span><span class="info" tabindex="0" data-tip-title="Harness" data-tip="The program around the model. On: it reads the tool call in the reply, checks it, runs the tool and sends the result back. Off: nothing reads the reply, so a tool call stays text and no tool runs.">i</span></span>
-      <span class="ctl-inline l"><span>Mode</span><span class="seg" id="stepMode" role="group" aria-label="Mode"><button data-v="manual" aria-pressed="false">Step</button><button data-v="auto" aria-pressed="true">Auto</button></span><span class="info" tabindex="0" data-tip-title="Mode" data-tip="Step: you click Next step for each step, and you approve or deny each tool before it runs. Auto: the harness does each step by itself, up to 5 model calls.">i</span></span>
+      <span class="ctl-inline l"><span>Mode</span><span class="seg" id="stepMode" role="group" aria-label="Mode"><button data-v="manual" aria-pressed="false">Step</button><button data-v="auto" aria-pressed="true">Auto</button></span><span class="info" tabindex="0" data-tip-title="Mode" data-tip="Step: you click Next step for each step, and you allow or deny each tool before it runs. Auto: the harness does each step by itself, up to 5 model calls.">i</span></span>
       <span class="stats" id="stats"></span>
       <span class="ctl-inline l ex-ctl"><label for="preset">Example</label><select id="preset" class="field"></select></span>
       <button type="button" id="newChat" class="btn ghost" title="Start a new chat. The tools stay.">New chat</button></div>
@@ -738,9 +740,13 @@ const STARTER = [
     params: [P("count", "integer", false, "How many stories, from 1 to 10. The default is 3.")] },
   { name: "search_memory", kind: "builtin", on: true, description: "Search the saved facts of the Memory page (the long-term memory). Returns the facts nearest to the query.",
     params: [P("query", "string", true, "What to look for, for example: Where does Ilse live?")] },
+  { name: "search_wikipedia", kind: "builtin", on: true, run: "ask", description: "Search English Wikipedia. Returns the title, a short snippet and the link of each page found.",
+    params: [P("query", "string", true, "What to search for, for example: Model Context Protocol"), P("count", "integer", false, "How many pages, from 1 to 10. The default is 3.")] },
 ];
 // More free APIs that need no key (each one tested). URL tools, so you can see and change the URL.
 const LIBRARY = [
+  { name: "search_wikipedia", kind: "builtin", on: true, run: "ask", description: "Search English Wikipedia. Returns the title, a short snippet and the link of each page found.",
+    params: [P("query", "string", true, "What to search for, for example: Model Context Protocol"), P("count", "integer", false, "How many pages, from 1 to 10. The default is 3.")] },
   { name: "crypto_price", kind: "url", url: "https://api.coinbase.com/v2/prices/{pair}/spot", description: "Get the current price of a crypto currency (Coinbase).",
     params: [P("pair", "string", true, "The pair, for example BTC-USD or ETH-CAD")] },
   { name: "wikipedia_summary", kind: "url", url: "https://en.wikipedia.org/api/rest_v1/page/summary/{title}", description: "Get the summary of an English Wikipedia article.",
@@ -802,7 +808,7 @@ function setSeg(id, v) {
   const was = S[id];
   setSeg(id, b.dataset.v);
   if (id === "noteBy" && was !== b.dataset.v && chat.some(x => x.user)) { newChat(); setStatus("New chat: the tool format changed."); }
-  if (id === "stepMode" && pending && b.dataset.v === "auto") { const p = pending; pending = null; p.resolve(true); }
+  if (id === "stepMode" && pending && !pending.force && b.dataset.v === "auto") { const p = pending; pending = null; p.resolve(true); }
   renderAll();
 }));
 
@@ -1153,14 +1159,14 @@ function checkCall(c) {
 
 // Step: the harness waits for your click before each step. Auto: a short pause, so each row comes in one at a time.
 const PACE = 300;
-function gate(next, approve) {
-  if (S.stepMode !== "manual") return sleep(PACE).then(() => true);
-  return new Promise(resolve => { pending = { next, approve, resolve }; renderChat(); });
+function gate(next, approve, force) {
+  if (S.stepMode !== "manual" && !force) return sleep(PACE).then(() => true);
+  return new Promise(resolve => { pending = { next, approve, force, resolve }; renderChat(); });
 }
 function step(turn, s) { s.born = Date.now(); turn.steps.push(s); renderChat(); return s; }
 const aborted = () => { const e = new Error("Stopped."); e.name = "AbortError"; return e; };
-async function must(next, approve) {
-  const ok = await gate(next, approve);
+async function must(next, approve, force) {
+  const ok = await gate(next, approve, force);
   pending = null;
   if (ok === null || ctrl?.signal.aborted) throw aborted();
   return ok;
@@ -1223,8 +1229,10 @@ async function runTurn(text) {
           step(turn, { type: "skip", call, c, text: t });
           continue;
         }
-        const ok = await must({ call, who: "You", text: `Run ${c.name}(${argText(ck.args)})?` }, true);
-        if (S.stepMode === "manual") step(turn, { type: "decide", call, c, args: ck.args, ok });
+        // Human in the loop: a tool set to Ask (and every tool in Step mode) waits for you: Allow or Deny.
+        const ask = ck.tool.run === "ask";
+        const ok = await must({ call, who: "You", text: `Allow ${c.name}? ${c.name}(${argText(ck.args)})` }, true, ask);
+        if (ask || S.stepMode === "manual") step(turn, { type: "decide", call, c, args: ck.args, ok });
         if (!ok) { results.push({ call: c, ok: false, text: `Tool '${c.name}' was denied by the user.` }); continue; }
         const run = step(turn, { type: "run", call, c, args: ck.args, wait: true });
         const r = await post("/tool-run", { tool: ck.tool, args: ck.args }, ctrl.signal);
@@ -1345,7 +1353,7 @@ function rowHtml(s, k) {
     return row(k, "Harness", what, "", `<div class="chk">${rows}</div>`, bad ? "bad" : "");
   }
   if (s.type === "skip") return row(k, "Harness", tipped("Skipping tool", "The call has an error, so the tool does not run."), "", `<pre class="pre">${esc(s.text)}</pre>`, "bad");
-  if (s.type === "decide") return row(k, "You", s.ok ? tipped("Approved", "You approve the tool call.") : tipped("Denied", "You deny the tool call. The model gets: the tool was denied."), "", "", s.ok ? "" : "bad");
+  if (s.type === "decide") return row(k, "You", s.ok ? tipped("Allowed", "You allow the tool call, so the tool runs.") : tipped("Denied", "You deny the tool call. The model gets: the tool was denied by the user."), "", "", s.ok ? "" : "bad");
   if (s.type === "run") {
     if (s.wait) return row(k, "Tool", `<span class="busy-dot" aria-hidden="true"></span>Executing tool…`, "", "");
     const r = s.r;
@@ -1364,8 +1372,8 @@ function rowHtml(s, k) {
   return "";
 }
 function pendingRow(p) {
-  return `<div class="ev pending"><div class="ev-row"><span class="who">${esc(p.next.who)}</span><span class="what">Next: ${esc(p.next.text)}</span><span class="meta"></span><span class="more btns">${p.approve
-    ? `<button type="button" class="btn ghost" data-gate="deny" title="Do not run the tool. The model gets: the tool was denied.">Deny</button><button type="button" class="btn" data-gate="ok">Approve</button>`
+  return `<div class="ev pending"><div class="ev-row"><span class="who">${esc(p.next.who)}</span><span class="what">${p.approve ? "" : "Next: "}${esc(p.next.text)}</span><span class="meta"></span><span class="more btns">${p.approve
+    ? `<button type="button" class="btn ghost" data-gate="deny" title="Do not run the tool. The model gets: the tool was denied.">Deny</button><button type="button" class="btn" data-gate="ok">Allow</button>`
     : `<button type="button" class="btn" data-gate="ok">Next step</button>`}</span></div></div>`;
 }
 const callCard = (call, rows) => `<section class="callcard"><div class="callcard-hd">${call ? `Model call ${call}` : "Tool registry"}</div>${rows}</section>`;
@@ -1422,6 +1430,7 @@ function renderTools() {
   $("toolList").innerHTML = tools.map((t, i) => {
     const builtin = t.kind === "builtin";
     const head = `<div class="tool-hd"><label class="on" title="On: the model gets this tool"><input type="checkbox" data-on="${i}"${t.on ? " checked" : ""}>On</label><span class="nm">${esc(t.name)}</span>
+      <span class="seg run" role="group" aria-label="Before ${esc(t.name)} runs" data-tip-title="Before the tool runs" data-tip="Allow: the harness runs the tool. Ask: the harness asks you first, and you allow or deny the call (human in the loop). Use Ask for a tool that sends data out or acts in the world."><button type="button" data-run="${i}" data-v="allow" aria-pressed="${t.run !== "ask"}">Allow</button><button type="button" data-run="${i}" data-v="ask" aria-pressed="${t.run === "ask"}">Ask</button></span>
       <span class="badge${builtin ? "" : " blue"}" tabindex="0" data-tip-title="${builtin ? "Built-in tool" : "URL tool"}" data-tip="${builtin ? "Python code in server.py. You can change the description, not the parameters." : "The server sends a GET request to the URL. Each {name} in the URL becomes the argument of that name."}">${builtin ? "Built-in" : "URL"}</span>
       <span class="right"><button type="button" class="copy" data-edit="${i}" title="${editing === i ? "Done" : "Edit this tool"}" aria-label="Edit ${esc(t.name)}">${ICON_EDIT}</button><button type="button" class="copy del" data-del="${i}" title="Delete this tool" aria-label="Delete ${esc(t.name)}">${ICON_DEL}</button></span></div>`;
     if (editing !== i) return `<div class="tool${t.on ? "" : " off"}">${head}<div class="tool-bd"><span class="sig">${esc(signature(t))}</span><span>${esc(t.description)}</span>${t.kind === "url" ? `<span class="src">GET ${esc(t.url)}</span>` : ""}
@@ -1481,6 +1490,10 @@ $("library").onchange = e => {
   if (!l) return;
   tools.push({ ...clone(l), on: true }); saveTools(); renderTools(); renderChat();
 };
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-run]"); if (!b) return;
+  tools[+b.dataset.run].run = b.dataset.v; saveTools(); renderTools();
+});
 $("resetTools").onclick = () => { tools = clone(STARTER); editing = null; saveTools(); renderTools(); renderChat(); };
 
 // ---- Examples from chapter 5. Each one sets the switches and sends one message in a new chat.
@@ -1490,6 +1503,7 @@ const PRESETS = [
   { name: "Two tools: currency and weather", msg: "How much is 100 US dollars in Canadian dollars? And what is the weather in Vancouver?", tip: "Count the tool calls and the model calls." },
   { name: "Top tech news", msg: "What are the top 3 stories on Hacker News right now?", tip: "A tool with an optional parameter: count." },
   { name: "Search the saved facts", msg: "Search my saved facts: where do I live?", tip: "Retrieval as a tool. It searches the facts saved on the Memory page." },
+  { name: "Ask before a tool runs", msg: "Search Wikipedia: what is the Model Context Protocol?", tip: "search_wikipedia is set to Ask: the harness asks you before the query leaves your computer. Try Deny." },
   { name: "No tool needed", msg: "Why is the sky blue? Answer in one sentence.", tip: "Does the model ask for a tool?" },
 ];
 $("preset").replaceChildren(new Option("Select an example…", ""), ...PRESETS.map((p, i) => new Option(p.name, i)));
