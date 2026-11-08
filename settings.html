@@ -322,6 +322,7 @@
   .status { font-size: 12.5px; color: var(--ink-3); }
   .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .empty { padding: 14px 16px; color: var(--ink-3); font-size: 13px; }
+  .panel > .explain { margin: 12px 16px 4px; }
   @media (max-width: 700px) {
     .fmt thead { display: none; }
     .fmt tr { display: grid; grid-template-columns: 1fr auto; gap: 6px 8px; padding: 10px 16px; border-top: 1px solid var(--paper-2); }
@@ -351,7 +352,7 @@
   <a href="/rag.html" title="RAG: answers from your documents"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h10M4 9h7M4 13h5"/><circle cx="15.5" cy="15.5" r="4"/><path d="M18.5 18.5 21 21"/></svg><span>RAG</span></a>
   <a href="/memory.html" title="Memory: what the agent remembers"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 3 8l9 5 9-5-9-5z"/><path d="M3 12.5l9 5 9-5"/><path d="M3 17l9 5 9-5"/></svg><span>Memory</span></a>
   <a href="/tools.html" title="Tools: how a model uses tools"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.1L3 17.7 6.3 21l6.3-6.3a4 4 0 0 0 5.1-5.4l-2.6 2.6-2.4-.5-.5-2.4z"/></svg><span>Tools</span></a>
-  <a href="/settings.html" class="side-foot" aria-current="page" title="Settings: model formats"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>Settings</span></a>
+  <a href="/settings.html" class="side-foot" aria-current="page" title="Settings: model formats and embedding prefixes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>Settings</span></a>
 </nav>
 <div class="app">
   <header class="top">
@@ -363,21 +364,35 @@
     </span>
   </header>
 
-  <section class="composer lede" aria-label="About model formats">
-    <p>Each model marks its thinking with its own text. The pages use these values to show the thinking as its own block, for any model.</p>
-    <p>LM Studio sends the thinking in its own field (<code>reasoning_content</code> or <code>reasoning</code>) when it can. Then the pages use that field, and a value here is not necessary. To find the values for a new model: on the Tools page, open a Model row, click Details, then Raw. Copy the text before and after the thinking.</p>
+  <section class="composer lede" aria-label="About the settings">
+    <p>Each model has its own format. These values tell the pages the format of a model, so they work for any model. The server saves them, so every page reads the same values.</p>
   </section>
 
   <section class="panel" aria-labelledby="fmtTitle">
-    <div class="panel-head"><h2 id="fmtTitle">Model formats</h2><span class="sub">Where the thinking starts and ends, in the raw text of the model</span><span class="right status" id="status" role="status"></span></div>
+    <div class="panel-head"><h2 id="fmtTitle">Model formats</h2><span class="sub">Where the thinking starts and ends, in the raw text of the model</span><span class="right status" id="fmtStatus" role="status"></span></div>
+    <p class="explain">LM Studio sends the thinking in its own field (<code>reasoning_content</code> or <code>reasoning</code>) when it can. Then the pages use that field, and a value here is not necessary. To find the values for a new model: on the Tools page, open a Model row, click Details, then Raw. Copy the text before and after the thinking.</p>
     <table class="fmt">
       <thead><tr><th scope="col">Model</th><th scope="col">Thinking starts with</th><th scope="col">Thinking ends with</th><th scope="col"><span class="sr">Remove</span></th></tr></thead>
-      <tbody id="rows"></tbody>
+      <tbody id="fmtRows"></tbody>
     </table>
     <div class="add-row">
-      <label for="addModel" class="sub">Add a model</label>
-      <select id="addModel" class="field"></select>
-      <button type="button" class="btn sm" id="addBtn">Add</button>
+      <label for="fmtAdd" class="sub">Add a model</label>
+      <select id="fmtAdd" class="field"></select>
+      <button type="button" class="btn sm" id="fmtAddBtn">Add</button>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="preTitle">
+    <div class="panel-head"><h2 id="preTitle">Embedding prefixes</h2><span class="sub">The text before a query and before a document, for each embedding model</span><span class="right status" id="preStatus" role="status"></span></div>
+    <p class="explain">Some embedding models were trained with a short text in front of each input: one for a query, one for a document. With the same text, the search is usually better. The model card of the model gives these values. The RAG page, the Memory page and the search_memory tool use them. A model without a row gets no prefix.</p>
+    <table class="fmt">
+      <thead><tr><th scope="col">Embedding model</th><th scope="col">Query prefix</th><th scope="col">Document prefix</th><th scope="col"><span class="sr">Remove</span></th></tr></thead>
+      <tbody id="preRows"></tbody>
+    </table>
+    <div class="add-row">
+      <label for="preAdd" class="sub">Add a model</label>
+      <select id="preAdd" class="field"></select>
+      <button type="button" class="btn sm" id="preAddBtn">Add</button>
     </div>
   </section>
 </div>
@@ -386,55 +401,65 @@
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const ICON_DEL = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/></svg>';
-let formats = [], models = [], loaded = new Set(), saveTimer = null;
+let models = [];  // [{ key, type, loaded }] from LM Studio
 
-// The list is saved on the server (model-formats.json), so every page reads the same values.
+// One editable list per table. The list is saved on the server (path + ".json"), so every page reads the same values.
+function makeList({ id, path, type, cols, empty }) {
+  let rows = [], timer = null;
+  const st = $(id + "Status");
+  function save() {
+    clearTimeout(timer);
+    st.textContent = "Saving…";
+    timer = setTimeout(async () => {
+      try {
+        const r = await fetch(path, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(rows) });
+        st.textContent = r.ok ? "Saved." : "Not saved: the server said " + r.status + ".";
+      } catch { st.textContent = "Not saved: the server does not answer."; }
+    }, 400);
+  }
+  function render() {
+    const loaded = new Set(models.filter(m => m.loaded).map(m => m.key));
+    $(id + "Rows").innerHTML = rows.length ? rows.map((f, i) => `<tr>
+        <td><span class="name">${esc(f.name)}</span>${loaded.has(f.name) ? '<span class="loaded">loaded</span>' : ""}</td>
+        ${cols.map(c => `<td class="in" data-label="${esc(c.label)}"><input class="field" data-i="${i}" data-k="${c.k}" value="${esc(f[c.k])}" aria-label="${esc(c.label)}, for ${esc(f.name)}" spellcheck="false" autocomplete="off"></td>`).join("")}
+        <td><button type="button" class="icon-btn" data-del="${i}" title="Remove ${esc(f.name)}" aria-label="Remove ${esc(f.name)}">${ICON_DEL}</button></td>
+      </tr>`).join("") : `<tr><td colspan="${cols.length + 2}" class="empty">${esc(empty)}</td></tr>`;
+    const have = new Set(rows.map(f => f.name)), free = models.filter(m => m.type === type && !have.has(m.key));
+    $(id + "Add").innerHTML = free.length ? free.map(m => `<option value="${esc(m.key)}">${esc(m.key)}${m.loaded ? " · loaded" : ""}</option>`).join("") : '<option value="">All models have a row</option>';
+    $(id + "AddBtn").disabled = !free.length;
+  }
+  $(id + "Rows").addEventListener("input", e => {
+    const el = e.target.closest("input[data-i]"); if (!el) return;
+    rows[+el.dataset.i][el.dataset.k] = el.value;
+    save();
+  });
+  $(id + "Rows").addEventListener("click", e => {
+    const b = e.target.closest("[data-del]"); if (!b) return;
+    rows.splice(+b.dataset.del, 1);
+    render(); save();
+  });
+  $(id + "AddBtn").onclick = () => {
+    const name = $(id + "Add").value; if (!name) return;
+    rows.push(Object.fromEntries([["name", name], ...cols.map(c => [c.k, ""])]));
+    render(); save();
+    [...$(id + "Rows").querySelectorAll(`input[data-k="${cols[0].k}"]`)].at(-1)?.focus();
+  };
+  return { async load() { try { rows = await (await fetch(path)).json(); } catch { rows = []; } }, render };
+}
+const LISTS_UI = [
+  makeList({ id: "fmt", path: "/model-formats", type: "llm", cols: [{ k: "thinkStart", label: "Thinking starts with" }, { k: "thinkEnd", label: "Thinking ends with" }],
+    empty: "No model formats. The pages show the thinking only when LM Studio sends it in its own field." }),
+  makeList({ id: "pre", path: "/embed-prefixes", type: "embedding", cols: [{ k: "query", label: "Query prefix" }, { k: "doc", label: "Document prefix" }],
+    empty: "No embedding prefixes. The pages embed the text as it is." }),
+];
 async function load() {
-  try { formats = await (await fetch("/model-formats")).json(); } catch { formats = []; }
   try {
     const j = await (await fetch("/api/v1/models")).json();
-    for (const m of j.models || []) if (m.type === "llm") { models.push(m.key); if (m.loaded_instances?.length) loaded.add(m.key); }
+    models = (j.models || []).map(m => ({ key: m.key, type: m.type, loaded: !!m.loaded_instances?.length }));
   } catch {}
-  render();
+  await Promise.all(LISTS_UI.map(l => l.load()));
+  LISTS_UI.forEach(l => l.render());
 }
-function save() {
-  clearTimeout(saveTimer);
-  $("status").textContent = "Saving…";
-  saveTimer = setTimeout(async () => {
-    try {
-      const r = await fetch("/model-formats", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(formats) });
-      $("status").textContent = r.ok ? "Saved." : "Not saved: the server said " + r.status + ".";
-    } catch { $("status").textContent = "Not saved: the server does not answer."; }
-  }, 400);
-}
-function render() {
-  const rows = $("rows");
-  rows.innerHTML = formats.length ? formats.map((f, i) => `<tr>
-      <td><span class="name">${esc(f.name)}</span>${loaded.has(f.name) ? '<span class="loaded">loaded</span>' : ""}</td>
-      <td class="in" data-label="Thinking starts with"><input class="field" data-i="${i}" data-k="thinkStart" value="${esc(f.thinkStart)}" aria-label="Thinking starts with, for ${esc(f.name)}" spellcheck="false" autocomplete="off"></td>
-      <td class="in" data-label="Thinking ends with"><input class="field" data-i="${i}" data-k="thinkEnd" value="${esc(f.thinkEnd)}" aria-label="Thinking ends with, for ${esc(f.name)}" spellcheck="false" autocomplete="off"></td>
-      <td><button type="button" class="icon-btn" data-del="${i}" title="Remove ${esc(f.name)}" aria-label="Remove ${esc(f.name)}">${ICON_DEL}</button></td>
-    </tr>`).join("") : `<tr><td colspan="4" class="empty">No model formats. The pages show the thinking only when LM Studio sends it in its own field.</td></tr>`;
-  const have = new Set(formats.map(f => f.name)), free = models.filter(m => !have.has(m));
-  $("addModel").innerHTML = free.length ? free.map(m => `<option value="${esc(m)}">${esc(m)}${loaded.has(m) ? " · loaded" : ""}</option>`).join("") : '<option value="">All models have a format</option>';
-  $("addBtn").disabled = !free.length;
-}
-$("rows").addEventListener("input", e => {
-  const el = e.target.closest("input[data-i]"); if (!el) return;
-  formats[+el.dataset.i][el.dataset.k] = el.value;
-  save();
-});
-$("rows").addEventListener("click", e => {
-  const b = e.target.closest("[data-del]"); if (!b) return;
-  formats.splice(+b.dataset.del, 1);
-  render(); save();
-});
-$("addBtn").onclick = () => {
-  const name = $("addModel").value; if (!name) return;
-  formats.push({ name, thinkStart: "", thinkEnd: "" });
-  render(); save();
-  [...$("rows").querySelectorAll('input[data-k="thinkStart"]')].at(-1)?.focus();
-};
 
 $("sideToggle").onclick = () => {
   const v = document.documentElement.dataset.side === "closed" ? "open" : "closed";

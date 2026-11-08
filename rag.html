@@ -425,7 +425,7 @@
   <a href="/rag.html" aria-current="page" title="RAG: answers from your documents"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h10M4 9h7M4 13h5"/><circle cx="15.5" cy="15.5" r="4"/><path d="M18.5 18.5 21 21"/></svg><span>RAG</span></a>
   <a href="/memory.html" title="Memory: what the agent remembers"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 3 8l9 5 9-5-9-5z"/><path d="M3 12.5l9 5 9-5"/><path d="M3 17l9 5 9-5"/></svg><span>Memory</span></a>
   <a href="/tools.html" title="Tools: how a model uses tools"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.1L3 17.7 6.3 21l6.3-6.3a4 4 0 0 0 5.1-5.4l-2.6 2.6-2.4-.5-.5-2.4z"/></svg><span>Tools</span></a>
-  <a href="/settings.html" class="side-foot" title="Settings: model formats"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>Settings</span></a>
+  <a href="/settings.html" class="side-foot" title="Settings: model formats and embedding prefixes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>Settings</span></a>
 </nav>
 <div class="app">
   <header class="top">
@@ -637,12 +637,11 @@ const settingsText = st => `temperature ${st.temp.toFixed(1)} · ${st.mode === "
 let chatSet = chatSettings();
 const DEFAULT_INSTR = "Answer the question with the context only. If the context does not contain the answer, say that you do not know. After each fact, give the number of its chunk in square brackets, for example [2].";
 
-// Task prefixes that the model makers recommend. A model without an entry gets no prefix.
-const PREFIXES = [
-  [/embeddinggemma/i, "task: search result | query: ", "title: none | text: "],
-  [/nomic-embed/i, "search_query: ", "search_document: "],
-];
-const prefixesFor = m => { const p = PREFIXES.find(([re]) => re.test(m)); return p ? { query: p[1], doc: p[2] } : null; };
+// Embedding prefixes, from Settings (saved on the server): the exact model name first, else a saved name inside it.
+let PREFIXES = [];
+const loadPrefixes = () => fetch("/embed-prefixes").then(r => r.json()).then(l => { PREFIXES = Array.isArray(l) ? l : []; }).catch(() => {});
+const prefixRow = m => { const k = String(m || "").toLowerCase(); return PREFIXES.find(r => (r.name || "").toLowerCase() === k) || PREFIXES.find(r => r.name && k.includes(r.name.toLowerCase())); };
+const prefixesFor = m => { const p = prefixRow(m); return p && (p.query || p.doc) ? { query: p.query || "", doc: p.doc || "" } : null; };
 
 // State of the last run.
 // index = { key, model, chunks: [{ text, start, overlap }], vectors, sent: [str], ms, cached }
@@ -677,7 +676,7 @@ async function loadModels() {
 function syncPrefix() {
   const p = prefixesFor($("embModel").value);
   document.querySelectorAll("#prefix button").forEach(b => b.disabled = !p);
-  $("prefix").title = p ? "" : "No known task prefix for this model";
+  $("prefix").title = p ? "" : "No prefixes for this model. Add them in Settings.";
 }
 $("embModel").onchange = syncPrefix;
 
@@ -1254,7 +1253,7 @@ document.querySelectorAll("button").forEach(b => b.addEventListener("mousedown",
 
 $("docs").value = EXAMPLES[0].text; fit($("docs"), 180); docList.match();
 $("question").value = EXAMPLES[0].questions[0]; fit($("question")); qList.fill(); qList.match();
-loadModels();
+loadPrefixes().then(loadModels).then(syncPrefix);
 </script>
 </body>
 </html>

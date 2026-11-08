@@ -353,8 +353,6 @@
   .bubble.user { align-self: flex-end; background: var(--paper-2); border-bottom-right-radius: 4px; }
   .bubble.assistant { align-self: flex-start; background: var(--field); border: 1px solid var(--line); border-bottom-left-radius: 4px; }
   .bubble .wait, .bubble .ph { color: var(--ink-3); }
-  .newchat-line { display: flex; align-items: center; gap: 10px; font-size: 11.5px; color: var(--ink-3); flex: none; }
-  .newchat-line::before, .newchat-line::after { content: ""; flex: 1; border-top: 1px dashed var(--stone-2); }
 
   /* One card per step. Head: number, step, book step, one-line result. Body: the real data. */
   .steps-col { display: grid; gap: 8px; margin: 2px 0 4px; }
@@ -505,10 +503,7 @@
   .effect b { color: var(--ink-2); font-weight: 600; }
   .flow .fs.off { color: var(--ink-3); text-decoration: line-through; text-decoration-color: var(--stone-2); opacity: .7; }
   /* Example and message, where you type */
-  .ex-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-  .ex-row select.field { height: 34px; min-width: 0; width: 280px; font-size: 13.5px; font-weight: 400; }
-  .lbl-s2 { font-size: 13px; font-weight: 600; color: var(--ink-2); }
-  .ex-tip { font-size: 12.5px; color: var(--ink-3); }
+  .ex-ctl select.field { height: 32px; width: 240px; min-width: 0; font-size: 13px; padding: 0 10px; }
   .send-tools .status { padding: 0; }
   .ctl-inline { margin-left: auto; display: inline-flex; align-items: center; gap: 10px; font-size: 13px; color: var(--ink-2); }
   .ctl-inline.l { margin-left: 0; }
@@ -598,7 +593,7 @@
   <a href="/rag.html" title="RAG: answers from your documents"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h10M4 9h7M4 13h5"/><circle cx="15.5" cy="15.5" r="4"/><path d="M18.5 18.5 21 21"/></svg><span>RAG</span></a>
   <a href="/memory.html" title="Memory: what the agent remembers"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 3 8l9 5 9-5-9-5z"/><path d="M3 12.5l9 5 9-5"/><path d="M3 17l9 5 9-5"/></svg><span>Memory</span></a>
   <a href="/tools.html" aria-current="page" title="Tools: how a model uses tools"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.1L3 17.7 6.3 21l6.3-6.3a4 4 0 0 0 5.1-5.4l-2.6 2.6-2.4-.5-.5-2.4z"/></svg><span>Tools</span></a>
-  <a href="/settings.html" class="side-foot" title="Settings: model formats"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>Settings</span></a>
+  <a href="/settings.html" class="side-foot" title="Settings: model formats and embedding prefixes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>Settings</span></a>
 </nav>
 <div class="app">
   <header class="top">
@@ -616,11 +611,12 @@
   </header>
 
   <section class="composer" aria-label="Settings">
-    <div class="lede">A model cannot run a tool. It only writes text that asks for a tool. The harness (the program around the model) reads that text, runs the tool and sends the result back.
+    <div class="lede">A playground for tool calling: how tools let a model interact with the world. Try the five ready tools with the examples, or create your own, and see each step of the real run.
       <details class="more"><summary>How it works</summary>
+        <p>The model does not call a tool. It only writes a tool call: the intention to use a tool. Two programs do the rest. LM Studio, the inference server, runs the model and parses its output into JSON. The harness (this page and its server) executes the tool and sends the result back.</p>
         <ol class="how">
-          <li><b>Tool creation</b> · Tools tab: Create tool. A tool is a function with a name, a description and parameters.</li>
-          <li><b>Tool definition</b> · <i>Sending request</i>, <i>Applying chat template</i>. LM Studio (structured function calling): the tools go as JSON schemas. Custom note: the tools are text in the system prompt.</li>
+          <li><b>Tool creation</b> · <i>Tool registry</i>. You create a tool in the Tools tab: a function with a name, a description and parameters.</li>
+          <li><b>Tool definition</b> · <i>Tool registry</i>. The harness defines each tool that is on. LM Studio (structured function calling): a JSON schema. Custom note: text in the system prompt. <i>Sending request</i> sends the definitions in each model call, and <i>Applying chat template</i> puts them into the prompt.</li>
           <li><b>Tool selection</b> · <i>Generating tokens</i>. The model thinks, and selects a tool or no tool.</li>
           <li><b>Tool calling</b> · <i>Generating tokens</i>: the model writes the call. <i>Parsing output</i>, <i>Serializing JSON</i>: LM Studio parses it. <i>Parsing tool_calls</i>, <i>Validating tool call</i>: the harness parses and validates it. <i>Executing tool</i>: the server executes it. In Step mode, you approve it first.</li>
           <li><b>Output processing</b> · <i>Appending observation</i>: the result goes back to the model as an observation. In the next model call, the model writes the answer.</li>
@@ -641,6 +637,7 @@
       <span class="ctl-inline l"><span>Harness</span><span class="seg" id="harness" role="group" aria-label="Harness"><button data-v="off" aria-pressed="false">Off</button><button data-v="on" aria-pressed="true">On</button></span><span class="info" tabindex="0" data-tip-title="Harness" data-tip="The program around the model. On: it reads the tool call in the reply, checks it, runs the tool and sends the result back. Off: nothing reads the reply, so a tool call stays text and no tool runs.">i</span></span>
       <span class="ctl-inline l"><span>Mode</span><span class="seg" id="stepMode" role="group" aria-label="Mode"><button data-v="manual" aria-pressed="false">Step</button><button data-v="auto" aria-pressed="true">Auto</button></span><span class="info" tabindex="0" data-tip-title="Mode" data-tip="Step: you click Next step for each step, and you approve or deny each tool before it runs. Auto: the harness does each step by itself, up to 5 model calls.">i</span></span>
       <span class="stats" id="stats"></span>
+      <span class="ctl-inline l ex-ctl"><label for="preset">Example</label><select id="preset" class="field"></select></span>
       <button type="button" id="newChat" class="btn ghost" title="Start a new chat. The tools stay.">New chat</button></div>
     <div class="sampling">
       <label class="smp"><span>Temperature</span><input type="range" id="temp" min="0" max="2" step="0.1" aria-describedby="tempV"><output id="tempV"></output></label>
@@ -651,7 +648,6 @@
     <div class="chatlog" id="log"></div>
   </section>
   <section class="panel sendbar" aria-label="Your message">
-    <div class="ex-row"><label for="preset" class="lbl-s2">Example</label><select id="preset" class="field"></select><span class="ex-tip" id="exTip"></span></div>
     <div class="send-row">
       <textarea id="msg" class="input" rows="1" placeholder="Ask something, or select an example." title="Enter sends the message. Shift + Enter adds a line."></textarea>
       <button id="sendBtn" class="btn" title="Send the message (Enter)">Send</button>
@@ -1090,9 +1086,9 @@ async function logEntry(kind, since, keepWaiting = () => false) {
 let chat = [], history = [], busy = false, ctrl = null, pending = null;
 const openKeys = new Set();  // the open ▸ sections, kept when the chat draws again
 let stats = { calls: 0, tools: 0, tokens: 0 };
+// New chat: clear the chat, the history and the counts. The tools and the settings stay.
 function newChat() {
-  if (chat.length && !chat.at(-1).divider) chat.push({ divider: true });
-  history = [];
+  chat = []; history = []; stats = { calls: 0, tools: 0, tokens: 0 }; openKeys.clear(); rawKeys.clear();
 }
 
 // The request of one model call. LM Studio note: the tools parameter. Page note: the tools as text in the system prompt.
@@ -1383,7 +1379,6 @@ function renderChat(hold) {
     + rowHtml({ type: "defined", noteBy: S.noteBy, list: active(), note: S.noteBy === "page" ? pageNote() : null }, "setup.d"));
   if (!chat.length) log.innerHTML = setup + `<div class="chat-empty">Type a message, or select an example.</div>`;
   else log.innerHTML = setup + chat.map((t, ti) => {
-    if (t.divider) return `<div class="newchat-line">new chat</div>`;
     const groups = new Map();
     t.steps.forEach((s, si) => {
       const cls = Date.now() - s.born < 400 ? " new" : "";
@@ -1492,17 +1487,17 @@ $("resetTools").onclick = () => { tools = clone(STARTER); editing = null; saveTo
 const PRESETS = [
   { name: "Multiply two numbers", msg: "What is 5.1 times 7.3?", tip: "Try it with the Harness Off, then On." },
   { name: "Live data: the weather", msg: "What is the weather in Toronto right now?", tip: "The model has no live data. A tool gets it." },
-  { name: "Two tools for one question", msg: "How much is 100 US dollars in Canadian dollars? And what is the weather in Vancouver?", tip: "Count the tool calls and the model calls." },
+  { name: "Two tools: currency and weather", msg: "How much is 100 US dollars in Canadian dollars? And what is the weather in Vancouver?", tip: "Count the tool calls and the model calls." },
   { name: "Top tech news", msg: "What are the top 3 stories on Hacker News right now?", tip: "A tool with an optional parameter: count." },
   { name: "Search the saved facts", msg: "Search my saved facts: where do I live?", tip: "Retrieval as a tool. It searches the facts saved on the Memory page." },
   { name: "No tool needed", msg: "Why is the sky blue? Answer in one sentence.", tip: "Does the model ask for a tool?" },
 ];
 $("preset").replaceChildren(new Option("Select an example…", ""), ...PRESETS.map((p, i) => new Option(p.name, i)));
 // Back to "Select an example…", so the same example loads again when you select it.
-function resetExample() { $("preset").value = ""; $("exTip").textContent = ""; }
+function resetExample() { $("preset").value = ""; $("preset").title = "Select an example question"; }
 $("preset").onchange = () => {
   const p = PRESETS[+$("preset").value];
-  $("exTip").textContent = p ? p.tip : "";
+  $("preset").title = p ? p.tip : "Select an example question";
   if (!p) return;
   $("msg").value = p.msg; fit($("msg")); $("msg").focus();
 };

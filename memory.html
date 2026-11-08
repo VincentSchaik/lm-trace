@@ -513,7 +513,7 @@
   <a href="/rag.html" title="RAG: answers from your documents"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h10M4 9h7M4 13h5"/><circle cx="15.5" cy="15.5" r="4"/><path d="M18.5 18.5 21 21"/></svg><span>RAG</span></a>
   <a href="/memory.html" aria-current="page" title="Memory: what the agent remembers"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 3 8l9 5 9-5-9-5z"/><path d="M3 12.5l9 5 9-5"/><path d="M3 17l9 5 9-5"/></svg><span>Memory</span></a>
   <a href="/tools.html" title="Tools: how a model uses tools"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.1L3 17.7 6.3 21l6.3-6.3a4 4 0 0 0 5.1-5.4l-2.6 2.6-2.4-.5-.5-2.4z"/></svg><span>Tools</span></a>
-  <a href="/settings.html" class="side-foot" title="Settings: model formats"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>Settings</span></a>
+  <a href="/settings.html" class="side-foot" title="Settings: model formats and embedding prefixes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>Settings</span></a>
 </nav>
 <div class="app">
   <header class="top">
@@ -610,8 +610,11 @@ Write each fact as one short sentence. Keep the names that the text uses, for ex
 Type: "user" or "preference" or "project" for a fact about the user, "contact" for a fact about another person.
 Do not save general knowledge, questions, or facts about the assistant. If there are no such facts, return an empty list.`;
 // Task prefixes that the embedding model makers recommend (same as the RAG page).
-const PREFIXES = [[/embeddinggemma/i, "task: search result | query: ", "title: none | text: "], [/nomic-embed/i, "search_query: ", "search_document: "]];
-const prefixesFor = m => { const p = PREFIXES.find(([re]) => re.test(m)); return p ? { query: p[1], doc: p[2] } : { query: "", doc: "" }; };
+// Embedding prefixes, from Settings (saved on the server): the exact model name first, else a saved name inside it.
+let PREFIXES = [];
+const loadPrefixes = () => fetch("/embed-prefixes").then(r => r.json()).then(l => { PREFIXES = Array.isArray(l) ? l : []; }).catch(() => {});
+const prefixRow = m => { const k = String(m || "").toLowerCase(); return PREFIXES.find(r => (r.name || "").toLowerCase() === k) || PREFIXES.find(r => r.name && k.includes(r.name.toLowerCase())); };
+const prefixesFor = m => { const p = prefixRow(m); return { query: p?.query || "", doc: p?.doc || "" }; };
 
 // ---- The methods. One select per side for each memory type, so no control appears or moves.
 const STM_OPTS = [["none", "None"], ["full", "Full history"], ["trim:1", "Trimming: last 1 turn"], ["trim:2", "Trimming: last 2 turns"],
@@ -1175,7 +1178,7 @@ setTheme(document.documentElement.dataset.theme, false);
 LANES.forEach(laneShell);
 applyPreset();
 renderFacts();
-loadModels().then(() => loadMem()).then(() => indexFacts()).then(() => { renderFacts(); LANES.forEach(l => renderLane(l)); });
+loadPrefixes().then(loadModels).then(() => loadMem()).then(() => indexFacts()).then(() => { renderFacts(); LANES.forEach(l => renderLane(l)); });
 </script>
 </body>
 </html>

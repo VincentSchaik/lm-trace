@@ -25,14 +25,33 @@ PORT = int(os.environ.get("PORT", "8765"))
 ROOT = os.path.dirname(os.path.abspath(__file__))
 # Saved lists: user prompts and system prompts, one JSON file each.
 LISTS = {k: os.path.join(ROOT, k.strip("/") + ".json") for k in ("/prompts", "/system-prompts", "/few-shot", "/schemas", "/presets",
-                                                                   "/embed-texts", "/rag-docs", "/rag-questions", "/tools", "/model-formats")}
+                                                                   "/embed-texts", "/rag-docs", "/rag-questions", "/tools", "/model-formats", "/embed-prefixes")}
 # Starting values of a list, until you save it. Model formats: where the thinking starts and ends in the raw text
 # of the model, as each model wrote it in a real run. You can edit them in Settings.
 LIST_START = {"/model-formats": [
     {"name": "google/gemma-4-12b", "thinkStart": "<|channel>thought", "thinkEnd": "<channel|>"},
     {"name": "zai-org/glm-4.6v-flash", "thinkStart": "<think>", "thinkEnd": "</think>"},
     {"name": "lmstudio-community/gpt-oss-20b", "thinkStart": "<|channel|>analysis<|message|>", "thinkEnd": "<|end|>"},
+],
+    # Embedding prefixes: the text before a query and before a document, as the makers of each model recommend.
+    "/embed-prefixes": [
+    {"name": "text-embedding-embeddinggemma-300m-qat", "query": "task: search result | query: ", "doc": "title: none | text: "},
+    {"name": "text-embedding-nomic-embed-text-v1.5", "query": "search_query: ", "doc": "search_document: "},
 ]}
+
+
+def embed_prefixes(model):
+    """(query prefix, document prefix) of an embedding model, from Settings. The exact name first, else a saved
+    name inside the model name. A model without an entry gets no prefix."""
+    try:
+        with open(LISTS["/embed-prefixes"]) as f:
+            rows = json.load(f)
+    except (OSError, ValueError):
+        rows = LIST_START["/embed-prefixes"]
+    m = model.lower()
+    row = next((r for r in rows if r.get("name", "").lower() == m), None) \
+        or next((r for r in rows if r.get("name") and r["name"].lower() in m), None)
+    return (row.get("query", ""), row.get("doc", "")) if row else ("", "")
 PAGES = ("/index.html", "/embeddings.html", "/rag.html", "/memory.html", "/tools.html", "/settings.html")
 MEM_DIR = os.path.join(ROOT, "agent-memory")  # long-term memory of the Memory page
 LMS_CLI = shutil.which("lms") or os.path.expanduser("~/.lmstudio/bin/lms")
@@ -545,8 +564,18 @@ def t_top_tech_news(count=3, **_):
     return json.dumps([{"title": x.get("title"), "points": x.get("score"), "url": x.get("url", "")} for x in items if x], ensure_ascii=False)
 
 
+def lms_embed(model, texts):
+    """Vectors from the embedding model in LM Studio, in the order of the texts."""
+    body = json.dumps({"model": model, "input": texts}).encode()
+    r = json.loads(urllib.request.urlopen(urllib.request.Request(LMS + "/v1/embeddings", data=body,
+                                                                 headers={"Content-Type": "application/json"}), timeout=60).read())
+    return [x["embedding"] for x in sorted(r["data"], key=lambda x: x["index"])]
+
+
 def t_search_memory(query=None, k=3, **_):
-    """Retrieval as a tool: the saved facts of the Memory page nearest to the query (cosine, as the book's RAGMemory)."""
+    """Retrieval as a tool: the saved facts of the Memory page nearest to the query.
+    With Chroma: each fact is embedded once and its vector is stored; a search embeds only the query, and Chroma
+    finds the nearest vectors. Without Chroma: each search embeds the query and all the facts (cosine, as the book)."""
     if not isinstance(query, str) or not query.strip():
         raise ValueError("query is required")
     files = [f for f in mem_files() if f["description"]]
@@ -557,14 +586,21 @@ def t_search_memory(query=None, k=3, **_):
     model = next((m for m in emb if "embeddinggemma" in m.lower()), emb[0] if emb else None)
     if not model:
         raise ValueError("LM Studio has no embedding model")
-    q, d = ("task: search result | query: ", "title: none | text: ") if "embeddinggemma" in model.lower() else ("", "")
-    body = json.dumps({"model": model, "input": [q + query] + [d + f["description"] for f in files]}).encode()
-    r = json.loads(urllib.request.urlopen(urllib.request.Request(LMS + "/v1/embeddings", data=body,
-                                                                 headers={"Content-Type": "application/json"}), timeout=60).read())
-    vs = [x["embedding"] for x in sorted(r["data"], key=lambda x: x["index"])]
+    q, d = embed_prefixes(model)  # from Settings, as the Memory page, so the vectors in Chroma match
+    n = max(1, min(10, int(num(k, "k"))))
+    stored = vec_ids(model)
+    if stored is not None:
+        # Facts without a vector (or with a changed text) get one now, once. Then only the query is embedded.
+        miss = [f for f in files if stored.get(f["name"], {}).get("text") != f["description"]]
+        if miss:
+            vs = lms_embed(model, [d + f["description"] for f in miss])
+            vec_add(model, [{"id": f["name"], "text": f["description"], "type": f.get("type") or "user", "embedding": v}
+                            for f, v in zip(miss, vs)])
+        _, r = vec_query(model, lms_embed(model, [q + query])[0], n, None)
+        return "\n".join(h["text"] for h in r["hits"])
+    vs = lms_embed(model, [q + query] + [d + f["description"] for f in files])
     cos = lambda a, b: sum(x * y for x, y in zip(a, b)) / (math.sqrt(sum(x * x for x in a) * sum(y * y for y in b)) or 1)
     ranked = sorted(((cos(vs[0], v), f["description"]) for v, f in zip(vs[1:], files)), reverse=True)
-    n = max(1, min(10, int(num(k, "k"))))
     return "\n".join(text for _, text in ranked[:n])
 
 
@@ -580,6 +616,9 @@ def tool_run(tool, args):
             if not fn:
                 raise ValueError(f"no built-in tool {tool.get('builtin')}")
             request = f"Python: {tool.get('builtin') or tool['name']}({', '.join(f'{k}={json.dumps(v)}' for k, v in args.items())})"
+            if fn is t_search_memory:
+                request += ("\nEmbeds the query only, then searches the stored fact vectors in Chroma." if chroma() is not None
+                            else "\nEmbeds the query and every fact, then ranks the facts by cosine similarity (no Chroma).")
             result = fn(**args)
         elif tool.get("kind") == "url":
             tpl = tool.get("url")
