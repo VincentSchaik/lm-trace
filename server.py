@@ -52,7 +52,7 @@ def embed_prefixes(model):
     row = next((r for r in rows if r.get("name", "").lower() == m), None) \
         or next((r for r in rows if r.get("name") and r["name"].lower() in m), None)
     return (row.get("query", ""), row.get("doc", "")) if row else ("", "")
-PAGES = ("/index.html", "/embeddings.html", "/rag.html", "/memory.html", "/tools.html", "/settings.html")
+PAGES = ("/index.html", "/embeddings.html", "/rag.html", "/memory.html", "/tools.html", "/settings.html", "/composer.js", "/composer.css")
 MEM_DIR = os.path.join(ROOT, "agent-memory")  # long-term memory of the Memory page
 LMS_CLI = shutil.which("lms") or os.path.expanduser("~/.lmstudio/bin/lms")
 # Only local names: a different Host means DNS rebinding; a different Origin means another website.
@@ -578,6 +578,18 @@ def t_search_wikipedia(query=None, count=3, **_):
     return json.dumps(hits, ensure_ascii=False) if hits else "No Wikipedia pages found."
 
 
+def lmstudio_settings():
+    """Read-only: the LM Studio settings that change how the pages load models. Only these values leave the server."""
+    try:
+        with open(os.path.expanduser("~/.lmstudio/settings.json")) as f:
+            dev = json.load(f).get("developer", {})
+    except (OSError, ValueError) as e:
+        return {"error": f"Cannot read the LM Studio settings: {e}"}
+    ttl = dev.get("jitModelTTL") or {}
+    return {"jitAutoEvict": dev.get("unloadPreviousJITModelOnLoad"),
+            "ttlEnabled": ttl.get("enabled"), "ttlSeconds": ttl.get("ttlSeconds")}
+
+
 def lms_embed(model, texts):
     """Vectors from the embedding model in LM Studio, in the order of the texts."""
     body = json.dumps({"model": model, "input": texts}).encode()
@@ -734,6 +746,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             with inputs_lock:
                 hit = next((x for x in (log if first else reversed(log)) if x["t"] >= since), None)
             return self._json(200, {"available": log_ok, "entry": hit})
+        if self.path == "/lmstudio-settings":
+            return self._json(200, lmstudio_settings())
         if self.path.startswith("/model-card?"):
             q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
             return self._json(*model_card(q.get("key", [""])[0]))

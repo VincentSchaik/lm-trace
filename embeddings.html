@@ -123,7 +123,7 @@
 
   /* Composer */
   .composer { background: var(--field); border: 1px solid var(--line); border-radius: var(--r); padding: 16px 18px; box-shadow: var(--lift); }
-  .prompt-grid { display: grid; grid-template-columns: 260px 1fr auto; gap: 8px 12px; align-items: start; }
+  .prompt-grid { display: grid; grid-template-columns: 260px 1fr; gap: 8px 12px; align-items: start; }
   .lbl { font-size: 14px; font-weight: 600; color: var(--ink); }
   .lbl-s { font-size: 12px; color: var(--ink-3); }
   .lbl-s a { color: var(--red); }
@@ -318,11 +318,11 @@
     .top { flex-wrap: wrap; height: auto; padding: 12px 0; }
     .prompt-grid, .detail-grid { grid-template-columns: 1fr; }
     .facts div { grid-template-columns: 110px 1fr; }
-    .prompt-grid > span { display: none; }
     .vec-head { display: none; }
     .vec-row { grid-template-columns: 1fr; gap: 6px; }
   }
 </style>
+<link rel="stylesheet" href="/composer.css">
 <script>
   // Saved choice, else the system setting. Set before the page draws, so there is no flash.
   let t = null;
@@ -343,12 +343,12 @@
   <a href="/rag.html" title="RAG: answers from your documents"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h10M4 9h7M4 13h5"/><circle cx="15.5" cy="15.5" r="4"/><path d="M18.5 18.5 21 21"/></svg><span>RAG</span></a>
   <a href="/memory.html" title="Memory: what the agent remembers"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 3 8l9 5 9-5-9-5z"/><path d="M3 12.5l9 5 9-5"/><path d="M3 17l9 5 9-5"/></svg><span>Memory</span></a>
   <a href="/tools.html" title="Tools: how a model uses tools"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.1L3 17.7 6.3 21l6.3-6.3a4 4 0 0 0 5.1-5.4l-2.6 2.6-2.4-.5-.5-2.4z"/></svg><span>Tools</span></a>
-  <a href="/settings.html" class="side-foot" title="Settings: model formats and embedding prefixes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>Settings</span></a>
+  <a href="/settings.html" class="side-foot" title="Settings: model formats, embedding prefixes and LM Studio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>Settings</span></a>
 </nav>
 <div class="app">
   <header class="top">
-    <h1><label for="model">Chat model</label></h1>
-    <select id="model" class="field" aria-label="Chat model"></select>
+    <h1>Tokenizer</h1>
+    <select id="model" class="field" aria-label="Chat model" hidden></select>
     <span class="spacer"></span>
     <button type="button" id="resetAll" class="hdr-btn" title="Clear the text and the output">Reset all</button>
     <span class="seg" id="theme" role="group" aria-label="Theme">
@@ -364,10 +364,9 @@
     <div class="prompt-grid">
       <label for="examples" class="lbl">Text examples</label>
       <label for="text" class="lbl">Text</label>
-      <span></span>
       <select id="examples" class="field ex"></select>
-      <div class="input-wrap"><textarea id="text" class="input" rows="2" placeholder="Type a text, or choose an example…"></textarea><div class="input-tools"><button type="button" class="copy" id="delText" title="Delete saved text" aria-label="Delete saved text" hidden></button><button type="button" class="copy" id="saveText" title="Save text to the list" aria-label="Save text to the list"></button><button type="button" class="copy" data-copy="text" title="Copy text" aria-label="Copy text"></button></div></div>
-      <button id="run" class="btn primary" title="Send the text to the tokenizer (⌘ + Enter)">Send</button>
+      <div class="cbox"><div class="cbox-top"><textarea id="text" class="cbox-input" rows="2" placeholder="Type a text, or choose an example…"></textarea><div class="input-tools"><button type="button" class="copy" id="delText" title="Delete saved text" aria-label="Delete saved text" hidden></button><button type="button" class="copy" id="saveText" title="Save text to the list" aria-label="Save text to the list"></button><button type="button" class="copy" data-copy="text" title="Copy text" aria-label="Copy text"></button></div></div>
+        <div class="cbox-bar"><div id="chatPick" class="grow"></div><button id="run" class="send-round" aria-label="Send"></button></div></div>
     </div>
     <div class="error" id="error"></div>
   </section>
@@ -405,6 +404,7 @@
   </div>
 </div>
 
+<script src="/composer.js"></script>
 <script>
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -420,8 +420,7 @@ async function loadModels() {
   try {
     let keys = [];
     try {
-      const v1 = await fetch("/api/v1/models").then(r => r.json());
-      keys = (v1.models || []).filter(m => m.type === "llm").map(m => m.key);
+      keys = (await Composer.load()).filter(m => m.type === "llm").map(m => m.key);
     } catch {}
     if (!keys.length) {
       const r = await fetch("/v1/models"), j = await r.json();
@@ -430,6 +429,7 @@ async function loadModels() {
     }
     $("model").replaceChildren(...keys.map(k => new Option(k)));
     $("model").value = keys.find(k => k === "google/gemma-3-12b") || keys.find(k => /gemma-3/.test(k)) || keys[0];
+    chatPick.render();
   } catch (e) {
     $("error").textContent = `LM Studio unreachable: ${e.message || e}`;
   }
@@ -441,7 +441,7 @@ async function run() {
   $("error").textContent = "";
   if (!text.trim()) { $("error").textContent = "Type a text."; return; }
   if (text.length > 2000) { $("error").textContent = "The text is too long: the maximum is 2,000 characters."; return; }
-  busy = true; $("run").disabled = true; $("run").textContent = "Working…";
+  busy = true; $("run").disabled = true; chatPick.setDisabled(true);
   document.activeElement?.blur();
   try {
     const post = (url, body) => fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
@@ -456,10 +456,13 @@ async function run() {
   } catch (e) {
     $("error").textContent = String(e.message || e);
   } finally {
-    busy = false; $("run").disabled = false; $("run").textContent = "Send";
+    busy = false; $("run").disabled = false; chatPick.setDisabled(false);
   }
 }
 $("run").onclick = run;
+// The message box (composer.js): the model picker and the Send button. The tokenizer generates no text: no Reasoning row.
+const chatPick = Composer.picker({ select: $("model"), mount: $("chatPick"), label: "Chat model", isBusy: () => busy, onError: m => { $("error").textContent = m; } });
+Composer.setSend($("run"), false, { send: "Send the text to the tokenizer", key: "⌘ + Enter" });
 $("text").addEventListener("keydown", e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); run(); } });
 
 function render() {

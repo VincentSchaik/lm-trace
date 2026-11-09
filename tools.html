@@ -414,66 +414,7 @@
 
   .sendbar { padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
   /* The message box: the text on top, the tools under it (permissions left, Send right), in one rounded box */
-  .cbox { border: 1px solid var(--stone-2); border-radius: 16px; background: var(--input-bg); padding: 10px 12px 10px; transition: border-color .15s, box-shadow .15s; }
-  .cbox:hover { border-color: var(--ink-3); }
-  .cbox:focus-within { border-color: var(--ink); box-shadow: 0 0 0 3px rgba(var(--red-rgb), .18); }
-  .cbox-input { display: block; width: 100%; resize: none; border: 0; outline: none; background: transparent; padding: 2px 4px; min-height: 28px; font: 16px/1.5 var(--sans); color: var(--ink); }
-  .cbox-input::placeholder { color: var(--ink-3); }
-  .cbox-bar { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
-  .mp-wrap { position: relative; margin-left: auto; min-width: 0; }
-  .mp-btn { display: inline-flex; align-items: center; gap: 8px; height: 36px; max-width: 100%; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; color: var(--ink); font: 14px var(--sans); cursor: pointer; }
-  .mp-btn:hover, .mp-btn[aria-expanded="true"] { background: var(--paper); }
-  .mp-btn:disabled { opacity: .5; cursor: default; }
-  .mp-btn .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .mp-btn .ld, .mp-menu .ld { font-size: 12.5px; color: var(--ink-3); }
-  .mp-btn svg, .mp-menu svg { width: 18px; height: 18px; flex: none; color: var(--ink-2); }
-  .mp-btn .updown { width: 14px; height: 14px; color: var(--ink-3); }
-  .perm-menu.mp-menu { left: auto; right: 0; width: 380px; }
-  .perm-menu.mp-menu { width: 440px; }
-  .perm-menu.mp-menu button { grid-template-columns: 20px minmax(0, 1fr) auto auto; }
-  .mp-menu .list { max-height: 260px; overflow-y: auto; }
-  .mp-menu .nmc { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .mp-menu .caps { display: flex; justify-content: flex-end; gap: 4px; }
-  .mp-menu .sec { display: flex; align-items: center; gap: 4px; padding: 8px 10px 4px; font-size: 12.5px; font-weight: 600; color: var(--ink-2); }
-  .mp-menu .sec .n { font-weight: 400; color: var(--ink-3); }
-  .mp-menu .lrow { display: flex; align-items: center; gap: 6px; border-radius: 7px; }
-  .mp-menu .lrow.sel { background: rgba(var(--red-rgb), .08); }
-  .mp-menu .lrow > button[data-model] { flex: 1; min-width: 0; }
-  .mp-menu .lrow.sel > button[data-model], .mp-menu .lrow > button[data-model]:hover { background: transparent; }
-  .perm-menu.mp-menu button.eject { display: inline-flex; align-items: center; gap: 6px; width: auto; flex: none; height: 30px; margin-right: 6px; padding: 0 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--field); color: var(--ink-2); font: 500 13px var(--sans); }
-  .perm-menu.mp-menu button.eject:hover { color: var(--ink); border-color: var(--stone-2); background: var(--field); }
-  .perm-menu.mp-menu button.eject:disabled { opacity: .5; cursor: default; }
-  .perm-menu.mp-menu button.eject svg { width: 15px; height: 15px; color: inherit; }
-  .mp-menu .none-l { padding: 6px 10px 8px; font-size: 13px; color: var(--ink-3); }
-  .mp-menu .cap { display: inline-grid; place-items: center; width: 22px; height: 18px; padding: 0; border: 1px solid var(--line); border-radius: 5px; background: none; color: var(--ink-3); flex: none; }
-  .mp-menu .cap svg { width: 12px; height: 12px; color: inherit; }
-  .mp-menu .cap { border-color: rgba(var(--red-rgb), .5); color: var(--red); }  /* all blue: grey would look unavailable */
   .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-  .perm-menu.mp-menu { max-height: none; overflow: visible; }
-  .mp-menu .foot { border-top: 1px solid var(--line); margin-top: 4px; padding-top: 4px; }
-  .mp-menu .frow { display: flex; align-items: center; gap: 10px; min-height: 38px; padding: 4px 10px; font-size: 14px; color: var(--ink-3); }
-  .mp-menu .frow .v { margin-left: auto; color: var(--ink); }
-  .mp-menu .frow .seg { margin-left: auto; padding: 2px; }
-  .mp-menu .frow .seg button { display: inline-block; width: auto; height: 26px; padding: 0 10px; font: 500 13px var(--sans); border-radius: 6px; }
-  .mp-menu .frow .seg button[aria-pressed="true"] { background: var(--primary); color: var(--on-primary); }
-  .mp-wrap .mcard.pop { top: auto; bottom: calc(100% + 8px); left: auto; right: 0; }
-  .send-round { flex: none; width: 40px; height: 40px; border-radius: 50%; border: 0; display: grid; place-items: center; background: var(--primary); color: var(--on-primary); cursor: pointer; transition: background .15s; }
-  .send-round:hover { background: var(--primary-hover); }
-  .send-round svg { width: 20px; height: 20px; }
-  /* Permissions: an icon button next to the message box, with a menu that opens upward */
-  .perm-wrap { position: relative; flex: none; }
-  .perm-btn { width: 36px; height: 36px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 50%; background: var(--field); color: var(--ink-2); cursor: pointer; }
-  .perm-btn:hover, .perm-btn[aria-expanded="true"] { color: var(--ink); background: var(--paper); border-color: var(--stone-2); }
-  .perm-btn svg { width: 18px; height: 18px; }
-  .perm-menu { position: absolute; z-index: 40; bottom: calc(100% + 8px); left: 0; width: 320px; padding: 6px; border: 1px solid var(--line); border-radius: 10px; background: var(--field); box-shadow: 0 12px 32px -8px rgba(0, 0, 0, .3); }
-  .perm-menu[hidden] { display: none; }
-  .perm-menu .hd { padding: 6px 10px 4px; font-size: 12.5px; color: var(--ink-3); }
-  .perm-menu button { display: grid; grid-template-columns: 20px 1fr 16px; gap: 2px 10px; align-items: center; width: 100%; padding: 8px 10px; border: 0; border-radius: 7px; background: transparent; text-align: left; cursor: pointer; color: var(--ink); font: 14px var(--sans); }
-  .perm-menu button:hover, .perm-menu button:focus-visible { background: var(--paper); outline: none; }
-  .perm-menu button[aria-checked="true"] { background: rgba(var(--red-rgb), .08); color: var(--primary); }
-  .perm-menu button svg { width: 18px; height: 18px; }
-  .perm-menu .d { grid-column: 2; font-size: 12.5px; color: var(--ink-3); }
-  .perm-menu .ck { grid-row: 1; grid-column: 3; color: var(--ink); }
   .send-tools { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; font-size: 12.5px; color: var(--ink-3); }
   .send-tools .btn { height: 32px; padding: 0 12px; font-size: 13px; }
 
@@ -538,19 +479,6 @@
   ol.how b { color: var(--ink-2); font-weight: 600; }
   ol.how i { font-style: normal; color: var(--ink); }
   /* Model card: a popover under the button, next to the model select */
-  .mcard { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--field); }
-  .mcard.pop { position: absolute; z-index: 40; top: calc(100% + 8px); left: 0; width: min(560px, calc(100vw - 40px)); box-shadow: 0 12px 32px -8px rgba(0, 0, 0, .3); }
-  .mcard[hidden] { display: none; }
-  .mcard-hd { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; padding: 9px 14px; background: var(--paper); border-bottom: 1px solid var(--line); font-size: 13px; }
-  .mcard-hd .k { font: 500 10.5px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
-  .mcard-hd b { font-size: 14px; font-weight: 600; color: var(--ink); }
-  .mcard-hd .pub { color: var(--ink-3); }
-  .mcard-hd .src { margin-left: auto; font-size: 12px; color: var(--ink-3); }
-  .mcard-bd { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 18px; padding: 12px 14px; }
-  .mcard-bd .spec b { white-space: normal; word-break: break-word; }
-  .mcard-bd .spec a { color: var(--red); text-decoration: none; }
-  .mcard-bd .spec a:hover { text-decoration: underline; }
-  .mcard-bd .ph { color: var(--ink-3); font-family: var(--sans); }
   /* What the switches do */
   .effect { display: flex; flex-wrap: wrap; gap: 2px 18px; padding: 7px 18px; border-bottom: 1px solid var(--paper-2); background: rgba(var(--shadow-rgb), .02); font-size: 12.5px; line-height: 1.5; color: var(--ink-3); }
   .effect b { color: var(--ink-2); font-weight: 600; }
@@ -626,6 +554,7 @@
     .prow { grid-template-columns: 1fr 1fr; }
   }
 </style>
+<link rel="stylesheet" href="/composer.css">
 <script>
   // Saved choice, else the system setting. Set before the page draws, so there is no flash.
   let t = null;
@@ -646,7 +575,7 @@
   <a href="/rag.html" title="RAG: answers from your documents"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h10M4 9h7M4 13h5"/><circle cx="15.5" cy="15.5" r="4"/><path d="M18.5 18.5 21 21"/></svg><span>RAG</span></a>
   <a href="/memory.html" title="Memory: what the agent remembers"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 3 8l9 5 9-5-9-5z"/><path d="M3 12.5l9 5 9-5"/><path d="M3 17l9 5 9-5"/></svg><span>Memory</span></a>
   <a href="/tools.html" aria-current="page" title="Tools: how a model uses tools"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.1L3 17.7 6.3 21l6.3-6.3a4 4 0 0 0 5.1-5.4l-2.6 2.6-2.4-.5-.5-2.4z"/></svg><span>Tools</span></a>
-  <a href="/settings.html" class="side-foot" title="Settings: model formats and embedding prefixes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>Settings</span></a>
+  <a href="/settings.html" class="side-foot" title="Settings: model formats, embedding prefixes and LM Studio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>Settings</span></a>
 </nav>
 <div class="app">
   <header class="top">
@@ -703,9 +632,7 @@
       <div class="cbox-bar">
         <div class="perm-wrap"><button type="button" class="perm-btn" id="permBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="permMenu"></button>
           <div class="perm-menu" id="permMenu" role="menu" aria-label="Permissions" hidden></div></div>
-        <div class="mp-wrap"><button type="button" class="mp-btn" id="mpBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="mpMenu" title="Chat model"></button>
-          <div class="perm-menu mp-menu" id="mpMenu" role="menu" aria-label="Chat model" hidden></div>
-          <div class="mcard pop" id="modelCard" role="dialog" aria-label="Model card" hidden></div></div>
+        <div id="chatPick" class="grow"></div>
         <button id="sendBtn" class="send-round" title="Send the message (Enter)" aria-label="Send"></button>
       </div>
     </div>
@@ -737,6 +664,7 @@
   </div>
 </div>
 
+<script src="/composer.js"></script>
 <script>
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -871,8 +799,7 @@ function setSeg(id, v) {
 let modelInfo = [];
 async function loadModels() {
   try {
-    let list = [];
-    try { list = (await fetch("/api/v1/models").then(r => r.json())).models || []; } catch {}
+    let list = (await Composer.load()).slice();
     if (!list.length) {
       const r = await fetch("/v1/models"), j = await r.json();
       if (!r.ok) throw new Error(j.error?.message || r.status);
@@ -883,129 +810,13 @@ async function loadModels() {
     $("chatModel").replaceChildren(...keys.map(k => new Option(k)));
     let saved = null; try { saved = localStorage.getItem("toolsModel"); } catch {}
     $("chatModel").value = keys.includes(saved) ? saved : keys.find(k => /gemma-4-e4b/i.test(k)) || keys.find(k => k === "google/gemma-4-12b") || keys.find(k => trained(k)) || keys[0];
-    renderCard(); renderPicker();
   } catch (e) { $("error").textContent = `LM Studio unreachable: ${e.message || e}`; }
 }
 const trained = k => modelInfo.find(m => m.key === k)?.capabilities?.trained_for_tool_use;
-// The model card: what LM Studio says about the model, and its pages on Hugging Face (fetched by the server).
-const cards = new Map();
-const fmtBytes = n => n >= 1e9 ? (n / 1e9).toFixed(1) + " GB" : Math.round(n / 1e6) + " MB";
-const fmtNum = n => n >= 1e6 ? (n / 1e6).toFixed(1) + " M" : n >= 1e3 ? Math.round(n / 1e3) + " k" : String(n);
-async function renderCard() {
-  const key = $("chatModel").value, m = modelInfo.find(x => x.key === key), el = $("modelCard");
-  renderPicker();
-  if (!m) { el.innerHTML = ""; return; }
-  const cap = m.capabilities || {}, tool = cap.trained_for_tool_use, ctx = m.loaded_instances?.[0]?.config?.context_length;
-  const spec = (k, v, tip) => v == null || v === "" ? "" : `<div class="spec"${tip ? ` tabindex="0" data-tip-title="${esc(k)}" data-tip="${esc(tip)}"` : ""}><span>${esc(k)}</span><b>${v}</b></div>`;
-  let hf = cards.get(key);
-  // A Hugging Face card can name a wrong base model; show it only when it is of the same family as the model.
-  const family = (m.architecture || "").replace(/[\d_].*$/, "").toLowerCase();
-  const base = hf?.base && family && hf.base.id.toLowerCase().includes(family) ? hf.base : null;
-  const link = (h, label) => `<a href="${esc(h.url)}" target="_blank" rel="noopener noreferrer">${esc(label || h.id)}</a>`;
-  el.innerHTML = `<div class="mcard-hd"><b>${esc(m.display_name || key)}</b><span class="pub">${esc(m.publisher || "")}</span>
-      <span class="src">${hf && !hf.error ? "LM Studio · Hugging Face" : "LM Studio"}</span></div>
-    <div class="mcard-bd">
-      ${spec("Parameters", esc(m.params_string || ""))}
-      ${spec("Architecture", esc(m.architecture || ""))}
-      ${spec("Quantization", esc(m.quantization?.name || ""), "How many bits each weight of the model uses. Fewer bits: a smaller file, and a little less quality.")}
-      ${spec("Format", esc((m.format || "").toUpperCase()))}
-      ${spec("Size", m.size_bytes ? fmtBytes(m.size_bytes) : "")}
-      ${spec("Context", m.max_context_length ? (ctx ? `${ctx.toLocaleString()} of ${m.max_context_length.toLocaleString()}` : `${m.max_context_length.toLocaleString()} max`) : "", "How many tokens fit in one request: the loaded setting, and the maximum of the model. The tool definitions use part of it.")}
-      ${spec("Tool use", tool ? "Native" : tool === false ? "Text note" : "Unknown")}
-      ${spec("Reasoning", cap.reasoning ? "Yes" : "No")}
-      ${spec("Vision", cap.vision ? "Yes" : "No")}
-      ${!cards.has(key) ? `<div class="spec"><span>Hugging Face</span><b class="ph">loading…</b></div>` : ""}
-      ${hf && !hf.error ? spec("License", esc(hf.license || base?.license || "")) : ""}
-      ${base ? spec("Base model", link(base), "The original model. The file in LM Studio is a converted copy of it.") : ""}
-      ${base?.downloads ? spec("Downloads", fmtNum(base.downloads), "Downloads of the base model on Hugging Face in the last 30 days.") : ""}
-      ${hf ? spec("Files", link(hf, hf.id.split("/")[0]), "The Hugging Face repository of the file that LM Studio downloaded.") : ""}
-    </div>`;
-  if (hf === undefined) {
-    cards.set(key, null);
-    try { const j = await fetch(`/model-card?key=${encodeURIComponent(key)}`).then(r => r.json()); cards.set(key, j.hf ? { ...j.hf, base: j.base } : null); }
-    catch { cards.set(key, null); }
-    if ($("chatModel").value === key) renderCard();
-  }
-}
-$("chatModel").onchange = () => { try { localStorage.setItem("toolsModel", $("chatModel").value); } catch {} renderCard(); renderPicker(); };
-// ---- Model picker in the message box: the language models of LM Studio. The hidden select keeps the value.
-const ICON_CHIP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2"/><rect x="9" y="9" width="6" height="6" rx="1"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/></svg>';
-const ICON_UPDOWN = '<svg class="updown" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 9l5-5 5 5M7 15l5 5 5-5"/></svg>';
-const ICON_EJECT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5l7 8H5l7-8z"/><path d="M5 18h14"/></svg>';
-const ICON_SEND = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>';
-const ICON_STOP = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="2" fill="currentColor"/></svg>';
-$("sendBtn").innerHTML = ICON_SEND;
-// Capability icons, as LM Studio shows them: from the capabilities that LM Studio reports for each model.
-const CAPS = [
-  ["tool", c => c.trained_for_tool_use, "Tool use", "The model learned tool calling in training. LM Studio puts the tools into its chat template, with its own tool tokens. A model without it gets the tools as a text note.",
-    '<path d="M14.7 6.3a4 4 0 0 0-5.4 5.1L3 17.7 6.3 21l6.3-6.3a4 4 0 0 0 5.1-5.4l-2.6 2.6-2.4-.5-.5-2.4z"/>'],
-  ["eye", c => c.vision, "Vision", "The model can read images.", '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>'],
-  ["brain", c => c.reasoning, "Reasoning", "The model can think before it answers.", '<path d="M9 4a3 3 0 0 0-3 3 3 3 0 0 0-2 5 3 3 0 0 0 2 5 3 3 0 0 0 6 1V5a2 2 0 0 0-3-1z"/><path d="M15 4a3 3 0 0 1 3 3 3 3 0 0 1 2 5 3 3 0 0 1-2 5 3 3 0 0 1-6 1"/>'],
-];
-// Only the capabilities that the model has, flush right.
-const capIcons = m => CAPS.filter(([, has]) => has(m.capabilities || {})).map(([cls, , title, tip, d]) =>
-  `<span class="cap ${cls}" tabindex="-1" data-tip-title="${title}" data-tip="${esc(tip)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg><span class="sr">${title}</span></span>`).join("");
-const isLoaded = k => !!modelInfo.find(m => m.key === k)?.loaded_instances?.length;
-function renderPicker() {
-  const k = $("chatModel").value;
-  $("mpBtn").innerHTML = k ? `${ICON_CHIP}<span class="nm">${esc(k)}</span>${isLoaded(k) ? '<span class="ld">loaded</span>' : ""}${ICON_UPDOWN}` : `<span class="nm">No model</span>`;
-  $("mpBtn").removeAttribute("title");  // the model card shows on hover
-  const m = modelInfo.find(x => x.key === k), r = m?.capabilities?.reasoning;
-  if (r) $("mpBtn").querySelector(".updown")?.insertAdjacentHTML("beforebegin", `<span class="ld">Reasoning ${reasonOf(k)}</span>`);
-  const reasonRow = !r ? "" : r.allowed_options.length > 1
-    ? `<div class="frow"><span tabindex="0" data-tip-title="Reasoning" data-tip="The model thinks before it answers. LM Studio says which settings this model allows. Off sends reasoning_effort: none in the request.">Reasoning</span><span class="seg" role="group" aria-label="Reasoning">${r.allowed_options.map(o => `<button type="button" data-reason="${esc(o)}" aria-pressed="${reasonOf(k) === o}">${o === "on" ? "On" : o === "off" ? "Off" : esc(o)}</button>`).join("")}</span></div>`
-    : `<div class="frow"><span tabindex="0" data-tip-title="Reasoning" data-tip="This model always thinks before it answers. LM Studio allows no other setting.">Reasoning</span><span class="v">${esc(r.allowed_options[0] === "on" ? "On" : r.allowed_options[0])}</span></div>`;
-  // As LM Studio: the loaded models first, each with Eject; then all the models.
-  const loadedNow = modelInfo.filter(x => x.loaded_instances?.length);
-  const row = x => `<button type="button" role="menuitemradio" aria-checked="${x.key === k}" data-model="${esc(x.key)}">${ICON_CHIP}<span class="nmc">${esc(x.key)}</span><span></span><span class="caps">${capIcons(x)}</span></button>`;
-  const lrow = x => `<div class="lrow${x.key === k ? " sel" : ""}"><button type="button" role="menuitemradio" aria-checked="${x.key === k}" data-model="${esc(x.key)}">${ICON_CHIP}<span class="nmc">${esc(x.key)}</span><span></span><span class="caps">${capIcons(x)}</span></button>`
-    + `<button type="button" class="eject" data-eject="${esc(x.loaded_instances[0].id)}" title="Unload this model from memory. LM Studio loads it again at the next Send."${busy ? " disabled" : ""}>${ICON_EJECT}<span>Eject</span></button></div>`;
-  $("mpMenu").innerHTML = `<div class="sec">Currently loaded <span class="n">(${loadedNow.length})</span></div>`
-    + (loadedNow.length ? loadedNow.map(lrow).join("") : `<div class="none-l">No model is loaded. LM Studio loads the model at the next Send.</div>`)
-    + `<div class="sec">Your models</div><div class="list">` + modelInfo.map(row).join("") + `</div>`
-    + (m && reasonRow ? `<div class="foot">${reasonRow}</div>` : "");
-}
-// Reasoning, per model: LM Studio's default until you choose. Saved in this browser.
-let reasonSet = {}; try { reasonSet = JSON.parse(localStorage.getItem("toolsReasoning") || "{}"); } catch {}
-const reasonOf = k => { const r = modelInfo.find(x => x.key === k)?.capabilities?.reasoning; if (!r) return null; return r.allowed_options.includes(reasonSet[k]) ? reasonSet[k] : r.default; };
-function openPicker(open) {
-  $("mpMenu").hidden = !open; $("mpBtn").setAttribute("aria-expanded", open);
-  if (open) $("mpMenu").querySelector('[aria-checked="true"]')?.focus();
-}
-// Opening the menu reads the models again: LM Studio loads a model at a Send, and you can eject one in LM Studio too.
-$("mpBtn").onclick = () => { showCard(false); const open = $("mpMenu").hidden; openPicker(open); if (open) loadModels().then(() => { if (!$("mpMenu").hidden) { renderPicker(); $("mpMenu").querySelector('[aria-checked="true"]')?.focus(); } }); };
-$("mpMenu").onclick = async e => {
-  const ej = e.target.closest("[data-eject]");
-  if (ej) {
-    ej.disabled = true; ej.querySelector("span").textContent = "Ejecting…";
-    try { await post("/api/v1/models/unload", { instance_id: ej.dataset.eject }); }
-    catch (err) { $("error").textContent = `Eject failed: ${err.message}`; }
-    await loadModels(); renderPicker(); $("mpMenu").querySelector("button")?.focus();
-    return;
-  }
-  const rb = e.target.closest("[data-reason]");
-  if (rb) { reasonSet[$("chatModel").value] = rb.dataset.reason; try { localStorage.setItem("toolsReasoning", JSON.stringify(reasonSet)); } catch {} renderPicker(); $("mpMenu").querySelector(`[data-reason="${rb.dataset.reason}"]`)?.focus(); return; }
-  const b = e.target.closest("[data-model]"); if (!b) return;
-  $("chatModel").value = b.dataset.model; $("chatModel").dispatchEvent(new Event("change")); openPicker(false); $("mpBtn").focus();
-};
-// composedPath: a click on Reasoning draws the menu again, so the target is no longer in the page.
-document.addEventListener("click", e => { if (!e.composedPath().some(n => n.classList?.contains("mp-wrap"))) openPicker(false); });
-$("mpMenu").addEventListener("keydown", e => {
-  const items = [...$("mpMenu").querySelectorAll("button")], i = items.indexOf(document.activeElement);
-  if (e.key === "Escape") { openPicker(false); $("mpBtn").focus(); }
-  else if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); items[(i + (e.key === "ArrowDown" ? 1 : items.length - 1)) % items.length]?.focus(); }
-});
-// The model card: a hover card on the model button. It stays open while the pointer is on it, so its links work.
-let cardTimer = null;
-function showCard(on) { clearTimeout(cardTimer); $("modelCard").hidden = !on; }
-function cardSoon(on) {
-  clearTimeout(cardTimer);
-  cardTimer = setTimeout(() => { if (on && !$("mpMenu").hidden) return; $("modelCard").hidden = !on; }, on ? 350 : 200);
-}
-["mpBtn", "modelCard"].forEach(id => { $(id).addEventListener("mouseenter", () => cardSoon(true)); $(id).addEventListener("mouseleave", () => cardSoon(false)); });
-$("mpBtn").addEventListener("focus", () => { if ($("mpMenu").hidden) cardSoon(true); });
-$("mpBtn").addEventListener("blur", e => { if (!$("modelCard").contains(e.relatedTarget)) cardSoon(false); });
-document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("modelCard").hidden) showCard(false); });
+$("chatModel").onchange = () => { try { localStorage.setItem("toolsModel", $("chatModel").value); } catch {} };
+// ---- The message box: the model picker and the Send button come from composer.js, the same on all pages.
+const chatPick = Composer.picker({ select: $("chatModel"), mount: $("chatPick"), label: "Chat model", reasoning: true, isBusy: () => busy, onError: m => { $("error").textContent = m; } });
+Composer.setSend($("sendBtn"), false, { key: "Enter" });
 
 // ---- Special tokens: the page asks the tokenizer of the model if a tag is ONE token (a control token)
 // or plain text in several tokens. Real data: for Gemma 3, [TOOL_REQUEST] is 5 ordinary tokens.
@@ -1227,7 +1038,7 @@ function buildRequest() {
   const messages = [{ role: "system", content: sys }, ...history];
   const body = { model, messages, temperature: +S.temp, max_tokens: S.maxTokens, stream: false };
   if (S.noteBy === "lmstudio" && list.length) body.tools = list.map(schemaOf);
-  if (reasonOf(model) === "off") body.reasoning_effort = "none";  // tested: turns the thinking off (Qwen3, Gemma 4)
+  Object.assign(body, Composer.reasoningFields(model));  // Reasoning Off: reasoning_effort "none"
   return body;
 }
 
@@ -1658,10 +1469,9 @@ async function send(text) {
 }
 function stop() { ctrl?.abort(); if (pending) { const p = pending; pending = null; p.resolve(null); } }
 function setBusy() {
-  $("sendBtn").innerHTML = busy ? ICON_STOP : ICON_SEND;
-  $("sendBtn").title = busy ? "Stop the run" : "Send the message (Enter)";
-  $("sendBtn").setAttribute("aria-label", busy ? "Stop" : "Send");
-  ["newChat", "preset", "chatModel", "mpBtn", "resetTools", "addTool", "library", "temp", "maxTok"].forEach(id => $(id).disabled = busy);
+  Composer.setSend($("sendBtn"), busy, { key: "Enter", stop: "Stop the run" });
+  chatPick.setDisabled(busy);
+  ["newChat", "preset", "chatModel", "resetTools", "addTool", "library", "temp", "maxTok"].forEach(id => $(id).disabled = busy);
   document.querySelectorAll("#noteBy button, #harness button").forEach(b => b.disabled = busy);
 }
 function setStatus(t) { $("status").innerHTML = t === "Running…" ? `<span class="busy-dot" aria-hidden="true"></span>Running…` : esc(t); }

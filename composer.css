@@ -1,0 +1,91 @@
+/* The message box of LM Trace: one box on all pages (composer.js). Uses the colour tokens of each page. */
+.cbox { border: 1px solid var(--stone-2); border-radius: 16px; background: var(--input-bg); padding: 10px 12px 10px; transition: border-color .15s, box-shadow .15s; }
+.cbox:hover { border-color: var(--ink-3); }
+.cbox:focus-within { border-color: var(--ink); box-shadow: 0 0 0 3px rgba(var(--red-rgb), .18); }
+.cbox-top { position: relative; }
+.cbox-top .input-tools { position: absolute; top: 0; right: 0; display: flex; gap: 6px; }
+.cbox-top:has(.input-tools) .cbox-input { padding-right: 120px; }
+.cbox-input { display: block; width: 100%; resize: none; border: 0; outline: none; background: transparent; padding: 2px 4px; min-height: 28px; font: 16px/1.5 var(--sans); color: var(--ink); box-shadow: none; }
+.cbox-input:focus { box-shadow: none; border: 0; }
+.cbox-input::placeholder { color: var(--ink-3); }
+.cbox-bar { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.cbox-bar .grow { margin-left: auto; }
+
+/* Menus open upward, above the box. */
+.perm-wrap { position: relative; flex: none; }
+.perm-btn { width: 36px; height: 36px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 50%; background: var(--field); color: var(--ink-2); cursor: pointer; }
+.perm-btn:hover, .perm-btn[aria-expanded="true"] { color: var(--ink); background: var(--paper); border-color: var(--stone-2); }
+.perm-btn svg { width: 18px; height: 18px; }
+.perm-menu { position: absolute; z-index: 40; bottom: calc(100% + 8px); left: 0; width: 320px; padding: 6px; border: 1px solid var(--line); border-radius: 10px; background: var(--field); box-shadow: 0 12px 32px -8px rgba(0, 0, 0, .3); }
+.perm-menu[hidden] { display: none; }
+.perm-menu .hd { padding: 6px 10px 4px; font-size: 12.5px; color: var(--ink-3); }
+.perm-menu button { display: grid; grid-template-columns: 20px 1fr 16px; gap: 2px 10px; align-items: center; width: 100%; padding: 8px 10px; border: 0; border-radius: 7px; background: transparent; text-align: left; cursor: pointer; color: var(--ink); font: 14px var(--sans); }
+.perm-menu button:hover, .perm-menu button:focus-visible { background: var(--paper); outline: none; }
+.perm-menu button[aria-checked="true"] { background: rgba(var(--red-rgb), .08); color: var(--primary); }
+.perm-menu button svg { width: 18px; height: 18px; }
+.perm-menu .d { grid-column: 2; font-size: 12.5px; color: var(--ink-3); }
+.perm-menu .ck { grid-row: 1; grid-column: 3; color: var(--ink); }
+
+/* Model picker: the button, the menu (Currently loaded, Your models, Reasoning) and the hover card. */
+.mp-wrap { position: relative; min-width: 0; }
+.mp-btn { display: inline-flex; align-items: center; gap: 8px; height: 36px; max-width: 100%; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; color: var(--ink); font: 14px var(--sans); cursor: pointer; }
+.mp-btn:hover, .mp-btn[aria-expanded="true"] { background: var(--paper); }
+.mp-btn:disabled { opacity: .5; cursor: default; }
+.mp-btn .kind { font-size: 12.5px; color: var(--ink-3); }
+.mp-btn .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mp-btn .ld, .mp-menu .ld { font-size: 12.5px; color: var(--ink-3); white-space: nowrap; }
+.mp-btn svg, .mp-menu svg { width: 18px; height: 18px; flex: none; color: var(--ink-2); }
+.mp-btn .updown { width: 14px; height: 14px; color: var(--ink-3); }
+.perm-menu.mp-menu { left: auto; right: 0; width: 440px; max-width: calc(100vw - 32px); max-height: none; overflow: visible; }
+.mp-wrap.left .perm-menu.mp-menu { left: 0; right: auto; }
+.perm-menu.mp-menu button { grid-template-columns: 20px minmax(0, 1fr) auto auto; }
+.mp-menu .list { max-height: 260px; overflow-y: auto; }
+.mp-menu .nmc { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mp-menu .caps { display: flex; justify-content: flex-end; gap: 4px; }
+.mp-menu .sec { display: flex; align-items: center; gap: 4px; padding: 8px 10px 4px; font-size: 12.5px; font-weight: 600; color: var(--ink-2); border: 0; }
+.mp-menu .sec .n { font-weight: 400; color: var(--ink-3); }
+.mp-menu .lrow { display: flex; align-items: center; gap: 6px; border-radius: 7px; }
+.mp-menu .lrow.sel { background: rgba(var(--red-rgb), .08); }
+.mp-menu .lrow > button[data-model] { flex: 1; min-width: 0; }
+.mp-menu .lrow.sel > button[data-model], .mp-menu .lrow > button[data-model]:hover { background: transparent; }
+.perm-menu.mp-menu button.eject { display: inline-flex; align-items: center; gap: 6px; width: auto; flex: none; height: 30px; margin-right: 6px; padding: 0 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--field); color: var(--ink-2); font: 500 13px var(--sans); }
+.perm-menu.mp-menu button.eject:hover { color: var(--ink); border-color: var(--stone-2); background: var(--field); }
+.perm-menu.mp-menu button.eject:disabled { opacity: .5; cursor: default; }
+.perm-menu.mp-menu button.eject svg { width: 15px; height: 15px; color: inherit; }
+.mp-menu .none-l { padding: 6px 10px 8px; font-size: 13px; color: var(--ink-3); }
+.mp-menu .cap { display: inline-grid; place-items: center; width: 22px; height: 18px; padding: 0; border: 1px solid rgba(var(--red-rgb), .5); border-radius: 5px; background: none; color: var(--red); flex: none; }  /* all blue: grey would look unavailable */
+.mp-menu .cap svg { width: 12px; height: 12px; color: inherit; }
+.mp-menu .foot { border-top: 1px solid var(--line); margin-top: 4px; padding-top: 4px; }
+.mp-menu .frow { display: flex; align-items: center; gap: 10px; min-height: 38px; padding: 4px 10px; font-size: 14px; color: var(--ink-3); }
+.mp-menu .frow .v { margin-left: auto; color: var(--ink); }
+.mp-menu .frow .seg { display: inline-flex; margin-left: auto; padding: 2px; background: var(--paper); border: 1px solid var(--line); border-radius: 8px; }
+.mp-menu .frow .seg button { display: inline-block; width: auto; height: 26px; padding: 0 10px; font: 500 13px var(--sans); border-radius: 6px; color: var(--ink-2); }
+.mp-menu .frow .seg button[aria-pressed="true"] { background: var(--primary); color: var(--on-primary); }
+.cbox .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+.mcard { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--field); }
+.mcard.pop { position: absolute; z-index: 40; bottom: calc(100% + 8px); right: 0; width: min(560px, calc(100vw - 40px)); box-shadow: 0 12px 32px -8px rgba(0, 0, 0, .3); }
+.mp-wrap.left .mcard.pop { left: 0; right: auto; }
+.mcard[hidden] { display: none; }
+.mcard-hd { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; padding: 9px 14px; background: var(--paper); border-bottom: 1px solid var(--line); font-size: 13px; }
+.mcard-hd b { font-size: 14px; font-weight: 600; color: var(--ink); }
+.mcard-hd .pub { color: var(--ink-3); }
+.mcard-hd .src { margin-left: auto; font-size: 12px; color: var(--ink-3); }
+.mcard-bd { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 18px; padding: 12px 14px; }
+.mcard-bd .spec { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.mcard-bd .spec span { font: 500 10.5px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
+.mcard-bd .spec b { font: 500 12.5px var(--mono); color: var(--ink); white-space: normal; word-break: break-word; }
+.mcard-bd .spec a { color: var(--red); text-decoration: none; }
+.mcard-bd .spec a:hover { text-decoration: underline; }
+.mcard-bd .ph { color: var(--ink-3); font-family: var(--sans); }
+
+/* Send and Stop: one round button. */
+.send-round { flex: none; width: 40px; height: 40px; border-radius: 50%; border: 0; display: grid; place-items: center; background: var(--primary); color: var(--on-primary); cursor: pointer; transition: background .15s; padding: 0; }
+.send-round:hover { background: var(--primary-hover); }
+.send-round:disabled { opacity: .5; cursor: default; }
+.send-round svg { width: 20px; height: 20px; }
+
+@media (max-width: 640px) {
+  .cbox-bar { flex-wrap: wrap; }
+  .mcard-bd { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

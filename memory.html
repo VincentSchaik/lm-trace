@@ -309,6 +309,7 @@
   .preset-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
   .preset-row select.field { width: 340px; max-width: 100%; height: 36px; font-weight: 400; font-size: 14px; }
   .btn.small { height: 36px; padding: 0 18px; font-size: 14px; }
+  .preset-row .new-chat { margin-left: auto; }
   .btn.ghost { background: var(--field); color: var(--ink); border-color: var(--line); font-weight: 500; }
   .btn.ghost:hover { background: var(--input-bg); border-color: var(--stone-2); }
   .ex-card { margin-top: 12px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13.5px; color: var(--ink-2); }
@@ -493,6 +494,7 @@
     .bubble { max-width: 94%; }
   }
 </style>
+<link rel="stylesheet" href="/composer.css">
 <script>
   // Saved choice, else the system setting. Set before the page draws, so there is no flash.
   let t = null;
@@ -513,14 +515,13 @@
   <a href="/rag.html" title="RAG: answers from your documents"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h10M4 9h7M4 13h5"/><circle cx="15.5" cy="15.5" r="4"/><path d="M18.5 18.5 21 21"/></svg><span>RAG</span></a>
   <a href="/memory.html" aria-current="page" title="Memory: what the agent remembers"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 3 8l9 5 9-5-9-5z"/><path d="M3 12.5l9 5 9-5"/><path d="M3 17l9 5 9-5"/></svg><span>Memory</span></a>
   <a href="/tools.html" title="Tools: how a model uses tools"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.1L3 17.7 6.3 21l6.3-6.3a4 4 0 0 0 5.1-5.4l-2.6 2.6-2.4-.5-.5-2.4z"/></svg><span>Tools</span></a>
-  <a href="/settings.html" class="side-foot" title="Settings: model formats and embedding prefixes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>Settings</span></a>
+  <a href="/settings.html" class="side-foot" title="Settings: model formats, embedding prefixes and LM Studio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>Settings</span></a>
 </nav>
 <div class="app">
   <header class="top">
-    <h1><label for="chatModel">Chat model</label></h1>
-    <select id="chatModel" class="field" aria-label="Chat model"></select>
-    <label for="embModel" class="hdr-lbl">Embedding model</label>
-    <select id="embModel" class="field" aria-label="Embedding model"></select>
+    <h1>Memory</h1>
+    <select id="chatModel" class="field" aria-label="Chat model" hidden></select>
+    <select id="embModel" class="field" aria-label="Embedding model" hidden></select>
     <span class="spacer"></span>
     <button type="button" id="resetAll" class="hdr-btn" title="Clear both chats. The saved facts stay.">Reset all</button>
     <span class="seg" id="theme" role="group" aria-label="Theme">
@@ -539,6 +540,7 @@
       <label for="preset" class="lbl">Example</label>
       <select id="preset" class="field"></select>
       <button type="button" id="play" class="btn small" title="Start two new chats and send the messages of the example to both">Run</button>
+      <button type="button" id="newChat" class="btn ghost small new-chat" title="Start a new chat on both sides. The long-term memory stays.">New chat</button>
     </div>
     <div class="ex-card" id="exCard"></div>
     <div class="status" id="status"></div>
@@ -558,12 +560,11 @@
   </div>
 
   <section class="panel sendbar" aria-label="Your message">
-    <div class="send-row">
-      <textarea id="msg" class="input" rows="1" placeholder="Type a message. Both chats get it." title="Enter sends the message to both chats. Shift + Enter adds a line."></textarea>
-      <button id="sendBtn" class="btn" title="Send the message to both chats (Enter)">Send</button>
+    <div class="cbox">
+      <textarea id="msg" class="cbox-input" rows="1" placeholder="Type a message. Both chats get it." title="Enter sends the message to both chats. Shift + Enter adds a line."></textarea>
+      <div class="cbox-bar"><div id="chatPick" class="grow"></div><button id="sendBtn" class="send-round" aria-label="Send"></button></div>
     </div>
     <div class="send-tools">
-      <button type="button" id="newChat" class="btn ghost" title="Start a new chat on both sides. The long-term memory stays.">New chat</button>
       <button type="button" id="saveFacts" class="btn ghost" title="With text in the box: the model lists the facts in that text. With an empty box: the facts in the chat. The server saves one .md file per fact.">Save facts</button>
     </div>
   </section>
@@ -589,6 +590,7 @@
   </div>
 </div>
 
+<script src="/composer.js"></script>
 <script>
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -684,7 +686,7 @@ let modelInfo = [];
 async function loadModels() {
   try {
     let list = [];
-    try { list = (await fetch("/api/v1/models").then(r => r.json())).models || []; } catch {}
+    list = (await Composer.load()).slice();
     if (!list.length) {
       const r = await fetch("/v1/models"), j = await r.json();
       if (!r.ok) throw new Error(j.error?.message || r.status);
@@ -807,7 +809,7 @@ async function send(lane, text) {
 async function stream(model, messages, turn, lane) {
   const r = await fetch("/v1/chat/completions", {
     method: "POST", headers: { "Content-Type": "application/json" }, signal: ctrl.signal,
-    body: JSON.stringify({ model, messages, temperature: TEMP, max_tokens: MAX_TOKENS, stream: true, stream_options: { include_usage: true } }),
+    body: JSON.stringify({ model, messages, temperature: TEMP, max_tokens: MAX_TOKENS, ...Composer.reasoningFields(model), stream: true, stream_options: { include_usage: true } }),
   });
   if (!r.ok) { const j = await r.json().catch(() => ({})); throw new Error(j.error?.message || j.error || r.status); }
   const reader = r.body.pipeThrough(new TextDecoderStream()).getReader();
@@ -843,7 +845,7 @@ async function updateSummary(lane, model) {
   const prompt = SUMMARY_PROMPT(sum.text, conversation);
   sum.busy = true; renderLane(lane, true);
   try {
-    const j = await post("/v1/chat/completions", { model, messages: [{ role: "user", content: prompt }], temperature: TEMP, max_tokens: 300 }, ctrl.signal);
+    const j = await post("/v1/chat/completions", { model, messages: [{ role: "user", content: prompt }], temperature: TEMP, max_tokens: 300, ...Composer.reasoningFields(model) }, ctrl.signal);
     sum.text = cleanText(j.choices?.[0]?.message?.content || "");
     sum.upto = done.length; sum.lastPrompt = prompt; sum.calls++;
     lane.extra++;
@@ -864,7 +866,7 @@ async function saveFacts(text) {
     + `\n\nFacts that are already saved (do not list them again, also not in other words):\n${known || "(none)"}`;
   const schema = { type: "object", properties: { facts: { type: "array", items: { type: "object",
     properties: { type: { type: "string", enum: ["user", "preference", "project", "contact"] }, fact: { type: "string" } }, required: ["type", "fact"] } } }, required: ["facts"] };
-  const j = await post("/v1/chat/completions", { model: $("chatModel").value, temperature: 0, max_tokens: 600,
+  const j = await post("/v1/chat/completions", { model: $("chatModel").value, temperature: 0, max_tokens: 600, ...Composer.reasoningFields($("chatModel").value),
     messages: [{ role: "system", content: EXTRACT_PROMPT }, { role: "user", content: transcript }],
     response_format: { type: "json_schema", json_schema: { name: "facts", strict: true, schema } } }, ctrl.signal);
   let list = [];
@@ -915,7 +917,8 @@ async function runItems(items) {
 }
 function setBusy(on) {
   busy = on;
-  $("sendBtn").textContent = on ? "Stop" : "Send";
+  Composer.setSend($("sendBtn"), on, { send: "Send the message to both chats", key: "Enter" });
+  chatPick.setDisabled(on);
   $("play").textContent = on ? "Stop" : "Run";
   if (!on) $("saveFacts").textContent = "Save facts";
   ["newChat", "saveFacts", "clearMem", "loadBook", "preset"].forEach(id => $(id).disabled = on);
@@ -1126,7 +1129,9 @@ $("play").onclick = async () => {
   if (await runItems(p.msgs)) setStatus("Done. Click ▸ under an answer to see what the model got.");
 };
 
-// ---- Send box: your own message goes to both sides
+// ---- Send box: your own message goes to both sides. The model pickers and the Send button come from composer.js.
+const chatPick = Composer.picker({ select: $("chatModel"), mount: $("chatPick"), label: "Chat model", embed: $("embModel"), reasoning: true, isBusy: () => busy, onError: m => { $("error").textContent = m; } });
+Composer.setSend($("sendBtn"), false, { send: "Send the message to both chats", key: "Enter" });
 $("sendBtn").onclick = () => {
   if (busy) { ctrl?.abort(); return; }
   const text = $("msg").value.trim();

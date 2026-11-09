@@ -312,6 +312,9 @@
   .fmt .field { width: 100%; height: 34px; font: 13px var(--mono); padding: 0 10px; }
   .fmt .name { font: 13px var(--mono); color: var(--ink); word-break: break-all; }
   .fmt .loaded { font: 12px var(--sans); color: var(--ink-3); margin-left: 6px; }
+  .fmt.lms td { padding-top: 10px; padding-bottom: 10px; font-size: 13.5px; vertical-align: top; }
+  .fmt.lms td:first-child, .fmt.lms td:nth-child(2) { white-space: nowrap; width: 1%; padding-right: 24px; }
+  .fmt.lms td:last-child, .fmt.lms th:last-child { width: auto; }
   .icon-btn { width: 32px; height: 32px; display: inline-grid; place-items: center; border: 1px solid var(--line); border-radius: 8px; background: var(--field); color: var(--ink-3); cursor: pointer; }
   .icon-btn:hover { color: var(--danger); border-color: var(--stone-2); }
   .add-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px 16px; border-top: 1px solid var(--line); }
@@ -326,6 +329,7 @@
   @media (max-width: 700px) {
     .fmt thead { display: none; }
     .fmt tr { display: grid; grid-template-columns: 1fr auto; gap: 6px 8px; padding: 10px 16px; border-top: 1px solid var(--paper-2); }
+    .fmt.lms td:last-child { grid-column: 1 / -1; }
     .fmt td { display: block; padding: 0 !important; border: 0; }
     .fmt td:first-child { grid-column: 1; } .fmt td:last-child { grid-column: 2; grid-row: 1; width: auto; }
     .fmt td.in { grid-column: 1 / -1; }
@@ -352,7 +356,7 @@
   <a href="/rag.html" title="RAG: answers from your documents"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h10M4 9h7M4 13h5"/><circle cx="15.5" cy="15.5" r="4"/><path d="M18.5 18.5 21 21"/></svg><span>RAG</span></a>
   <a href="/memory.html" title="Memory: what the agent remembers"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 3 8l9 5 9-5-9-5z"/><path d="M3 12.5l9 5 9-5"/><path d="M3 17l9 5 9-5"/></svg><span>Memory</span></a>
   <a href="/tools.html" title="Tools: how a model uses tools"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.1L3 17.7 6.3 21l6.3-6.3a4 4 0 0 0 5.1-5.4l-2.6 2.6-2.4-.5-.5-2.4z"/></svg><span>Tools</span></a>
-  <a href="/settings.html" class="side-foot" aria-current="page" title="Settings: model formats and embedding prefixes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>Settings</span></a>
+  <a href="/settings.html" class="side-foot" aria-current="page" title="Settings: model formats, embedding prefixes and LM Studio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>Settings</span></a>
 </nav>
 <div class="app">
   <header class="top">
@@ -365,7 +369,7 @@
   </header>
 
   <section class="composer lede" aria-label="About the settings">
-    <p>Each model has its own format. These values tell the pages the format of a model, so they work for any model. The server saves them, so every page reads the same values.</p>
+    <p>Each model has its own format. These values tell the pages the format of a model, so they work for any model. The server saves them, so every page reads the same values. The LM Studio panel shows how LM Studio loads the models.</p>
   </section>
 
   <section class="panel" aria-labelledby="fmtTitle">
@@ -394,6 +398,15 @@
       <select id="preAdd" class="field"></select>
       <button type="button" class="btn sm" id="preAddBtn">Add</button>
     </div>
+  </section>
+
+  <section class="panel" aria-labelledby="lmsTitle">
+    <div class="panel-head"><h2 id="lmsTitle">LM Studio</h2><span class="sub">How LM Studio loads and unloads the models · read-only</span></div>
+    <p class="explain">These values come from the settings of LM Studio. Change them in LM Studio: Settings, section On-Demand Loading and Model TTL. This page reads them again each time it opens.</p>
+    <table class="fmt lms">
+      <thead><tr><th scope="col">Setting</th><th scope="col">Value</th><th scope="col">Effect on the pages</th></tr></thead>
+      <tbody id="lmsRows"><tr><td colspan="3" class="sub">Reading…</td></tr></tbody>
+    </table>
   </section>
 </div>
 <div id="tip" role="tooltip"></div>
@@ -452,7 +465,24 @@ const LISTS_UI = [
   makeList({ id: "pre", path: "/embed-prefixes", type: "embedding", cols: [{ k: "query", label: "Query prefix" }, { k: "doc", label: "Document prefix" }],
     empty: "No embedding prefixes. The pages embed the text as it is." }),
 ];
+// LM Studio settings, read-only (the server reads ~/.lmstudio/settings.json).
+async function loadLms() {
+  let j; try { j = await (await fetch("/lmstudio-settings")).json(); } catch (e) { j = { error: String(e.message || e) }; }
+  if (j.error) { $("lmsRows").innerHTML = `<tr><td colspan="3" class="sub">${esc(j.error)}</td></tr>`; return; }
+  const onOff = v => v === true ? "On" : v === false ? "Off" : "Unknown";
+  const ttl = j.ttlEnabled === false ? "Off" : j.ttlSeconds ? `${Math.round(j.ttlSeconds / 60)} minutes` : "Unknown";
+  const rows = [
+    ["JIT models auto-evict", onOff(j.jitAutoEvict), j.jitAutoEvict
+      ? "LM Studio keeps only one model that it loaded on demand. RAG and Memory (with a RAG option) use two models, so they load the chat model and the embedding model again at each message. This is slower."
+      : "LM Studio keeps each model that it loaded on demand. The chat model and the embedding model both stay loaded. Use Eject in the model menu to free memory."],
+    ["Max idle TTL", ttl, j.ttlEnabled === false
+      ? "A model that LM Studio loaded on demand stays loaded until you eject it."
+      : "LM Studio unloads a model that it loaded on demand after this time without use. The next request loads it again."],
+  ];
+  $("lmsRows").innerHTML = rows.map(([k, v, d]) => `<tr><td>${esc(k)}</td><td><b>${esc(v)}</b></td><td class="sub">${esc(d)}</td></tr>`).join("");
+}
 async function load() {
+  loadLms();
   try {
     const j = await (await fetch("/api/v1/models")).json();
     models = (j.models || []).map(m => ({ key: m.key, type: m.type, loaded: !!m.loaded_instances?.length }));

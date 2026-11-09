@@ -122,7 +122,7 @@
 
   /* Composer */
   .composer { background: var(--field); border: 1px solid var(--line); border-radius: var(--r); padding: 16px 18px; box-shadow: var(--lift); }
-  .prompt-grid { display: grid; grid-template-columns: 260px 1fr auto; gap: 8px 12px; align-items: start; }
+  .prompt-grid { display: grid; grid-template-columns: 260px 1fr; gap: 8px 12px; align-items: start; }
   .prompt-grid.grp { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--paper-2); }
   .settings.in { margin-top: 2px; padding-top: 0; border-top: 0; }  /* the settings sit under the input that they change */
   .lbl { font-size: 14px; font-weight: 600; color: var(--ink); }
@@ -386,8 +386,8 @@
     .prompt-grid > span { display: none; }
     /* One column: each label above its field */
     /* Each label above its field, then the settings, then Send */
-    .prompt-grid > :nth-child(1) { order: 0; } .prompt-grid > :nth-child(4) { order: 1; } .prompt-grid > :nth-child(2) { order: 2; }
-    .prompt-grid > :nth-child(5) { order: 3; } .prompt-grid > :nth-child(8) { order: 4; } .prompt-grid > :nth-child(6) { order: 5; }
+    .prompt-grid > :nth-child(1) { order: 0; } .prompt-grid > :nth-child(3) { order: 1; } .prompt-grid > :nth-child(2) { order: 2; }
+    .prompt-grid > :nth-child(4) { order: 3; } .prompt-grid > :nth-child(6) { order: 4; }
     .settings { gap: 10px 16px; }
     .seg { flex-wrap: wrap; }
     .opt-state { display: none; }
@@ -405,6 +405,7 @@
     .msg { grid-template-columns: 1fr; gap: 4px; }
   }
 </style>
+<link rel="stylesheet" href="/composer.css">
 <script>
   // Saved choice, else the system setting. Set before the page draws, so there is no flash.
   let t = null;
@@ -425,14 +426,13 @@
   <a href="/rag.html" aria-current="page" title="RAG: answers from your documents"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h10M4 9h7M4 13h5"/><circle cx="15.5" cy="15.5" r="4"/><path d="M18.5 18.5 21 21"/></svg><span>RAG</span></a>
   <a href="/memory.html" title="Memory: what the agent remembers"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 3 8l9 5 9-5-9-5z"/><path d="M3 12.5l9 5 9-5"/><path d="M3 17l9 5 9-5"/></svg><span>Memory</span></a>
   <a href="/tools.html" title="Tools: how a model uses tools"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.1L3 17.7 6.3 21l6.3-6.3a4 4 0 0 0 5.1-5.4l-2.6 2.6-2.4-.5-.5-2.4z"/></svg><span>Tools</span></a>
-  <a href="/settings.html" class="side-foot" title="Settings: model formats and embedding prefixes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>Settings</span></a>
+  <a href="/settings.html" class="side-foot" title="Settings: model formats, embedding prefixes and LM Studio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>Settings</span></a>
 </nav>
 <div class="app">
   <header class="top">
-    <h1><label for="chatModel">Chat model</label></h1>
-    <select id="chatModel" class="field" aria-label="Chat model"></select>
-    <label for="embModel" class="hdr-lbl">Embedding model</label>
-    <select id="embModel" class="field" aria-label="Embedding model"></select>
+    <h1>RAG</h1>
+    <select id="chatModel" class="field" aria-label="Chat model" hidden></select>
+    <select id="embModel" class="field" aria-label="Embedding model" hidden></select>
     <span class="spacer"></span>
     <button type="button" id="resetAll" class="hdr-btn" title="Clear the documents, the question and the output">Reset all</button>
     <span class="seg" id="theme" role="group" aria-label="Theme">
@@ -449,10 +449,8 @@
     <div class="prompt-grid">
       <label for="docExamples" class="lbl">Document examples</label>
       <label for="docs" class="lbl">Documents</label>
-      <span></span>
       <select id="docExamples" class="field ex"></select>
       <div class="input-wrap"><textarea id="docs" class="input" rows="3" placeholder="Paste the text that the model must use. Empty lines separate the paragraphs."></textarea><div class="input-tools"><button type="button" class="copy" id="delDoc" title="Delete saved documents" aria-label="Delete saved documents" hidden></button><button type="button" class="copy" id="saveDoc" title="Save documents to the list" aria-label="Save documents to the list"></button><button type="button" class="copy" data-copy="docs" title="Copy documents" aria-label="Copy documents"></button></div></div>
-      <span></span>
       <span></span>
       <div class="settings in">
         <div class="ctl">
@@ -479,15 +477,13 @@
             </span>
           </div>
       </div>
-      <span></span>
     </div>
     <div class="prompt-grid grp">
       <label for="qExamples" class="lbl">Question examples</label>
       <label for="question" class="lbl">Question</label>
-      <span></span>
       <select id="qExamples" class="field ex"></select>
-      <div class="input-wrap"><textarea id="question" class="input" rows="1" placeholder="Ask a question about the documents…"></textarea><div class="input-tools"><button type="button" class="copy" id="delQ" title="Delete saved question" aria-label="Delete saved question" hidden></button><button type="button" class="copy" id="saveQ" title="Save question to the list" aria-label="Save question to the list"></button><button type="button" class="copy" data-copy="question" title="Copy question" aria-label="Copy question"></button></div></div>
-      <button id="run" class="btn primary" title="Send the question: search the documents and answer (⌘ + Enter)">Send</button>
+      <div class="cbox"><div class="cbox-top"><textarea id="question" class="cbox-input" rows="1" placeholder="Ask a question about the documents…"></textarea><div class="input-tools"><button type="button" class="copy" id="delQ" title="Delete saved question" aria-label="Delete saved question" hidden></button><button type="button" class="copy" id="saveQ" title="Save question to the list" aria-label="Save question to the list"></button><button type="button" class="copy" data-copy="question" title="Copy question" aria-label="Copy question"></button></div></div>
+        <div class="cbox-bar"><div id="chatPick" class="grow"></div><button id="run" class="send-round" aria-label="Send"></button></div></div>
       <span></span>
       <div class="settings in">
         <div class="ctl">
@@ -620,6 +616,7 @@
   </div>
 </div>
 
+<script src="/composer.js"></script>
 <script>
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -652,11 +649,7 @@ let answers = { rag: null, plain: null };  // { text, tokens, prompt, ms, done, 
 // ---- Models: embedding models for the index, language models for the answer.
 async function loadModels() {
   try {
-    let list = [];
-    try {
-      const v1 = await fetch("/api/v1/models").then(r => r.json());
-      list = (v1.models || []).map(m => ({ key: m.key, type: m.type }));
-    } catch {}
+    let list = (await Composer.load()).map(m => ({ key: m.key, type: m.type }));
     if (!list.length) {
       const r = await fetch("/v1/models"), j = await r.json();
       if (!r.ok) throw new Error(j.error?.message || r.status);
@@ -783,9 +776,12 @@ async function run() {
 }
 function setBusy(on) {
   busy = on;
-  $("run").textContent = on ? "Stop" : "Send";
-  $("run").title = on ? "Stop the answer" : "Search the documents and answer (⌘ + Enter)";
+  Composer.setSend($("run"), on, { send: "Search the documents and answer", stop: "Stop the answer", key: "⌘ + Enter" });
+  chatPick.setDisabled(on);
 }
+// The message box (composer.js): one model menu, with the chat model (answer) and the embedding model (documents and question).
+const chatPick = Composer.picker({ select: $("chatModel"), mount: $("chatPick"), label: "Chat model", embed: $("embModel"), reasoning: true, isBusy: () => busy, onError: m => { $("error").textContent = m; } });
+Composer.setSend($("run"), false, { send: "Search the documents and answer", key: "⌘ + Enter" });
 $("run").onclick = run;
 ["docs", "question"].forEach(id => $(id).addEventListener("keydown", e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); run(); } }));
 
@@ -795,7 +791,7 @@ async function answer(model, msgs, a) {
   const r = await fetch("/v1/chat/completions", {
     method: "POST", headers: { "Content-Type": "application/json" }, signal: ctrl.signal,
     body: JSON.stringify({ model, messages: msgs, temperature: chatSet.temp, max_tokens: chatSet.max,
-      ...(chatSet.mode === "k" ? { top_k: chatSet.val, top_p: 1 } : { top_p: chatSet.val }), stream: true, stream_options: { include_usage: true } }),
+      ...(chatSet.mode === "k" ? { top_k: chatSet.val, top_p: 1 } : { top_p: chatSet.val }), ...Composer.reasoningFields(model), stream: true, stream_options: { include_usage: true } }),
   });
   if (!r.ok) { const j = await r.json().catch(() => ({})); throw new Error(j.error?.message || j.error || r.status); }
   const reader = r.body.pipeThrough(new TextDecoderStream()).getReader();
