@@ -128,10 +128,14 @@
     };
     p.renderCard = () => { card.innerHTML = cardHtml(select.value); };
     // A menu opens above the box; with too little room above (a box near the top of the page), below it.
+    // On a narrow screen, a menu wider than the room at the side of the button moves into the screen.
     const place = el => {
-      el.classList.remove("down");
+      el.classList.remove("down"); el.style.transform = "";
       const r = btn.getBoundingClientRect(), h = el.offsetHeight + 8;
       if (r.top < h && innerHeight - r.bottom > r.top) el.classList.add("down");
+      const m = el.getBoundingClientRect(), vw = document.documentElement.clientWidth, pad = 8;
+      const dx = m.left < pad ? pad - m.left : m.right > vw - pad ? vw - pad - m.right : 0;
+      if (dx) el.style.transform = `translateX(${Math.round(dx)}px)`;
     };
     p.place = place;
     const open = on => {

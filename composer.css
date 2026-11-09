@@ -8,6 +8,7 @@
 .cbox-input { display: block; width: 100%; resize: none; border: 0; outline: none; background: transparent; padding: 2px 4px; min-height: 28px; font: 16px/1.5 var(--sans); color: var(--ink); box-shadow: none; }
 .cbox-input:focus { box-shadow: none; border: 0; }
 .cbox-input::placeholder { color: var(--ink-3); }
+.cbox-input:placeholder-shown { overflow: hidden; }  /* a long placeholder on a phone: no scroll bar in an empty box */
 .cbox-bar { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
 .cbox-bar .grow { margin-left: auto; }
 
@@ -86,7 +87,9 @@
 .send-round:disabled { opacity: .5; cursor: default; }
 .send-round svg { width: 20px; height: 20px; }
 
+.cbox-bar > .mp-wrap { flex: 0 1 auto; }
+.mp-btn { min-width: 0; }
 @media (max-width: 640px) {
-  .cbox-bar { flex-wrap: wrap; }
+  .mp-btn .ld { display: none; }  /* "loaded", "Reasoning on": the menu shows them */
   .mcard-bd { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
