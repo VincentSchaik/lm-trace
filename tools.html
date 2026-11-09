@@ -523,7 +523,10 @@
   @media (prefers-reduced-motion: reduce) { .ev.new { animation: none; } }
   .sampling { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px; padding: 8px 18px; border-bottom: 1px solid var(--paper-2); font-size: 13px; color: var(--ink-2); }
   .sampling .smp { display: inline-flex; align-items: center; gap: 10px; }
-  .sampling .info + .smp { margin-left: 18px; }
+  .sampling .smp-grp { display: inline-flex; align-items: center; gap: 10px; white-space: nowrap; }
+  .sampling .smp-grp + .smp-grp { margin-left: 18px; }
+  @media (max-width: 640px) { .sampling .smp-grp + .smp-grp { margin-left: 0; } .sampling input[type=range] { width: 110px; }
+    .ex-ctl { flex: 1 1 200px; min-width: 0; } .ex-ctl select.field { flex: 1; width: auto; } }
   .sampling input[type=range] { width: 130px; }
   .sampling output { font: 12.5px var(--mono); color: var(--ink); min-width: 36px; }
   .pb-lbl { font: 11.5px var(--sans); color: var(--ink-3); margin-bottom: 2px; }
@@ -619,10 +622,10 @@
       <span class="ctl-inline l ex-ctl"><label for="preset">Example</label><select id="preset" class="field"></select></span>
       <button type="button" id="newChat" class="btn ghost" title="Start a new chat. The tools stay.">New chat</button></div>
     <div class="sampling">
-      <label class="smp"><span>Temperature</span><input type="range" id="temp" min="0" max="2" step="0.1" aria-describedby="tempV"><output id="tempV"></output></label>
-      <span class="info" tabindex="0" data-tip-title="Temperature" data-tip="0: the model always picks the most likely token, so each run is the same. Higher: more random. The model may think more or less, call a tool that is not needed, or write a call with wrong arguments.">i</span>
-      <label class="smp"><span>Max tokens</span><input type="range" id="maxTok" min="0" max="9" step="1" aria-describedby="maxTokV"><output id="maxTokV"></output></label>
-      <span class="info" tabindex="0" data-tip-title="Max tokens" data-tip="The most tokens the model can write in one reply, its thinking included. A low limit cuts the reply: the model may stop in its thinking, before it writes the tool call or the answer.">i</span>
+      <span class="smp-grp"><label class="smp"><span>Temperature</span><input type="range" id="temp" min="0" max="2" step="0.1" aria-describedby="tempV"><output id="tempV"></output></label>
+      <span class="info" tabindex="0" data-tip-title="Temperature" data-tip="0: the model always picks the most likely token, so each run is the same. Higher: more random. The model may think more or less, call a tool that is not needed, or write a call with wrong arguments.">i</span></span>
+      <span class="smp-grp"><label class="smp"><span>Max tokens</span><input type="range" id="maxTok" min="0" max="9" step="1" aria-describedby="maxTokV"><output id="maxTokV"></output></label>
+      <span class="info" tabindex="0" data-tip-title="Max tokens" data-tip="The most tokens the model can write in one reply, its thinking included. A low limit cuts the reply: the model may stop in its thinking, before it writes the tool call or the answer.">i</span></span>
     </div>
     <div class="chatlog" id="log"></div>
   </section>
