@@ -418,10 +418,6 @@
   <header class="top">
     <h1>Trace</h1>
     <select id="model" class="field" aria-label="Chat model" hidden></select>
-    <label for="preset" class="hdr-lbl">Preset</label>
-    <select id="preset" class="field" aria-label="Preset"></select>
-    <button type="button" class="copy" id="delPreset" title="Delete saved preset" aria-label="Delete saved preset" hidden></button>
-    <button type="button" class="copy" id="savePreset" title="Save everything as a preset: prompt, system prompt, few-shot examples and settings" aria-label="Save preset"></button>
     <span class="spacer"></span>
     <button type="button" id="resetAll" class="hdr-btn" title="Clear the whole screen: prompt, system prompt, in-context examples, output and settings">Reset all</button>
     <span class="seg" id="theme" role="group" aria-label="Theme">
@@ -432,11 +428,11 @@
 
   <section class="composer" aria-label="Prompt and settings">
     <div class="prompt-grid">
-      <label for="examples" class="lbl">Prompt examples</label>
+      <label for="examples" class="lbl">Example</label>
       <label for="prompt" class="lbl">Prompt</label>
       <select id="examples" class="field ex">
       </select>
-      <div class="cbox"><div class="cbox-top"><textarea id="prompt" class="cbox-input" rows="1" placeholder="Type a prompt, or choose an example…">The capital of France is</textarea><div class="input-tools"><button type="button" class="copy" id="delPrompt" title="Delete saved prompt" aria-label="Delete saved prompt" hidden></button><button type="button" class="copy" id="savePrompt" title="Save prompt to the list" aria-label="Save prompt to the list"></button><button type="button" class="copy" data-copy="prompt" title="Copy prompt" aria-label="Copy prompt"></button></div></div>
+      <div class="cbox"><div class="cbox-top"><textarea id="prompt" class="cbox-input" rows="1" placeholder="Type a prompt, or choose an example…">The capital of France is</textarea><div class="input-tools"><button type="button" class="copy" id="delPrompt" title="Delete this saved example" aria-label="Delete this saved example" hidden></button><button type="button" class="copy" id="savePrompt" title="Save as an example: the prompt, the system prompt, the in-context examples, the structured output and the settings" aria-label="Save as an example"></button><button type="button" class="copy" data-copy="prompt" title="Copy prompt" aria-label="Copy prompt"></button></div></div>
         <div class="cbox-bar"><div id="chatPick" class="grow"></div><button id="run" class="send-round" aria-label="Send"></button></div></div>
     </div>
     <!-- Optional parts of the request. Collapsed rows; each shows its state when closed. -->
@@ -1094,7 +1090,7 @@ function syncSliders() {
   $("maxOut").textContent = $("max").value;
   document.querySelectorAll('input[type=range]').forEach(r => r.style.setProperty("--fill", ((r.value - r.min) / (r.max - r.min) * 100) + "%"));
 }
-document.querySelectorAll('input[type=range], input[name="samp"]').forEach(el => el.addEventListener("input", () => { syncSliders(); renderDetail(); }));
+document.querySelectorAll('input[type=range], input[name="samp"]').forEach(el => el.addEventListener("input", () => { syncSliders(); renderDetail(); exList?.edited(); }));
 syncSliders();
 const fit = t => { t.style.height = "auto"; t.style.height = Math.min(t.scrollHeight + 2, t.classList.contains("mono") ? 280 : 140) + "px"; };
 const grow = () => fit($("prompt"));
@@ -1134,20 +1130,24 @@ const ICON_SAVE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" st
 const ICON_DEL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/></svg>';
 const flash = b => { b.classList.add("done"); setTimeout(() => b.classList.remove("done"), 900); };
 const short = (t, n = 40) => { t = t.replace(/\s+/g, " ").trim(); return t.length > n ? t.slice(0, n) + "…" : t; };
-function savedList({ select, saveBtn, delBtn, examples, url, placeholder, key, get, apply, name, clearOnEmpty = false }) {
+// examples: [label, value, group?]. match(current, example): an example can set only some parts (a prompt only).
+function savedList({ select, saveBtn, delBtn, examples, url, placeholder, key, get, apply, name, clearOnEmpty = false, savedLabel = "Saved",
+                     match = (v, e) => JSON.stringify(key === "text" ? e.trim() : e) === JSON.stringify(v) }) {
   let saved = [];
   saveBtn.innerHTML = ICON_SAVE;
   delBtn.innerHTML = ICON_DEL;
   const fill = (value = "") => {
     select.innerHTML = `<option value="">${placeholder}</option><option value="c" hidden>Custom</option>`;
     if (saved.length) {
-      const g = Object.assign(document.createElement("optgroup"), { label: "Saved" });
+      const g = Object.assign(document.createElement("optgroup"), { label: savedLabel });
       saved.forEach((p, i) => g.append(new Option(p.name, "s" + i)));
       select.append(g);
     }
-    const g = Object.assign(document.createElement("optgroup"), { label: "Examples" });
-    examples.forEach(([lbl], i) => g.append(new Option(lbl, "e" + i)));
-    select.append(g);
+    const groups = new Map();
+    examples.forEach(([lbl, , grp = "Examples"], i) => {
+      if (!groups.has(grp)) { groups.set(grp, Object.assign(document.createElement("optgroup"), { label: grp })); select.append(groups.get(grp)); }
+      groups.get(grp).append(new Option(lbl, "e" + i));
+    });
     select.value = value;
     delBtn.hidden = !value.startsWith("s");
   };
@@ -1192,7 +1192,7 @@ function savedList({ select, saveBtn, delBtn, examples, url, placeholder, key, g
     if (applying) return;
     const v = get(), same = JSON.stringify(v);
     const si = v == null ? -1 : saved.findIndex(p => JSON.stringify(p[key]) === same);
-    const ei = v == null || si >= 0 ? -1 : examples.findIndex(e => JSON.stringify(key === "text" ? e[1].trim() : e[1]) === same);
+    const ei = v == null || si >= 0 ? -1 : examples.findIndex(e => match(v, e[1]));
     select.value = v == null ? "" : si >= 0 ? "s" + si : ei >= 0 ? "e" + ei : "c";
     delBtn.hidden = si < 0;
   } };
@@ -1208,8 +1208,10 @@ function textList(box, opts) {
   box.addEventListener("keydown", e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) run(); });
   return list;
 }
-textList($("prompt"), { select: $("examples"), saveBtn: $("savePrompt"), delBtn: $("delPrompt"),
-  examples: EXAMPLES, url: "/prompts", placeholder: "Choose a prompt example…" });
+// The prompt: the Example list (below, with the presets) fills it.
+$("prompt").addEventListener("input", () => { fit($("prompt")); exList?.edited(); });
+$("prompt").addEventListener("keydown", e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) run(); });
+let exList = null;
 textList($("system"), { select: $("sysExamples"), saveBtn: $("saveSystem"), delBtn: $("delSystem"),
   examples: SYSTEM_EXAMPLES, url: "/system-prompts", placeholder: "No system prompt", clearOnEmpty: true });
 grow();
@@ -1245,7 +1247,7 @@ const shotList = savedList({ select: $("shotSets"), saveBtn: $("saveShots"), del
   get: () => { const v = shots.filter(x => x.u.trim() && x.a.trim()); return v.length ? v : null; },
   apply: v => setShots(v ?? []),
   name: v => `${v.length === 1 ? "One-shot" : `Few-shot (${v.length})`} · ${short(v[0].u, 28)}` });
-function setShots(v) { shots = v; renderShots(); }
+function setShots(v) { shots = v; renderShots(); exList?.edited(); }
 function renderShots() {
   $("shotList").innerHTML = "";
   shots.forEach((x, i) => {
@@ -1253,7 +1255,7 @@ function renderShots() {
     row.className = "shot";
     const box = (k, ph) => {
       const t = Object.assign(document.createElement("textarea"), { className: "input", rows: 1, placeholder: ph, value: x[k] });
-      t.addEventListener("input", () => { x[k] = t.value; fit(t); shotList.edited(); });
+      t.addEventListener("input", () => { x[k] = t.value; fit(t); shotList.edited(); exList?.edited(); });
       t.addEventListener("keydown", e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) run(); });
       return t;
     };
@@ -1340,8 +1342,8 @@ $("resetAll").onclick = () => {
   for (const id of ["prompt", "system", "schema"]) { $(id).value = ""; fit($(id)); }
   checkSchema(); $("answerSub").textContent = "tokens with probabilities";
   setShots([]);
-  for (const id of ["examples", "sysExamples", "shotSets", "schemaExamples", "preset"]) $(id).value = "";
-  for (const id of ["delPrompt", "delSystem", "delShots", "delSchema", "delPreset"]) $(id).hidden = true;
+  for (const id of ["examples", "sysExamples", "shotSets", "schemaExamples"]) $(id).value = "";
+  for (const id of ["delPrompt", "delSystem", "delShots", "delSchema"]) $(id).hidden = true;
   $("temp").value = 1;
   document.querySelector('input[name="samp"][value="k"]').checked = true;
   syncSliders(); $("samp").value = 10;
@@ -1382,15 +1384,25 @@ function setPreset(p) {
   if ("temp" in p) $("temp").value = p.temp;
   if ("mode" in p) { document.querySelector(`input[name="samp"][value="${p.mode}"]`).checked = true; syncSliders(); $("samp").value = p.samp; }
   if ("max" in p) $("max").value = p.max;
-  if ("think" in p && Composer.info($("model").value)?.capabilities?.reasoning?.allowed_options?.length > 1) Composer.setReason($("model").value, p.think ? "on" : "off");
+  // Reasoning: the saved value, if this model can switch it; else LM Studio's default.
+  const canSwitch = Composer.info($("model").value)?.capabilities?.reasoning?.allowed_options?.length > 1;
+  if ("temp" in p) Composer.setReason($("model").value, canSwitch && typeof p.think === "boolean" ? (p.think ? "on" : "off") : null);
   syncSliders(); renderDetail();
 }
-savedList({ select: $("preset"), saveBtn: $("savePreset"), delBtn: $("delPreset"),
-  examples: PRESETS, url: "/presets", placeholder: "Choose a preset…", key: "preset",
-  get: () => ({ prompt: $("prompt").value, system: $("system").value, shots: shots.filter(x => x.u.trim() && x.a.trim()), schema: $("schema").value,
-                temp: +$("temp").value, mode: samp().mode, samp: +$("samp").value, max: +$("max").value, think: !thinkingOff() }),
+// One Example list: prompts, setups and your saved examples. An example is the whole page: the request
+// (prompt, system prompt, in-context examples, structured output) and the settings (Temperature, Sampling,
+// Max tokens, Reasoning). A built-in example uses the default settings unless it names other values.
+const DEFAULTS = { system: "", shots: [], schema: "", temp: 1, mode: "k", samp: 10, max: 512 };
+const setup = () => ({ prompt: $("prompt").value, system: $("system").value, shots: shots.filter(x => x.u.trim() && x.a.trim()), schema: $("schema").value,
+  temp: +$("temp").value, mode: samp().mode, samp: +$("samp").value, max: +$("max").value, think: Composer.reasonOf($("model").value) == null ? null : !thinkingOff() });
+exList = savedList({ select: $("examples"), saveBtn: $("savePrompt"), delBtn: $("delPrompt"),
+  examples: [...EXAMPLES.map(([l, p]) => [l, { ...DEFAULTS, prompt: p }, "Prompts"]), ...PRESETS.map(([l, v]) => [l, { ...DEFAULTS, ...v }, "Setups"])],
+  url: "/presets", placeholder: "Choose an example…", key: "preset", savedLabel: "Your examples",
+  get: () => { const v = setup(); return v.prompt.trim() ? v : null; },
   apply: setPreset,
+  match: (v, e) => Object.keys(e).filter(k => k !== "think").every(k => JSON.stringify(k === "prompt" ? e[k].trim() : e[k]) === JSON.stringify(k === "prompt" ? v[k].trim() : v[k])),
   name: v => short(v.prompt, 28) + (v.shots.length ? ` · ${v.shots.length}-shot` : "") + (v.system.trim() ? " · system" : "") + (v.schema?.trim() ? " · JSON" : "") + ` · t=${v.temp}` });
+["system", "schema"].forEach(id => $(id).addEventListener("input", () => exList.edited()));
 document.addEventListener("keydown", e => {
   if (e.target.matches("textarea, input, select")) return;
   if (speedMs < 0) {

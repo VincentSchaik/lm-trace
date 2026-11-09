@@ -127,15 +127,22 @@
         + (reasonRow ? `<div class="foot">${reasonRow}</div>` : "");
     };
     p.renderCard = () => { card.innerHTML = cardHtml(select.value); };
+    // A menu opens above the box; with too little room above (a box near the top of the page), below it.
+    const place = el => {
+      el.classList.remove("down");
+      const r = btn.getBoundingClientRect(), h = el.offsetHeight + 8;
+      if (r.top < h && innerHeight - r.bottom > r.top) el.classList.add("down");
+    };
+    p.place = place;
     const open = on => {
       menu.hidden = !on; btn.setAttribute("aria-expanded", on);
-      if (on) { showCard(false); menu.querySelector('[aria-checked="true"]')?.focus(); }
+      if (on) { showCard(false); place(menu); menu.querySelector('[aria-checked="true"]')?.focus(); }
     };
     p.open = open;
     // Opening the menu reads the models again: LM Studio loads a model at a run, and you can eject one in LM Studio too.
     btn.onclick = () => {
       const on = menu.hidden; open(on);
-      if (on) load().then(() => { if (!menu.hidden) { renderAll(); menu.querySelector('[aria-checked="true"]')?.focus(); } });
+      if (on) load().then(() => { if (!menu.hidden) { renderAll(); place(menu); menu.querySelector('[aria-checked="true"]')?.focus(); } });
     };
     menu.onclick = async e => {
       const ej = e.target.closest("[data-eject]");
@@ -175,6 +182,7 @@
         if (on && (!menu.hidden || !select.value || btn.disabled)) return;
         if (on) { p.renderCard(); fetchCard(select.value); }
         card.hidden = !on;
+        if (on) place(card);
       }, on ? 350 : 200);
     };
     p.showCard = showCard;
