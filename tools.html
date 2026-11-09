@@ -541,13 +541,18 @@
   .sysrow .opt-body { grid-template-columns: 260px 1fr; }
   .opt-state.on { color: var(--red); }
   @media (max-width: 640px) { .sysrow .opt-body { grid-template-columns: 1fr; } .sysrow .opt-body > :nth-child(2) { display: none; } }
-  .sampling { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px; padding: 8px 18px; border-bottom: 1px solid var(--paper-2); font-size: 13px; color: var(--ink-2); }
-  .sampling .smp { display: inline-flex; align-items: center; gap: 10px; }
-  .sampling .smp-grp { display: inline-flex; align-items: center; gap: 10px; white-space: nowrap; }
-  .sampling .smp-grp + .smp-grp { margin-left: 18px; }
-  @media (max-width: 640px) { .sampling .smp-grp + .smp-grp { margin-left: 0; } .sampling input[type=range] { width: 110px; } }
-  .sampling input[type=range] { width: 130px; }
-  .sampling output { font: 12.5px var(--mono); color: var(--ink); min-width: 36px; }
+  /* Sliders: as on the Trace page (.ctl), the label above the slider */
+  .sampling { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 10px 20px; padding: 12px 18px 14px; }
+  .sampling .ctl { flex: 1 1 190px; min-width: 150px; max-width: 300px; }
+  .sampling .ctl-label { gap: 8px; }
+  .sampling .ctl output { min-width: 52px; }
+  .sampling .ctl-seg { flex: none; min-width: 0; }
+  .ctl-seg .seg button { height: 28px; }
+  .sampling .ctl-calls { flex: 1 1 160px; min-width: 140px; max-width: 220px; }
+  .sampling .ctl-mode { margin-left: auto; }  /* Mode and Replay at the right, as on the Trace page */
+  .sampling .push { align-self: flex-end; height: 36px; width: 124px; padding: 0; justify-content: center; }
+  @media (max-width: 640px) { .sampling .ctl-mode { margin-left: 0; } }
+  @media (max-width: 640px) { .sampling .ctl { flex: 1 1 100%; } }
   .pb-lbl { font: 11.5px var(--sans); color: var(--ink-3); margin-bottom: 2px; }
   .pb details.th > summary .pb-lbl { display: inline; margin-left: 8px; }
   /* The chat scrolls inside its panel, so the message box stays in view */
@@ -558,7 +563,16 @@
   @keyframes pulse { 50% { opacity: .25; } }
   @media (prefers-reduced-motion: reduce) { .busy-dot { animation: none; } }
   .small-btn { height: 30px !important; padding: 0 12px !important; font-size: 12.5px !important; }
-  .note-box { padding: 14px 18px 18px; display: grid; gap: 10px; }
+  .note-box { padding: 0 0 14px; display: grid; gap: 10px; }
+  .opt > summary .sum-ctl { margin-left: auto; display: inline-flex; align-items: center; gap: 10px; cursor: default; }
+  .sum-ctl .seg { padding: 2px; } .sum-ctl .seg button { height: 26px; }
+  .opt:has(.sum-ctl)[open] > summary { height: 48px; }
+  .opt:not([open]) > summary .sum-ctl { display: none; }  /* the switch shows when the row is open */
+  .opt-title, .sum-ctl .seg button { white-space: nowrap; }
+  /* Phone, row open: the switch goes on its own line under the title; it shows the setting, so the state text hides */
+  @media (max-width: 640px) { .opt[open] #stNote { display: none; } .opt:has(.sum-ctl)[open] > summary { flex-wrap: wrap; height: auto; padding: 8px 0; row-gap: 6px; }
+    .opt > summary .sum-ctl { margin-left: 24px; flex-basis: 100%; } }
+  .note-box .pre.json { max-height: none; }
   .note-box textarea { width: 100%; min-height: 150px; font: 12.5px/1.55 var(--mono); resize: vertical; }
 
   @media (max-width: 860px) {
@@ -616,8 +630,8 @@
       <details class="more"><summary>How it works</summary>
         <p>The model does not call a tool. It only writes a tool call: the intention to use a tool. Two programs do the rest. LM Studio, the inference server, runs the model and parses its output into JSON. The harness (this page and its server) executes the tool and sends the result back.</p>
         <ol class="how">
-          <li><b>Tool creation</b> · <i>Tool registry</i>. You create a tool in the Tools tab: a function with a name, a description and parameters.</li>
-          <li><b>Tool definition</b> · <i>Tool registry</i>. The harness defines each tool that is on. LM Studio (structured function calling): a JSON schema. Custom note: text in the system prompt. <i>Sending request</i> sends the definitions in each model call, and <i>Applying chat template</i> puts them into the prompt.</li>
+          <li><b>Tool creation</b> · <i>Tools tab</i>. You create a tool: a function with a name, a description and parameters. Only the tools that are on go to the model.</li>
+          <li><b>Tool definition</b> · <i>Tool note</i>. The harness defines each tool that is on. LM Studio (structured function calling): a JSON schema. Custom note: text in the system prompt. <i>Sending request</i> sends the definitions in each model call, and <i>Applying chat template</i> puts them into the prompt.</li>
           <li><b>Tool selection</b> · <i>Generating tokens</i>. The model thinks, and selects a tool or no tool.</li>
           <li><b>Tool calling</b> · <i>Generating tokens</i>: the model writes the call. <i>Parsing output</i>, <i>Serializing JSON</i>: LM Studio parses it. <i>Parsing tool_calls</i>, <i>Validating tool call</i>: the harness parses and validates it. <i>Executing tool</i>: the server executes it. With Permissions set to Ask every time, the harness asks you first: Allow or Deny.</li>
           <li><b>Output processing</b> · <i>Appending observation</i>: the result goes back to the model as an observation. In the next model call, the model writes the answer.</li>
@@ -635,8 +649,6 @@
   <div class="tabpane" id="pane-chat" role="tabpanel">
   <section class="panel" aria-label="Chat">
     <div class="panel-head"><h2>Chat</h2>
-      <span class="ctl-inline l"><span>Harness</span><span class="seg" id="harness" role="group" aria-label="Harness"><button data-v="off" aria-pressed="false">Off</button><button data-v="on" aria-pressed="true">On</button></span><span class="info" tabindex="0" data-tip-title="Harness" data-tip="The program around the model. On: it reads the tool call in the reply, checks it, runs the tool and sends the result back. Off: nothing reads the reply, so a tool call stays text and no tool runs.">i</span></span>
-      <span class="ctl-inline l"><span>Mode</span><span class="seg" id="stepMode" role="group" aria-label="Mode"><button data-v="manual" aria-pressed="false">Step</button><button data-v="auto" aria-pressed="true">Auto</button></span><span class="info" tabindex="0" data-tip-title="Mode" data-tip="Step: you click Next step for each step. Auto: the harness does each step by itself, up to 5 model calls.">i</span></span>
       <span class="stats" id="stats"></span>
       <button type="button" id="newChat" class="btn ghost" title="Start a new chat. The tools stay.">New chat</button></div>
     <!-- System prompt: the same row as on the Trace page. Sent first, in every model call. -->
@@ -651,12 +663,40 @@
         </div>
       </details>
     </div>
-    <div class="sampling">
-      <span class="smp-grp"><label class="smp"><span>Temperature</span><input type="range" id="temp" min="0" max="2" step="0.1" aria-describedby="tempV"><output id="tempV"></output></label>
-      <span class="info" tabindex="0" data-tip-title="Temperature" data-tip="0: the model always picks the most likely token, so each run is the same. Higher: more random. The model may think more or less, call a tool that is not needed, or write a call with wrong arguments.">i</span></span>
-      <span class="smp-grp"><label class="smp"><span>Max tokens</span><input type="range" id="maxTok" min="0" max="9" step="1" aria-describedby="maxTokV"><output id="maxTokV"></output></label>
-      <span class="info" tabindex="0" data-tip-title="Max tokens" data-tip="The most tokens the model can write in one reply, its thinking included. A low limit cuts the reply: the model may stop in its thinking, before it writes the tool call or the answer.">i</span></span>
+    <!-- Tool note: how the tools reach the model. The switch is in the settings row below. -->
+    <div class="opts sysrow">
+      <details class="opt" id="optNote">
+        <summary><span class="chev"></span><span class="opt-title">Tool note</span><span class="opt-state" id="stNote"></span><span class="sum-ctl"><span class="seg" id="noteBy" role="group" aria-label="Tool note"><button data-v="lmstudio" aria-pressed="true" title="LM Studio writes the tool note from the JSON schemas">LM Studio</button><button data-v="page" aria-pressed="false" title="You write the tool note in the system prompt">Custom</button></span><span class="info" tabindex="0" data-tip-title="Tool note" data-tip="The text that tells the model which tools it has and how to call one. LM Studio: the page sends the tools as JSON schemas, and LM Studio writes the note (the chat template of a model trained for tools, else a text note). Custom: you write the note into the system prompt, and the harness reads the reply itself.">i</span></span></summary>
+        <div class="note-box" id="noteBox"></div>
+      </details>
     </div>
+    <!-- Sliders: the same layout as on the Trace page, the label above the slider -->
+    <div class="sampling">
+      <div class="ctl">
+        <div class="ctl-label"><label for="temp">Temperature</label><span class="info" tabindex="0" data-tip-title="Temperature" data-tip="0: the model always picks the most likely token, so each run is the same. Higher: more random. The model may think more or less, call a tool that is not needed, or write a call with wrong arguments.">i</span></div>
+        <div class="ctl-row"><input type="range" id="temp" min="0" max="2" step="0.1" aria-describedby="tempV"><output id="tempV"></output></div>
+      </div>
+      <div class="ctl">
+        <div class="ctl-label"><label for="maxTok">Max tokens</label><span class="info" tabindex="0" data-tip-title="Max tokens" data-tip="The most tokens the model can write in one reply, its thinking included. A low limit cuts the reply: the model may stop in its thinking, before it writes the tool call or the answer.">i</span></div>
+        <div class="ctl-row"><input type="range" id="maxTok" min="0" max="9" step="1" aria-describedby="maxTokV"><output id="maxTokV"></output></div>
+      </div>
+      <div class="ctl ctl-seg">
+        <div class="ctl-label"><span>Harness</span><span class="info" tabindex="0" data-tip-title="Harness" data-tip="The program around the model. On: it reads the tool call in the reply, checks it, runs the tool and sends the result back. Off: nothing reads the reply, so a tool call stays text and no tool runs.">i</span></div>
+        <div class="ctl-row"><span class="seg" id="harness" role="group" aria-label="Harness"><button data-v="off" aria-pressed="false">Off</button><button data-v="on" aria-pressed="true">On</button></span></div>
+      </div>
+      <div class="ctl ctl-calls">
+        <div class="ctl-label"><label for="maxCalls">Max model calls</label><span class="info" tabindex="0" data-tip-title="Max model calls" data-tip="A guardrail of the harness: it stops after this many model calls for one message. Without a limit, a model that keeps asking for tools would run forever.">i</span></div>
+        <div class="ctl-row"><input type="range" id="maxCalls" min="1" max="10" step="1" aria-describedby="maxCallsV"><output id="maxCallsV"></output></div>
+      </div>
+      <div class="ctl ctl-seg ctl-mode">
+        <div class="ctl-label"><span>Mode</span><span class="info" tabindex="0" data-tip-title="Mode" data-tip="Step: you click Next step for each step. Auto: the harness does each step by itself, up to the Max model calls.">i</span></div>
+        <div class="ctl-row"><span class="seg" id="stepMode" role="group" aria-label="Mode"><button data-v="manual" aria-pressed="false">Step</button><button data-v="auto" aria-pressed="true">Auto</button></span></div>
+      </div>
+      <button type="button" class="btn ghost push" id="replay" title="Send the messages of this chat again, in a new chat, with the settings you have now" disabled>Replay</button>
+    </div>
+  </section>
+  <!-- The chat: its own card below the settings, as on the Trace page -->
+  <section class="panel" aria-label="Chat log">
     <div class="chatlog" id="log"></div>
   </section>
   <section class="panel sendbar" aria-label="Your message">
@@ -678,14 +718,8 @@
   </div>
 
   <div class="tabpane" id="pane-tools" role="tabpanel" hidden>
-  <section class="panel" aria-label="Tool note">
-    <div class="panel-head"><h2>Tool note</h2><span class="sub">tells the model which tools it has, and how to call one</span>
-      <span class="ctl-inline"><span class="seg" id="noteBy" role="group" aria-label="Tool note"><button data-v="lmstudio" aria-pressed="true" title="LM Studio writes the tool note from the JSON schemas">LM Studio</button><button data-v="page" aria-pressed="false" title="You write the tool note in the system prompt">Custom</button></span>
-        <span class="info" tabindex="0" data-tip-title="Tool note" data-tip="The text that tells the model which tools it has and how to call one. LM Studio: the page sends the tools as JSON schemas, and LM Studio writes the note (the chat template of a model trained for tools, else a text note). Custom: you write the note into the system prompt, and the harness reads the reply itself.">i</span></span></div>
-    <div class="note-box" id="noteBox"></div>
-  </section>
   <section class="panel" aria-label="Tools">
-    <div class="panel-head"><h2>Tools</h2><span class="sub">a tool is a function: a name, a description and parameters</span></div>
+    <div class="panel-head"><h2>Tools</h2><span class="sub">Tool creation: a tool is a function with a name, a description and parameters</span></div>
     <div class="card-tools top">
       <button type="button" class="btn ghost" id="addTool" title="Create a URL tool: the server calls the URL with the arguments in it">Create tool</button>
       <select id="library" class="field" aria-label="Add a tool from the library"></select>
@@ -752,7 +786,6 @@ const SYSTEM_EXAMPLES = [
   ["Report tool errors", "You are a helpful assistant. If a tool returns an error, tell the user what went wrong. Never guess the result.", "Guardrails"],
   ["No fake tool results", "You are a helpful assistant. Never write a tool result yourself. Only the harness sends tool results.", "Guardrails"],
 ];
-const MAX_CALLS = 5;
 // The book's tool note (Tools.prompt, page 182), without its first line: that is the System prompt now.
 // {tools} becomes one line per tool.
 const NOTE_OLD = `You are a helpful assistant.
@@ -833,7 +866,7 @@ function saveTools() {
 }
 
 // ---- Settings (remembered in this browser)
-const S = { noteBy: "lmstudio", harness: "on", stepMode: "auto", perm: "allow", tab: "chat", temp: 0, maxTokens: 1500 };
+const S = { noteBy: "lmstudio", harness: "on", stepMode: "auto", perm: "allow", tab: "chat", temp: 0, maxTokens: 1500, maxCalls: 5 };
 try { Object.assign(S, JSON.parse(localStorage.getItem("toolsPage2") || "{}")); noteText = localStorage.getItem("toolNote") || NOTE_DEFAULT; if (noteText === NOTE_OLD) noteText = NOTE_DEFAULT; } catch {}
 if (!["manual", "auto"].includes(S.stepMode)) S.stepMode = "auto";
 const keep = () => { try { localStorage.setItem("toolsPage2", JSON.stringify(S)); localStorage.setItem("toolNote", noteText); } catch {} };
@@ -842,6 +875,7 @@ function renderSampling() {
   const t = $("temp"), m = $("maxTok");
   t.value = S.temp; t.style.setProperty("--fill", (S.temp / 2 * 100) + "%"); $("tempV").textContent = (+S.temp).toFixed(1);
   const i = Math.max(0, TOK_STEPS.indexOf(S.maxTokens)); m.value = i; m.style.setProperty("--fill", (i / 9 * 100) + "%"); $("maxTokV").textContent = TOK_STEPS[i].toLocaleString();
+  const c = $("maxCalls"); c.value = S.maxCalls; c.style.setProperty("--fill", ((S.maxCalls - 1) / 9 * 100) + "%"); $("maxCallsV").textContent = S.maxCalls;
 }
 function setSeg(id, v) {
   S[id] = v;
@@ -1169,7 +1203,7 @@ async function must(next, approve, force) {
   return ok;
 }
 
-// ---- The harness: one user message, up to MAX_CALLS model calls.
+// ---- The harness: one user message, up to S.maxCalls model calls (Max model calls).
 async function runTurn(text) {
   const model = $("chatModel").value;
   if (!model) throw new Error("Select a chat model.");
@@ -1180,7 +1214,7 @@ async function runTurn(text) {
   try {
     let lastResults = 0;
     for (let call = 1; ; call++) {
-      if (call > MAX_CALLS) { step(turn, { type: "stop", call: call - 1 }); break; }
+      if (call > S.maxCalls) { step(turn, { type: "stop", call: call - 1 }); break; }
       if (call > 1) await must({ call, who: "Harness", text: "Sending request" });
       const body = buildRequest();
       const req = step(turn, { type: "request", call, body: clone(body), model, noteBy: S.noteBy, results: lastResults });
@@ -1296,20 +1330,6 @@ function jsonOf(s) {
 }
 // One row per step, in the order of the steps. Present tense: the rows describe the workflow.
 function rowHtml(s, k) {
-  if (s.type === "created") {
-    const on = s.tools.filter(t => t.on).length;
-    const list = s.tools.map(t => `<div class="msg"><span class="role">${t.on ? "on" : "off"}</span><div class="msg-text"><code>${esc(signature(t))}</code> ${esc(t.description || "")}</div></div>`).join("");
-    return row(k, "You", tipped(`Tool creation: ${plural(s.tools.length, "tool")}, ${on} on`, "A tool is a function with a name, a description and parameters. You create it in the Tools tab, and turn it on or off."), "", `<div class="msgs">${list}</div>`);
-  }
-  if (s.type === "defined") {
-    const page = s.noteBy === "page", names = s.list.map(t => t.name).join(", ");
-    const label = s.list.length ? `Tool definition: ${names}` : "Tool definition: no tools";
-    const help = (page ? "Custom note: the harness puts the tools into the system prompt, as text."
-      : "LM Studio: the harness sends the tools as JSON schemas, and the chat template puts them into the prompt.")
-      + " The harness writes the definitions before the chat, and sends them with each request." + (s.list.length ? "" : " With no tools, the model cannot call a tool.");
-    const body = !s.list.length ? "" : page ? `<pre class="pre">${esc(s.note)}</pre>` : `<pre class="pre">${esc(JSON.stringify(s.list.map(schemaOf), null, 2))}</pre>`;
-    return row(k, "Harness", tipped(label, help), s.list.length ? (page ? "Custom note" : "JSON schema") : "", body, s.list.length ? "" : "bad");
-  }
   if (s.type === "request") {
     const b = s.body, nt = b.tools?.length || 0;
     const sentence = tipped("Sending request", nt ? "The harness sends the messages and the tool definitions to LM Studio (POST /v1/chat/completions). It sends them again in each model call." : "The harness sends the messages to LM Studio (POST /v1/chat/completions). No tools are on.");
@@ -1368,7 +1388,7 @@ function rowHtml(s, k) {
       : "The harness adds the result of the tool to the messages: a user message that starts with OBSERVATION, as the custom note asks. The model reads it in the next model call.");
     return row(k, "Harness", what, "", msgRows(s.added, 0));
   }
-  if (s.type === "stop") return row(k, "Harness", tipped("Stopping", `The limit is ${MAX_CALLS} model calls.`), "", "", "bad");
+  if (s.type === "stop") return row(k, "Harness", tipped("Stopping", `The limit is ${S.maxCalls} model calls: Max model calls.`), "", "", "bad");
   return "";
 }
 function pendingRow(p) {
@@ -1376,18 +1396,16 @@ function pendingRow(p) {
     ? `<button type="button" class="btn ghost" data-gate="deny" title="Do not run the tool. The model gets: the tool was denied.">Deny</button><button type="button" class="btn" data-gate="ok">Allow</button>`
     : `<button type="button" class="btn" data-gate="ok">Next step</button>`}</span></div></div>`;
 }
-const callCard = (call, rows) => `<section class="callcard"><div class="callcard-hd">${call ? `Model call ${call}` : "Tool registry"}</div>${rows}</section>`;
+const callCard = (call, rows) => `<section class="callcard"><div class="callcard-hd">Model call ${call}</div>${rows}</section>`;
 const fmt = t => esc(t).replace(/\*\*(.+?)\*\*/g, "$1").replace(/^(\s*)[*-]\s+/gm, "$1• ");
 function renderChat(hold) {
   showStarters();
+  $("replay").disabled = busy || !chat.some(t => t.user);
   if (!hold) $("log").style.paddingBottom = "";
   const log = $("log"), atEnd = !hold && log.scrollHeight - log.scrollTop - log.clientHeight < 80, top = log.scrollTop;
   const last = chat.length - 1;
-  // Setup, before the chat: the tools that exist now, and their definitions. Each request sends the definitions.
-  const setup = callCard(0, rowHtml({ type: "created", tools }, "setup.c")
-    + rowHtml({ type: "defined", noteBy: S.noteBy, list: active(), note: S.noteBy === "page" ? pageNote() : null }, "setup.d"));
-  if (!chat.length) log.innerHTML = setup + `<div class="chat-empty">Type a message, or choose an example below the message box.</div>`;
-  else log.innerHTML = setup + chat.map((t, ti) => {
+  if (!chat.length) log.innerHTML = `<div class="chat-empty">Type a message, or choose an example below the message box.</div>`;
+  else log.innerHTML = chat.map((t, ti) => {
     const groups = new Map();
     t.steps.forEach((s, si) => {
       const cls = Date.now() - s.born < 400 ? " new" : "";
@@ -1401,7 +1419,7 @@ function renderChat(hold) {
     return `<div class="bubble user">${esc(t.user)}</div>${cards}${ans}`;
   }).join("");
   log.scrollTop = atEnd ? log.scrollHeight : top;
-  $("stats").innerHTML = `<span>Model calls <b>${stats.calls}</b></span><span>Tool calls <b>${stats.tools}</b></span><span>Tokens <b>${stats.tokens.toLocaleString()}</b></span>`;
+  $("stats").innerHTML = `<span title="The tools that are on: the harness sends their definitions in each model call">Tools on <b>${active().length}</b></span><span>Model calls <b>${stats.calls}</b></span><span>Tool calls <b>${stats.tools}</b></span><span>Tokens <b>${stats.tokens.toLocaleString()}</b></span>`;
 }
 document.addEventListener("toggle", e => { const d = e.target; if (d.matches?.("details.x, details.ev")) d.open ? openKeys.add(d.dataset.key) : openKeys.delete(d.dataset.key); }, true);
 document.addEventListener("click", e => {
@@ -1412,16 +1430,28 @@ document.addEventListener("click", e => {
 
 // ---- Tools tab
 let editing = null;  // the index of the tool in edit mode
+// The note box is in a closed row at first: fit its height when the row opens.
+document.addEventListener("toggle", e => { if (e.target.id === "optNote" && e.target.open && $("noteText")) fit($("noteText"), 400); }, true);
+// The parts of the Tool note row start open. What you close stays closed.
+const noteClosed = new Set();
+const noteDet = (key, title, body) => `<details class="x nd" data-nkey="${key}"${noteClosed.has(key) ? "" : " open"}><summary><span class="chev"></span>${title}</summary>${body}</details>`;
+document.addEventListener("toggle", e => { const k = e.target.dataset?.nkey; if (k) e.target.open ? noteClosed.delete(k) : noteClosed.add(k); }, true);
+// A click on the switch in the row header must not open or close the row.
+document.querySelector("#optNote > summary").addEventListener("click", e => { if (e.target.closest(".sum-ctl")) e.preventDefault(); });
 function renderNote() {
   const page = S.noteBy === "page";
+  $("stNote").textContent = page ? "Custom: your note in the system prompt" : `LM Studio: ${active().length} JSON schemas`;
+  $("stNote").classList.toggle("on", page);
   $("noteBox").innerHTML = page
-    ? `<div class="note">Custom: the request has no tools parameter. The harness adds this note to the system prompt, after the System prompt of the Chat tab. <code>{tools}</code> becomes one line per tool that is on. The model must answer in the JSON format of the note; the harness reads it.</div>
+    ? `<div class="note">Tool definition with a custom note: the request has no tools parameter. The harness adds this note to the system prompt, after the System prompt. <code>{tools}</code> becomes one line per tool that is on. The model must answer in the JSON format of the note; the harness reads it.</div>
        <textarea id="noteText" class="input" spellcheck="false" aria-label="Tool note">${esc(noteText)}</textarea>
        <div class="send-tools"><button type="button" class="btn ghost" id="noteReset" title="Use the first note again">Reset note</button></div>
-       ${det("note-prev", "System prompt that the model gets", `<pre class="pre">${esc(systemText())}</pre>`)}`
-    : `<div class="note">The harness sends the tools as a JSON schema in the <code>tools</code> parameter. LM Studio writes the note: for a model trained for tools, with the special tokens of its chat template; for other models, as a text note with the <code>[TOOL_REQUEST]</code> format. See it in the chat: the LM Studio row → Details. To write the note yourself, select <button type="button" class="linkbtn" id="toPage">Custom</button>.</div>`;
+       ${noteDet("note-prev", "System prompt that the model gets", `<pre class="pre">${esc(systemText())}</pre>`)}`
+    : `<div class="note">Tool definition with structured function calling: the harness sends each tool that is on as a JSON schema in the <code>tools</code> parameter of the request, and the system message is only your System prompt. LM Studio writes the note: for a model trained for tools, it puts the schemas into the chat template with its special tool tokens; for other models, it adds a text note with the <code>[TOOL_REQUEST]</code> format. After you send a message, see the exact prompt: Applying chat template → Details. To write the note yourself, select <button type="button" class="linkbtn" id="toPage">Custom</button>.</div>
+       ${noteDet("note-json", `Tools parameter (JSON schema) · ${active().length} tool${active().length === 1 ? "" : "s"}`, `<pre class="pre json">${esc(JSON.stringify(active().map(schemaOf), null, 2) || "[]")}</pre>`)}
+       ${noteDet("note-prev", "System prompt that the model gets", `<pre class="pre">${esc(systemText() || "(none: the request has no system message)")}</pre>`)}`;
   if (page) {
-    $("noteText").oninput = e => { noteText = e.target.value; keep(); const pv = document.querySelector('[data-key="note-prev"] .pre'); if (pv) pv.textContent = systemText(); };
+    $("noteText").oninput = e => { noteText = e.target.value; keep(); const pv = document.querySelector('[data-nkey="note-prev"] .pre'); if (pv) pv.textContent = systemText(); };
     $("noteReset").onclick = () => { noteText = NOTE_DEFAULT; keep(); renderNote(); };
     fit($("noteText"), 400);
   } else $("toPage").onclick = () => { if (busy) return; document.querySelector('#noteBy [data-v="page"]').click(); };
@@ -1639,7 +1669,7 @@ function showStarters() {
     box.value = v === "" ? "" : v.startsWith("s") ? saved[+v.slice(1)].text : SYSTEM_EXAMPLES[+v.slice(1)][1];
     sync(); box.focus();
   };
-  box.addEventListener("input", sync);
+  box.addEventListener("input", () => { sync(); const pv = document.querySelector('[data-nkey="note-prev"] .pre'); if (pv) pv.textContent = systemText() || "(none: the request has no system message)"; });
   box.value = SYSTEM;  // each page load starts with the book's system prompt
   fill(); sync();
   fetch("/system-prompts").then(r => r.json()).then(list => { if (Array.isArray(list)) { saved = list.filter(p => p && typeof p.text === "string"); fill(); sync(); } }).catch(() => {});
@@ -1667,7 +1697,8 @@ function stop() { ctrl?.abort(); if (pending) { const p = pending; pending = nul
 function setBusy() {
   Composer.setSend($("sendBtn"), busy, { key: "Enter", stop: "Stop the run" });
   chatPick.setDisabled(busy);
-  ["newChat", "chatModel", "resetTools", "addTool", "library", "temp", "maxTok", "system", "sysExamples", "saveSystem", "delSystem"].forEach(id => $(id).disabled = busy);
+  $("replay").disabled = busy || !chat.some(t => t.user);
+  ["newChat", "chatModel", "resetTools", "addTool", "library", "temp", "maxTok", "maxCalls", "system", "sysExamples", "saveSystem", "delSystem"].forEach(id => $(id).disabled = busy);
   document.querySelectorAll("#noteBy button, #harness button, .starter").forEach(b => b.disabled = busy);
   syncSave();
 }
@@ -1763,9 +1794,18 @@ $("permMenu").addEventListener("keydown", e => {
 });
 renderPerm();
 if (!TOK_STEPS.includes(S.maxTokens)) S.maxTokens = 1500;
+if (!(Number.isInteger(S.maxCalls) && S.maxCalls >= 1 && S.maxCalls <= 10)) S.maxCalls = 5;
 renderSampling();
 $("temp").oninput = e => { S.temp = Math.round(+e.target.value * 10) / 10; keep(); renderSampling(); };
 $("maxTok").oninput = e => { S.maxTokens = TOK_STEPS[+e.target.value]; keep(); renderSampling(); };
+$("maxCalls").oninput = e => { S.maxCalls = +e.target.value; keep(); renderSampling(); };
+// Replay: the messages of this chat again, in a new chat, with the settings you have now (system prompt, tool note…).
+$("replay").onclick = async () => {
+  const msgs = chat.map(t => t.user).filter(Boolean);
+  if (busy || !msgs.length) return;
+  newChat(); renderChat(); setStatus("");
+  for (const m of msgs) if (!(await send(m))) break;
+};
 setTab(S.tab === "tools" ? "tools" : "chat");
 renderAll();
 loadModels();
