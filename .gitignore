@@ -15,6 +15,7 @@ rag-questions.json
 tools.json
 model-formats.json
 embed-prefixes.json
+tool-prompts.json
 agent-memory/
 
 # Private files: the book and article drafts. Never push.

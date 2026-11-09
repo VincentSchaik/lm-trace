@@ -413,6 +413,23 @@
   .next .btn { height: 34px; padding: 0 16px; font-size: 13.5px; }
 
   .sendbar { padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+  /* Examples: chips below the message box while the chat is empty. A click fills the box; you send it. */
+  .starters { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; padding: 4px 2px 0; }
+  .starters[hidden] { display: none; }
+  .starter {
+    font: 500 13px var(--sans); color: var(--ink-2); background: var(--field); cursor: pointer;
+    border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; white-space: nowrap;
+    box-shadow: 0 1px 0 rgba(var(--shadow-rgb), .06); transition: color .15s, border-color .15s, background .15s;
+  }
+  .starter:hover { color: var(--ink); border-color: var(--stone-2); background: var(--input-bg); }
+  .starter:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+  .starter:disabled { opacity: .5; cursor: default; }
+  .starter-saved { display: inline-flex; }  /* a saved example: the chip and its delete button, joined */
+  .starter-saved > .starter:first-child { border-radius: 999px 0 0 999px; border-right: 0; padding-right: 10px; }
+  .starter-del { border-radius: 0 999px 999px 0; padding: 0 10px 0 8px; display: inline-grid; place-items: center; }
+  .starter-del svg { width: 13px; height: 13px; }
+  .starter-del:hover, #saveMsg.del:hover { color: var(--danger); }
+  #saveMsg:disabled { opacity: .4; cursor: default; }
   /* The message box: the text on top, the tools under it (permissions left, Send right), in one rounded box */
   .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .send-tools { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; font-size: 12.5px; color: var(--ink-3); }
@@ -483,8 +500,7 @@
   .effect { display: flex; flex-wrap: wrap; gap: 2px 18px; padding: 7px 18px; border-bottom: 1px solid var(--paper-2); background: rgba(var(--shadow-rgb), .02); font-size: 12.5px; line-height: 1.5; color: var(--ink-3); }
   .effect b { color: var(--ink-2); font-weight: 600; }
   .flow .fs.off { color: var(--ink-3); text-decoration: line-through; text-decoration-color: var(--stone-2); opacity: .7; }
-  /* Example and message, where you type */
-  .ex-ctl select.field { height: 32px; width: 240px; min-width: 0; font-size: 13px; padding: 0 10px; }
+  /* The message, where you type */
   .send-tools .status { padding: 0; }
   .ctl-inline { margin-left: auto; display: inline-flex; align-items: center; gap: 10px; font-size: 13px; color: var(--ink-2); }
   .ctl-inline.l { margin-left: 0; }
@@ -521,12 +537,15 @@
   .ev.new { animation: evIn .35s ease-out; }
   @keyframes evIn { from { opacity: 0; transform: translateY(-3px); } }
   @media (prefers-reduced-motion: reduce) { .ev.new { animation: none; } }
+  .sysrow { margin: 0; padding: 0 18px; border-top: 0; border-bottom: 1px solid var(--paper-2); }
+  .sysrow .opt-body { grid-template-columns: 260px 1fr; }
+  .opt-state.on { color: var(--red); }
+  @media (max-width: 640px) { .sysrow .opt-body { grid-template-columns: 1fr; } .sysrow .opt-body > :nth-child(2) { display: none; } }
   .sampling { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px; padding: 8px 18px; border-bottom: 1px solid var(--paper-2); font-size: 13px; color: var(--ink-2); }
   .sampling .smp { display: inline-flex; align-items: center; gap: 10px; }
   .sampling .smp-grp { display: inline-flex; align-items: center; gap: 10px; white-space: nowrap; }
   .sampling .smp-grp + .smp-grp { margin-left: 18px; }
-  @media (max-width: 640px) { .sampling .smp-grp + .smp-grp { margin-left: 0; } .sampling input[type=range] { width: 110px; }
-    .ex-ctl { flex: 1 1 200px; min-width: 0; } .ex-ctl select.field { flex: 1; width: auto; } }
+  @media (max-width: 640px) { .sampling .smp-grp + .smp-grp { margin-left: 0; } .sampling input[type=range] { width: 110px; } }
   .sampling input[type=range] { width: 130px; }
   .sampling output { font: 12.5px var(--mono); color: var(--ink); min-width: 36px; }
   .pb-lbl { font: 11.5px var(--sans); color: var(--ink-3); margin-bottom: 2px; }
@@ -619,8 +638,19 @@
       <span class="ctl-inline l"><span>Harness</span><span class="seg" id="harness" role="group" aria-label="Harness"><button data-v="off" aria-pressed="false">Off</button><button data-v="on" aria-pressed="true">On</button></span><span class="info" tabindex="0" data-tip-title="Harness" data-tip="The program around the model. On: it reads the tool call in the reply, checks it, runs the tool and sends the result back. Off: nothing reads the reply, so a tool call stays text and no tool runs.">i</span></span>
       <span class="ctl-inline l"><span>Mode</span><span class="seg" id="stepMode" role="group" aria-label="Mode"><button data-v="manual" aria-pressed="false">Step</button><button data-v="auto" aria-pressed="true">Auto</button></span><span class="info" tabindex="0" data-tip-title="Mode" data-tip="Step: you click Next step for each step. Auto: the harness does each step by itself, up to 5 model calls.">i</span></span>
       <span class="stats" id="stats"></span>
-      <span class="ctl-inline l ex-ctl"><label for="preset">Example</label><select id="preset" class="field"></select></span>
       <button type="button" id="newChat" class="btn ghost" title="Start a new chat. The tools stay.">New chat</button></div>
+    <!-- System prompt: the same row as on the Trace page. Sent first, in every model call. -->
+    <div class="opts sysrow">
+      <details class="opt" id="optSystem">
+        <summary><span class="chev"></span><span class="opt-title">System prompt</span><span class="opt-state" id="stSystem"></span></summary>
+        <div class="opt-body">
+          <label for="sysExamples" class="lbl-s">Examples</label>
+          <div class="lbl-s">Instructions for the model, sent before the conversation in every model call</div>
+          <select id="sysExamples" class="field ex"></select>
+          <div class="input-wrap"><textarea id="system" class="input" rows="1" placeholder="Instructions for the model, for example: Answer in one sentence."></textarea><div class="input-tools"><button type="button" class="copy" id="delSystem" title="Delete saved system prompt" aria-label="Delete saved system prompt" hidden></button><button type="button" class="copy" id="saveSystem" title="Save system prompt to the list" aria-label="Save system prompt to the list"></button><button type="button" class="copy" id="copySystem" title="Copy system prompt" aria-label="Copy system prompt"></button></div></div>
+        </div>
+      </details>
+    </div>
     <div class="sampling">
       <span class="smp-grp"><label class="smp"><span>Temperature</span><input type="range" id="temp" min="0" max="2" step="0.1" aria-describedby="tempV"><output id="tempV"></output></label>
       <span class="info" tabindex="0" data-tip-title="Temperature" data-tip="0: the model always picks the most likely token, so each run is the same. Higher: more random. The model may think more or less, call a tool that is not needed, or write a call with wrong arguments.">i</span></span>
@@ -631,7 +661,7 @@
   </section>
   <section class="panel sendbar" aria-label="Your message">
     <div class="cbox">
-      <textarea id="msg" class="cbox-input" rows="1" placeholder="Ask something, or select an example." title="Enter sends the message. Shift + Enter adds a line."></textarea>
+      <div class="cbox-top"><textarea id="msg" class="cbox-input" rows="1" placeholder="Ask something, or select an example." title="Enter sends the message. Shift + Enter adds a line."></textarea><div class="input-tools"><button type="button" class="copy" id="saveMsg" title="Save as an example: it shows below the message box" aria-label="Save as an example"></button><button type="button" class="copy" id="copyMsg" title="Copy the message" aria-label="Copy the message"></button></div></div>
       <div class="cbox-bar">
         <div class="perm-wrap"><button type="button" class="perm-btn" id="permBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="permMenu"></button>
           <div class="perm-menu" id="permMenu" role="menu" aria-label="Permissions" hidden></div></div>
@@ -639,6 +669,7 @@
         <button id="sendBtn" class="send-round" title="Send the message (Enter)" aria-label="Send"></button>
       </div>
     </div>
+    <div class="starters" id="starters" role="group" aria-label="Examples"></div>
     <div class="send-tools">
       <span class="status" id="status" aria-live="polite"></span>
     </div>
@@ -700,12 +731,38 @@ function cleanText(t, model = $("chatModel").value) {
 const ICON_DEL = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/></svg>';
 const ICON_EDIT = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>';
 
-const SYSTEM = "You are a helpful assistant.";  // the book's TinyAgent
+const ICON_SAVE = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21l-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/><path d="M12 7v6M9 10h6"/></svg>';
+const ICON_COPY = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/></svg>';
+const ICON_DONE = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>';
+// Copy a text, with a fallback for browsers that block the clipboard API. The button shows a check for 1 s.
+async function copyText(b, text) {
+  if (!text) return;
+  try { await navigator.clipboard.writeText(text); }
+  catch { const ta = Object.assign(document.createElement("textarea"), { value: text }); document.body.append(ta); ta.select(); document.execCommand("copy"); ta.remove(); }
+  b.innerHTML = ICON_DONE; b.classList.add("done"); clearTimeout(b._t);
+  b._t = setTimeout(() => { b.innerHTML = ICON_COPY; b.classList.remove("done"); }, 1000);
+}
+const SYSTEM = "You are a helpful assistant.";  // the book's TinyAgent: the first system prompt on each page load
+// System prompt examples: [menu label, system prompt, group]. Guardrails: rules for tool use.
+const SYSTEM_EXAMPLES = [
+  ["Helpful assistant", SYSTEM],
+  ["Be concise", "You are a helpful assistant. Be concise. Answer in one sentence."],
+  ["Tools only when needed", "You are a helpful assistant. Use a tool only when the question needs current or exact data. Otherwise, answer from what you know.", "Guardrails"],
+  ["Give the source and the date", "You are a helpful assistant. When you use data from a tool, always say where the data comes from and the date of the data.", "Guardrails"],
+  ["Report tool errors", "You are a helpful assistant. If a tool returns an error, tell the user what went wrong. Never guess the result.", "Guardrails"],
+  ["No fake tool results", "You are a helpful assistant. Never write a tool result yourself. Only the harness sends tool results.", "Guardrails"],
+];
 const MAX_CALLS = 5;
-// The book's tool note (Tools.prompt, page 182). {tools} becomes one line per tool.
-const NOTE_DEFAULT = `You are a helpful assistant.
+// The book's tool note (Tools.prompt, page 182), without its first line: that is the System prompt now.
+// {tools} becomes one line per tool.
+const NOTE_OLD = `You are a helpful assistant.
 
 # Tools
+If needed, you can only use the following tools to assist you in completing tasks:
+{tools}
+
+To use a tool, respond with JSON: {"tool": "name", "kwargs": {"param": "value"}}`;
+const NOTE_DEFAULT = `# Tools
 If needed, you can only use the following tools to assist you in completing tasks:
 {tools}
 
@@ -759,6 +816,8 @@ const signature = t => `${t.name}(${t.params.map(p => `${p.name}${p.required ? "
 const toolLines = () => active().map(t => `\`${t.name}\`: ${t.description.replace(/\.$/, "")}: ${signature(t)}`).join("\n");
 let noteText = NOTE_DEFAULT;
 const pageNote = () => noteText.replace("{tools}", toolLines() || "(no tools)");
+// The system message: your System prompt, then (Custom) the tool note. Empty: the request has no system message.
+const systemText = () => [$("system").value.trim(), S.noteBy === "page" ? pageNote() : ""].filter(Boolean).join("\n\n");
 
 async function loadTools() {
   let list = [];
@@ -775,7 +834,7 @@ function saveTools() {
 
 // ---- Settings (remembered in this browser)
 const S = { noteBy: "lmstudio", harness: "on", stepMode: "auto", perm: "allow", tab: "chat", temp: 0, maxTokens: 1500 };
-try { Object.assign(S, JSON.parse(localStorage.getItem("toolsPage2") || "{}")); noteText = localStorage.getItem("toolNote") || NOTE_DEFAULT; } catch {}
+try { Object.assign(S, JSON.parse(localStorage.getItem("toolsPage2") || "{}")); noteText = localStorage.getItem("toolNote") || NOTE_DEFAULT; if (noteText === NOTE_OLD) noteText = NOTE_DEFAULT; } catch {}
 if (!["manual", "auto"].includes(S.stepMode)) S.stepMode = "auto";
 const keep = () => { try { localStorage.setItem("toolsPage2", JSON.stringify(S)); localStorage.setItem("toolNote", noteText); } catch {} };
 const TOK_STEPS = [16, 32, 64, 128, 256, 512, 1024, 1500, 2048, 4096];
@@ -1037,8 +1096,8 @@ function newChat() {
 // The request of one model call. LM Studio note: the tools parameter. Page note: the tools as text in the system prompt.
 function buildRequest() {
   const model = $("chatModel").value, list = active();
-  const sys = S.noteBy === "page" ? pageNote() : SYSTEM;
-  const messages = [{ role: "system", content: sys }, ...history];
+  const sys = systemText();
+  const messages = sys ? [{ role: "system", content: sys }, ...history] : [...history];
   const body = { model, messages, temperature: +S.temp, max_tokens: S.maxTokens, stream: false };
   if (S.noteBy === "lmstudio" && list.length) body.tools = list.map(schemaOf);
   Object.assign(body, Composer.reasoningFields(model));  // Reasoning Off: reasoning_effort "none"
@@ -1320,13 +1379,14 @@ function pendingRow(p) {
 const callCard = (call, rows) => `<section class="callcard"><div class="callcard-hd">${call ? `Model call ${call}` : "Tool registry"}</div>${rows}</section>`;
 const fmt = t => esc(t).replace(/\*\*(.+?)\*\*/g, "$1").replace(/^(\s*)[*-]\s+/gm, "$1• ");
 function renderChat(hold) {
+  showStarters();
   if (!hold) $("log").style.paddingBottom = "";
   const log = $("log"), atEnd = !hold && log.scrollHeight - log.scrollTop - log.clientHeight < 80, top = log.scrollTop;
   const last = chat.length - 1;
   // Setup, before the chat: the tools that exist now, and their definitions. Each request sends the definitions.
   const setup = callCard(0, rowHtml({ type: "created", tools }, "setup.c")
     + rowHtml({ type: "defined", noteBy: S.noteBy, list: active(), note: S.noteBy === "page" ? pageNote() : null }, "setup.d"));
-  if (!chat.length) log.innerHTML = setup + `<div class="chat-empty">Type a message, or select an example.</div>`;
+  if (!chat.length) log.innerHTML = setup + `<div class="chat-empty">Type a message, or choose an example below the message box.</div>`;
   else log.innerHTML = setup + chat.map((t, ti) => {
     const groups = new Map();
     t.steps.forEach((s, si) => {
@@ -1355,13 +1415,13 @@ let editing = null;  // the index of the tool in edit mode
 function renderNote() {
   const page = S.noteBy === "page";
   $("noteBox").innerHTML = page
-    ? `<div class="note">Custom: the request has no tools parameter. This note is the system prompt, and <code>{tools}</code> becomes one line per tool that is on. The model must answer in the JSON format of the note; the harness reads it.</div>
+    ? `<div class="note">Custom: the request has no tools parameter. The harness adds this note to the system prompt, after the System prompt of the Chat tab. <code>{tools}</code> becomes one line per tool that is on. The model must answer in the JSON format of the note; the harness reads it.</div>
        <textarea id="noteText" class="input" spellcheck="false" aria-label="Tool note">${esc(noteText)}</textarea>
        <div class="send-tools"><button type="button" class="btn ghost" id="noteReset" title="Use the first note again">Reset note</button></div>
-       ${det("note-prev", "System prompt that the model gets", `<pre class="pre">${esc(pageNote())}</pre>`)}`
+       ${det("note-prev", "System prompt that the model gets", `<pre class="pre">${esc(systemText())}</pre>`)}`
     : `<div class="note">The harness sends the tools as a JSON schema in the <code>tools</code> parameter. LM Studio writes the note: for a model trained for tools, with the special tokens of its chat template; for other models, as a text note with the <code>[TOOL_REQUEST]</code> format. See it in the chat: the LM Studio row → Details. To write the note yourself, select <button type="button" class="linkbtn" id="toPage">Custom</button>.</div>`;
   if (page) {
-    $("noteText").oninput = e => { noteText = e.target.value; keep(); const pv = document.querySelector('[data-key="note-prev"] .pre'); if (pv) pv.textContent = pageNote(); };
+    $("noteText").oninput = e => { noteText = e.target.value; keep(); const pv = document.querySelector('[data-key="note-prev"] .pre'); if (pv) pv.textContent = systemText(); };
     $("noteReset").onclick = () => { noteText = NOTE_DEFAULT; keep(); renderNote(); };
     fit($("noteText"), 400);
   } else $("toPage").onclick = () => { if (busy) return; document.querySelector('#noteBy [data-v="page"]').click(); };
@@ -1440,17 +1500,150 @@ const PRESETS = [
   { name: "Top tech news", msg: "What are the top 3 stories on Hacker News right now?", tip: "A tool with an optional parameter: count." },
   { name: "Search the saved facts", msg: "Search my saved facts: where do I live?", tip: "Retrieval as a tool. It searches the facts saved on the Memory page." },
   { name: "Ask before a tool runs", msg: "Search Wikipedia: what is the Model Context Protocol?", tip: "Set Permissions (the shield next to the message box) to Ask every time: the harness then asks you before the query leaves your computer. Try Deny." },
+  { name: "Price of Bitcoin", msg: "What is the price of Bitcoin today?", tip: "Needs crypto_price: add it from the library in the Tools tab. Then ask: How much is that in CAD? In a new chat, ask for the price in CAD, and compare." },
   { name: "No tool needed", msg: "Why is the sky blue? Answer in one sentence.", tip: "Does the model ask for a tool?" },
 ];
-$("preset").replaceChildren(new Option("Select an example…", ""), ...PRESETS.map((p, i) => new Option(p.name, i)));
-// Back to "Select an example…", so the same example loads again when you select it.
-function resetExample() { $("preset").value = ""; $("preset").title = "Select an example question"; }
-$("preset").onchange = () => {
-  const p = PRESETS[+$("preset").value];
-  $("preset").title = p ? p.tip : "Select an example question";
-  if (!p) return;
-  $("msg").value = p.msg; fit($("msg")); $("msg").focus();
+// Examples: one chip per example, below the message box, then your saved prompts. A click puts the message
+// into the box; you send it. Saved prompts are stored by the server (/tool-prompts) and have a delete button.
+let savedMsgs = [];
+const useMsg = text => { if (busy) return; $("msg").value = text; fit($("msg")); syncSave(); $("msg").focus(); };
+// The Save button changes with the message: a saved message → Delete; a built-in example → off; else → Save.
+function syncSave() {
+  const v = $("msg").value.trim(), b = $("saveMsg");
+  const saved = !!v && savedMsgs.some(p => p.text === v), builtIn = !!v && PRESETS.some(p => p.msg === v);
+  b.innerHTML = saved ? ICON_DEL : ICON_SAVE;
+  b.classList.toggle("del", saved);
+  b.disabled = builtIn || busy;
+  b.title = saved ? "Delete this saved example" : builtIn ? "Already an example" : "Save as an example: it shows below the message box";
+  b.setAttribute("aria-label", b.title);
+}
+function renderStarters() {
+  const chip = (label, title, text) => {
+    const b = Object.assign(document.createElement("button"), { type: "button", className: "starter", textContent: label, title });
+    b.onclick = () => useMsg(text);
+    return b;
+  };
+  const saved = savedMsgs.map((p, i) => {
+    const w = Object.assign(document.createElement("span"), { className: "starter-saved" });
+    const del = Object.assign(document.createElement("button"), { type: "button", className: "starter starter-del", innerHTML: ICON_DEL, title: "Delete this saved example" });
+    del.setAttribute("aria-label", `Delete the saved example: ${p.name}`);
+    del.onclick = async () => {
+      if (busy) return;
+      const [gone] = savedMsgs.splice(i, 1);
+      try { await storeMsgs(); } catch (e) { savedMsgs.splice(i, 0, gone); $("error").textContent = e.message; }
+      renderStarters(); syncSave();
+    };
+    w.append(chip(p.name, p.text, p.text), del);
+    return w;
+  });
+  $("starters").replaceChildren(...PRESETS.map(p => chip(p.name, `${p.msg}\n\n${p.tip}`, p.msg)), ...saved);
+  if (busy) document.querySelectorAll(".starter").forEach(b => b.disabled = true);
+  sizeChat();
+}
+async function storeMsgs() {
+  const r = await fetch("/tool-prompts", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(savedMsgs) });
+  if (!r.ok) throw new Error("Could not save the example.");
+}
+$("saveMsg").innerHTML = ICON_SAVE; $("copyMsg").innerHTML = ICON_COPY;
+[$("saveMsg"), $("copyMsg")].forEach(b => b.addEventListener("mousedown", e => e.preventDefault()));
+$("copyMsg").onclick = () => copyText($("copyMsg"), $("msg").value);
+$("saveMsg").onclick = async () => {
+  const v = $("msg").value.trim(), b = $("saveMsg");
+  if (!v || busy || PRESETS.some(p => p.msg === v)) return;
+  const i = savedMsgs.findIndex(p => p.text === v);
+  if (i >= 0) {  // already saved: delete it
+    const [gone] = savedMsgs.splice(i, 1);
+    try { await storeMsgs(); } catch (e) { savedMsgs.splice(i, 0, gone); $("error").textContent = e.message; return; }
+    renderStarters(); syncSave();
+    return;
+  }
+  savedMsgs.push({ name: v.replace(/\s+/g, " ").slice(0, 40) + (v.length > 40 ? "…" : ""), text: v });
+  try { await storeMsgs(); } catch (e) { savedMsgs.pop(); $("error").textContent = e.message; return; }
+  renderStarters();
+  b.classList.add("done"); clearTimeout(b._t); b._t = setTimeout(() => { b.classList.remove("done"); syncSave(); }, 1000);
 };
+$("msg").addEventListener("input", syncSave);
+renderStarters();
+syncSave();
+fetch("/tool-prompts").then(r => r.json()).then(list => { if (Array.isArray(list)) { savedMsgs = list.filter(p => p && typeof p.text === "string" && typeof p.name === "string"); renderStarters(); syncSave(); } }).catch(() => {});
+// The chips show only while the chat is empty. New chat shows them again.
+function showStarters() {
+  const hide = chat.length > 0;
+  if ($("starters").hidden !== hide) { $("starters").hidden = hide; sizeChat(); }
+}
+
+// ---- System prompt: an Examples menu (your saved prompts, the examples, the guardrails), save, delete and copy.
+// Saved prompts are stored by the server (/system-prompts), the same list as on the Trace page.
+(function systemPrompt() {
+  const box = $("system"), select = $("sysExamples"), saveBtn = $("saveSystem"), delBtn = $("delSystem"), copyBtn = $("copySystem");
+  saveBtn.innerHTML = ICON_SAVE; delBtn.innerHTML = ICON_DEL; copyBtn.innerHTML = ICON_COPY;
+  [saveBtn, delBtn, copyBtn].forEach(b => b.addEventListener("mousedown", e => e.preventDefault()));
+  const flash = (b, html) => { b.classList.add("done"); if (html) b.innerHTML = html; clearTimeout(b._t); b._t = setTimeout(() => { b.classList.remove("done"); if (html) b.innerHTML = ICON_COPY; }, 1000); };
+  const short = (t, n = 40) => { t = t.replace(/\s+/g, " ").trim(); return t.length > n ? t.slice(0, n) + "…" : t; };
+  let saved = [];
+  const fill = (value = "") => {
+    select.innerHTML = `<option value="">No system prompt</option><option value="c" hidden>Custom</option>`;
+    if (saved.length) {
+      const g = Object.assign(document.createElement("optgroup"), { label: "Saved" });
+      saved.forEach((p, i) => g.append(new Option(p.name, "s" + i)));
+      select.append(g);
+    }
+    const groups = new Map();
+    SYSTEM_EXAMPLES.forEach(([lbl, , grp = "Examples"], i) => {
+      if (!groups.has(grp)) { groups.set(grp, Object.assign(document.createElement("optgroup"), { label: grp })); select.append(groups.get(grp)); }
+      groups.get(grp).append(new Option(lbl, "e" + i));
+    });
+    select.value = value;
+    delBtn.hidden = !value.startsWith("s");
+  };
+  // The menu shows the item that matches the text, or "Custom". The row title shows the state when closed.
+  const sync = () => {
+    const v = box.value.trim();
+    const si = v ? saved.findIndex(p => p.text.trim() === v) : -1;
+    const ei = v && si < 0 ? SYSTEM_EXAMPLES.findIndex(e => e[1] === v) : -1;
+    select.value = !v ? "" : si >= 0 ? "s" + si : ei >= 0 ? "e" + ei : "c";
+    delBtn.hidden = si < 0;
+    const st = $("stSystem");
+    st.textContent = !v ? "Off" : si >= 0 ? saved[si].name : ei >= 0 ? SYSTEM_EXAMPLES[ei][0] : short(v);
+    st.classList.toggle("on", !!v);
+    st.title = v;
+    fit(box, 240);
+  };
+  const store = async () => {
+    const r = await fetch("/system-prompts", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(saved) });
+    if (!r.ok) throw new Error("Could not save the list.");
+  };
+  saveBtn.onclick = async () => {
+    const v = box.value.trim();
+    if (!v) return;
+    if (!saved.some(p => p.text.trim() === v)) {
+      saved.push({ name: short(v), text: v });
+      try { await store(); } catch (e) { saved.pop(); $("error").textContent = e.message; return; }
+    }
+    fill(); sync(); flash(saveBtn);
+  };
+  delBtn.onclick = async () => {
+    const v = select.value;
+    if (!v.startsWith("s")) return;
+    const i = +v.slice(1), [gone] = saved.splice(i, 1);
+    try { await store(); } catch (e) { saved.splice(i, 0, gone); $("error").textContent = e.message; return; }
+    fill(); sync();
+  };
+  copyBtn.onclick = async e => {
+    e.preventDefault(); e.stopPropagation();
+    copyText(copyBtn, box.value);
+  };
+  select.onchange = () => {
+    const v = select.value;
+    if (v === "c") return;
+    box.value = v === "" ? "" : v.startsWith("s") ? saved[+v.slice(1)].text : SYSTEM_EXAMPLES[+v.slice(1)][1];
+    sync(); box.focus();
+  };
+  box.addEventListener("input", sync);
+  box.value = SYSTEM;  // each page load starts with the book's system prompt
+  fill(); sync();
+  fetch("/system-prompts").then(r => r.json()).then(list => { if (Array.isArray(list)) { saved = list.filter(p => p && typeof p.text === "string"); fill(); sync(); } }).catch(() => {});
+})();
 
 // Seconds while the model writes. After 6 s: LM Studio may be loading the model into memory first.
 setInterval(() => document.querySelectorAll("[data-since]").forEach(el => {
@@ -1474,22 +1667,23 @@ function stop() { ctrl?.abort(); if (pending) { const p = pending; pending = nul
 function setBusy() {
   Composer.setSend($("sendBtn"), busy, { key: "Enter", stop: "Stop the run" });
   chatPick.setDisabled(busy);
-  ["newChat", "preset", "chatModel", "resetTools", "addTool", "library", "temp", "maxTok"].forEach(id => $(id).disabled = busy);
-  document.querySelectorAll("#noteBy button, #harness button").forEach(b => b.disabled = busy);
+  ["newChat", "chatModel", "resetTools", "addTool", "library", "temp", "maxTok", "system", "sysExamples", "saveSystem", "delSystem"].forEach(id => $(id).disabled = busy);
+  document.querySelectorAll("#noteBy button, #harness button, .starter").forEach(b => b.disabled = busy);
+  syncSave();
 }
 function setStatus(t) { $("status").innerHTML = t === "Running…" ? `<span class="busy-dot" aria-hidden="true"></span>Running…` : esc(t); }
 $("sendBtn").onclick = () => {
   if (busy) { stop(); return; }
   const text = $("msg").value.trim();
   if (!text) return;
-  $("msg").value = ""; fit($("msg")); setStatus(""); resetExample();
+  $("msg").value = ""; fit($("msg")); syncSave(); setStatus("");
   send(text);
 };
 $("msg").addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); $("sendBtn").click(); } });
 $("msg").addEventListener("input", () => fit($("msg")));
-$("newChat").onclick = () => { if (busy) return; newChat(); resetExample(); renderChat(); setStatus("New chat. The tools stay."); };
+$("newChat").onclick = () => { if (busy) return; newChat(); renderChat(); setStatus("New chat. The tools stay."); };
 const waitIdle = () => new Promise(r => { const f = () => busy ? setTimeout(f, 50) : r(); f(); });
-$("resetAll").onclick = async () => { stop(); await waitIdle(); chat = []; history = []; stats = { calls: 0, tools: 0, tokens: 0 }; resetExample(); openKeys.clear(); rawKeys.clear(); setStatus(""); $("error").textContent = ""; renderChat(); };
+$("resetAll").onclick = async () => { stop(); await waitIdle(); chat = []; history = []; stats = { calls: 0, tools: 0, tokens: 0 }; openKeys.clear(); rawKeys.clear(); setStatus(""); $("error").textContent = ""; renderChat(); };
 
 // The chat fills the window above the message box: the box stays in view, and the chat scrolls.
 function sizeChat() {
