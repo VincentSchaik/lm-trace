@@ -97,7 +97,7 @@ The prompt contains one example: a different question about flamingos, with a st
 
 ### Reasoning model with few-shot examples
 
-This example uses the reasoning model Gemma 4 12B, with **Thinking** on. The prompt is in English: "Complete the sentence: My favourite city is". The three few-shot examples translate English to French. The model gives its answer in French: "Ma ville préférée est Paris."
+This example uses the reasoning model Gemma 4 12B, with **Reasoning** on. The prompt is in English: "Complete the sentence: My favourite city is". The three few-shot examples translate English to French. The model gives its answer in French: "Ma ville préférée est Paris."
 
 The **Reasoning** section shows how the model decided between the instruction and the pattern of the examples. The model generated approximately 3,000 reasoning tokens to write an answer of 7 tokens. The first answer token, "Ma", had a probability of 99.98%.
 
@@ -123,6 +123,7 @@ The **Reasoning** section shows how the model decided between the instruction an
    - In a terminal, run `lms server start`.
 4. Make sure that the server uses port 1234. This is the default.
 5. Load a model, or keep **Just-in-Time Model Loading** on. With this setting, LM Studio loads a model when LM Trace sends a request to it.
+6. Optional: turn off **JIT models auto-evict** (LM Studio settings, section On-Demand Loading and Model TTL). The RAG and Memory pages use two models: a chat model and an embedding model. With auto-evict on, LM Studio keeps only one of them loaded, so it loads both again at each message. The **Settings** page of LM Trace shows the current value of this setting and of **Max idle TTL**. It does not change them.
 
 You do not have to enable CORS. The LM Trace server sends the requests to LM Studio.
 
@@ -156,30 +157,48 @@ To change the defaults, set these environment variables before you start the ser
 | `LMS_URL` | `http://localhost:1234` | Address of the LM Studio server |
 | `LM_API_TOKEN` | not set | API token, if LM Studio requires authentication |
 
+## The message box
+
+All pages use the same message box. Type your text, select a model, and click the round **Send** button (↑). While the model runs, the same button is **Stop** (■).
+
+Click the model name in the box to open the model menu:
+
+- **Currently loaded:** the models that LM Studio has in memory now. Click **Eject** to unload a model. LM Studio loads it again at the next request.
+- **Your models:** all language models in LM Studio. The icons show what LM Studio reports for each model: tool use, vision and reasoning.
+- **Embedding model** (RAG and Memory only): the model that turns text into vectors for the search.
+- **Reasoning** (only for models that support it): **On** or **Off**. Off sends `reasoning_effort: "none"` in the request. LM Trace keeps the value for each model.
+
+Hold the pointer on the model name to see the model card: the data of LM Studio and the model page on Hugging Face.
+
 ## Use LM Trace
 
-1. Select a model.
-2. Type a prompt, or select an example or a preset.
-3. Optional: open **System prompt**, **In-context examples** or **Structured output**.
-4. Click **Generate**.
-5. In **Step** mode, press → or Space to add one token at a time. In **Live** mode, the tokens appear as the model generates them.
-6. Click a token to see its candidates.
+1. Select an example, or type a prompt.
+2. Optional: open **System prompt**, **In-context examples** or **Structured output**.
+3. Select a model in the message box, and click **Send** (or press ⌘ + Enter).
+4. In **Step** mode, press → or Space to add one token at a time. In **Auto** mode, the tokens appear as the model generates them.
+5. Click a token to see its candidates.
 
 A darker color shows a token that the model was more sure of.
 
 You can change these settings for each run:
 
 - Temperature, top-k or top-p, and the maximum number of tokens.
-- Thinking on or off. This setting is available only if the model supports it:
+- Reasoning on or off, in the model menu. LM Studio reports which options each model allows:
 
-  | Model | Thinking |
+  | Model | Reasoning |
   |---|---|
-  | Gemma 4 | On or off |
-  | DeepSeek-R1 | Always on |
-  | Gemma 3 | Always off. It is not a reasoning model. |
-- **Step** mode or **Live** mode.
+  | Gemma 4, Qwen3 | On or off |
+  | DeepSeek-R1, GLM-4.6V | Always on |
+  | Gemma 3 | Not a reasoning model |
+- **Step** mode or **Auto** mode.
 
-Each field has a list of examples. You can save your own prompts, system prompts, in-context examples, schemas and presets, and you can delete them.
+The **Example** list has three groups:
+
+- **Prompts:** a prompt only.
+- **Setups:** a whole page, to compare prompting methods: the prompt, the system prompt, the in-context examples, the structured output and the settings (temperature, sampling, maximum tokens and reasoning).
+- **Your examples:** the setups that you saved. Click the save icon in the prompt box to save the whole page. Select a saved example and click the delete icon to delete it.
+
+The system prompt, the in-context examples and the structured output also have their own lists of examples. You can save your own items in these lists, and delete them.
 
 The server keeps these items in JSON files in the project folder. Git ignores these files.
 
@@ -205,10 +224,12 @@ Open **Memory** in the sidebar. A language model has no memory: the harness deci
 
 How to use it:
 
-1. Select an example, then click **Run**. The five examples follow chapter 4 of *An Illustrated Guide to AI Agents*.
+1. Select an example, then click **Run**. The five examples follow chapter 4 of *An Illustrated Guide to AI Agents*. Click **New chat** (next to Run) to start a new chat on both sides. The saved facts stay.
 2. Under each answer, click ▸ to see exactly what the model got.
 3. Click **Save facts** to save the facts from the chat, or from the text in the message box. The model lists the facts, and the server writes them as files.
 4. Open the **Long-term memory** tab to see the files and the vectors in Chroma.
+
+The chat model and the embedding model are both in the model menu of the message box. Only the RAG options of long-term memory use the embedding model.
 
 The facts are in the `agent-memory/` folder. Git ignores this folder.
 
