@@ -1609,6 +1609,7 @@ document.addEventListener("input", e => {
   $("terr" + i).textContent = err;
   if (!err) saveTools();
   if (f?.endsWith(".icon")) document.querySelectorAll(`[data-ticon="${i}"]`).forEach(el => { el.dataset.icon = tools[i].icon; el.innerHTML = iconSvg(tools[i].icon); });
+  if (f?.endsWith(".icon") || f?.endsWith(".title")) renderWiki();
   if (f?.endsWith(".title")) {  // the card header shows the display name: update it as you type
     const nm = document.querySelector(`[data-on="${i}"]`)?.closest(".tool-hd")?.querySelector(".nm");
     if (nm) nm.textContent = tools[i].title || tools[i].name;
@@ -1961,7 +1962,10 @@ function renderPerm() {
 // Like "Search the web" in a chatbot: the button only adds one tool to the request.
 function renderWiki() {
   const on = !!tools.find(t => t.name === "search_wikipedia")?.on, b = $("wikiBtn");
-  b.innerHTML = SVG('<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><ellipse cx="12" cy="12" rx="3.6" ry="9"/>') + "<span>Wikipedia</span>";
+  // The icon and the name of the tool (its Icon and Display name fields), so the button matches the + menu.
+  const tool = tools.find(t => t.name === "search_wikipedia");
+  b.innerHTML = (tool?.icon ? iconSvg(tool.icon) : SVG('<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><ellipse cx="12" cy="12" rx="3.6" ry="9"/>'))
+    + `<span>${esc(tool?.title || "Wikipedia")}</span>`;
   b.setAttribute("aria-pressed", on);
   b.title = on ? "Wikipedia search: On. The model gets the Wikipedia tool. Click to turn it off."
     : "Wikipedia search: Off. Click to give the model the Wikipedia tool.";
