@@ -318,13 +318,6 @@
   [aria-checked="true"] > .sw::after { transform: translateX(14px); }
   .perm-menu .none { padding: 8px 10px; font-size: 13px; color: var(--ink-3); }
   @media (max-width: 640px) { .perm-menu.tools-menu { left: 0; } }
-  /* Wikipedia: a pill with the icon and the word, like the Search button of a chatbot. On: blue. */
-  .wiki-btn { flex: none; display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px 0 10px; margin-left: 8px; border: 1px solid var(--line); border-radius: 18px; background: var(--field); color: var(--ink-2); font: 500 14px var(--sans); cursor: pointer; }
-  .wiki-btn svg { width: 18px; height: 18px; }
-  .wiki-btn:hover { color: var(--ink); background: var(--paper); border-color: var(--stone-2); }
-  .wiki-btn[aria-pressed="true"] { color: var(--primary); background: rgba(var(--red-rgb), .12); border-color: transparent; }
-  .wiki-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
-  @media (max-width: 640px) { .wiki-btn { width: 36px; padding: 0; justify-content: center; } .wiki-btn span { display: none; } }
   .lede { margin-bottom: 14px; }
   .lede .more { display: inline; }
   .lede .more[open] { display: block; }
@@ -778,7 +771,6 @@
           <div class="perm-menu tools-menu" id="toolsMenu" role="menu" aria-label="Tools" hidden></div></div>
         <div class="perm-wrap"><button type="button" class="perm-btn" id="permBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="permMenu"></button>
           <div class="perm-menu" id="permMenu" role="menu" aria-label="Permissions" hidden></div></div>
-        <button type="button" class="wiki-btn" id="wikiBtn" aria-pressed="false"></button>
         <div id="chatPick" class="grow"></div>
         <button id="sendBtn" class="send-round" title="Send the message (Enter)" aria-label="Send"></button>
       </div>
@@ -1646,7 +1638,6 @@ function renderTools() {
   }).join("") || `<div class="hint-s">No tools. Click Create tool, or Reset tools.</div>`;
   $("library").replaceChildren(new Option("Add from the library…", ""), ...LIBRARY.filter(l => !tools.some(t => t.name === l.name)).map(l => new Option(`${l.name} · ${l.description.split(" (")[0]}`, l.name)));
   renderNote();
-  renderWiki();
   if (!$("toolsMenu").hidden) renderToolsMenu();
 }
 function toolError(i) {
@@ -1669,7 +1660,6 @@ document.addEventListener("input", e => {
   const def = $("tdef" + i); if (def) def.textContent = JSON.stringify(schemaOf(tools[i]), null, 2);
   if (!err) saveTools();
   if (f?.endsWith(".icon")) document.querySelectorAll(`[data-ticon="${i}"]`).forEach(el => { el.dataset.icon = tools[i].icon; el.innerHTML = iconSvg(tools[i].icon); });
-  if (f?.endsWith(".icon") || f?.endsWith(".title")) renderWiki();
   if (f?.endsWith(".title")) {  // the card header shows the display name: update it as you type
     const nm = document.querySelector(`[data-on="${i}"]`)?.closest(".tool-hd")?.querySelector(".nm");
     if (nm) nm.textContent = tools[i].title || tools[i].name;
@@ -2036,26 +2026,6 @@ function renderPerm() {
   $("permBtn").setAttribute("aria-label", `Permissions: ${cur.label}`);
   $("permMenu").innerHTML = `<div class="hd">Choose how the harness gets tool approvals</div>` + PERMS.map(p => `<button type="button" role="menuitemradio" aria-checked="${p.v === S.perm}" data-perm="${p.v}">${p.icon}<span>${p.label}</span>${p.v === S.perm ? '<span class="ck">✓</span>' : "<span></span>"}<span class="d">${p.desc}</span></button>`).join("");
 }
-// Wikipedia button: turns the search_wikipedia tool On or Off, the same as its switch on the Tools tab.
-// Like "Search the web" in a chatbot: the button only adds one tool to the request.
-function renderWiki() {
-  const on = !!tools.find(t => t.name === "search_wikipedia")?.on, b = $("wikiBtn");
-  // The icon and the name of the tool (its Icon and Display name fields), so the button matches the + menu.
-  const tool = tools.find(t => t.name === "search_wikipedia");
-  b.innerHTML = (tool?.icon ? iconSvg(tool.icon) : SVG('<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><ellipse cx="12" cy="12" rx="3.6" ry="9"/>'))
-    + `<span>${esc(tool?.title || "Wikipedia")}</span>`;
-  b.setAttribute("aria-pressed", on);
-  b.title = on ? "Wikipedia search: On. The model gets the Wikipedia tool. Click to turn it off."
-    : "Wikipedia search: Off. Click to give the model the Wikipedia tool.";
-  b.setAttribute("aria-label", `Wikipedia search: ${on ? "On" : "Off"}`);
-}
-$("wikiBtn").onclick = () => {
-  if (busy) return;
-  let t = tools.find(x => x.name === "search_wikipedia");
-  if (t) t.on = !t.on;
-  else tools.push({ ...clone(LIBRARY.find(x => x.name === "search_wikipedia")), on: true });  // deleted from the list: add it again
-  saveTools(); renderTools(); renderChat();
-};
 // + menu: Tools ›, then each tool with an On/Off switch: the same switch as on the Tools tab.
 // Each row shows the display name (the title field), else the function name, and the icon of the Icon field.
 // Icons: Lucide (ISC license), from the Iconify API.

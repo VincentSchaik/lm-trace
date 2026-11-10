@@ -62,6 +62,8 @@
 .mp-menu .frow .seg { display: inline-flex; margin-left: auto; padding: 2px; background: var(--paper); border: 1px solid var(--line); border-radius: 8px; }
 .mp-menu .frow .seg button { display: inline-block; width: auto; height: 26px; padding: 0 10px; font: 500 13px var(--sans); border-radius: 6px; color: var(--ink-2); }
 .mp-menu .frow .seg button[aria-pressed="true"] { background: var(--primary); color: var(--on-primary); }
+.mp-menu .frow .seg.dis button { cursor: default; color: var(--ink-3); }
+.mp-menu .frow .seg.dis button[aria-pressed="true"] { background: var(--line); color: var(--ink-2); }
 .cbox .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 .mcard { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--field); }
