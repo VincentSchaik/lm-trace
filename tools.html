@@ -331,6 +331,8 @@
   .lede .more > summary { margin-left: 6px; color: var(--red); }
   .lede .more p { margin: 6px 0 0; }
   .linkbtn { border: 0; background: none; padding: 0; font: inherit; color: var(--red); cursor: pointer; }
+  .note a { color: var(--red); text-decoration: none; }
+  .note a:hover, .linkbtn:hover { text-decoration: underline; }
   .linkbtn:hover { text-decoration: underline; }
   .preset-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
   .preset-row select.field { width: 340px; max-width: 100%; height: 36px; font-weight: 400; font-size: 14px; }
@@ -447,6 +449,9 @@
   .next .btn { height: 34px; padding: 0 16px; font-size: 13.5px; }
 
   .sendbar { padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+  /* The message box stays at the bottom of the window when open settings rows make the page taller. */
+  #pane-chat .sendbar { position: sticky; bottom: 35px; z-index: 5; }  /* 35px: where sizeChat puts it, so it does not move */
+  .capture #pane-chat .sendbar { position: static; }
   /* Examples: chips below the message box while the chat is empty. A click fills the box; you send it. */
   .starters { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; padding: 4px 2px 0; }
   .starters[hidden] { display: none; }
@@ -476,7 +481,11 @@
   .tool-hd { display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; padding: 8px 12px; background: var(--paper); border-bottom: 1px solid var(--line); }
   .tool-hd .nm { font: 600 14px var(--sans); color: var(--ink); }  /* the display name; the function name is in the signature below */
   .tool-hd .right { margin-left: auto; display: flex; gap: 6px; align-items: center; }
-  .tool-hd label.on { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink-2); cursor: pointer; }
+  .tool-hd label.on { position: relative; display: inline-flex; align-items: center; cursor: pointer; }
+  .tool-hd label.on input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+  .tool-hd label.on input:checked + .sw { background: var(--primary); }
+  .tool-hd label.on input:checked + .sw::after { transform: translateX(14px); }
+  .tool-hd label.on input:focus-visible + .sw { outline: 2px solid var(--primary); outline-offset: 2px; }
   .tool-hd input[type=checkbox], .prow input[type=checkbox] { accent-color: var(--red); width: 15px; height: 15px; margin: 0; cursor: pointer; }
   .tool-bd { padding: 10px 12px; display: grid; gap: 6px; font-size: 13px; color: var(--ink-2); }
   .tool-bd .sig { font: 12.5px var(--mono); color: var(--ink); }
@@ -1591,25 +1600,27 @@ document.querySelector("#optNote > summary").addEventListener("click", e => { if
 function renderNote() {
   const page = S.noteBy === "page";
   const nOn = active().length, nTools = `${nOn} tool${nOn === 1 ? "" : "s"}`;
-  $("stNote").textContent = nOn ? nTools : "No tools are on";
+  $("stNote").textContent = nTools;
   $("stNote").classList.toggle("on", page);
   $("noteBox").innerHTML = page
     ? `<div class="note">Tool definition with a custom note: the request has no tools parameter. The harness adds this note to the system prompt, after the System prompt. <code>{tools}</code> becomes one line per tool that is on. The model must answer in the JSON format of the note; the harness reads it.</div>
        <textarea id="noteText" class="input" spellcheck="false" aria-label="Tool note">${esc(noteText)}</textarea>
        <div class="send-tools"><button type="button" class="btn ghost" id="noteReset" title="Use the first note again">Reset note</button></div>
        ${noteDet("note-prev", "System prompt that the model gets", `<pre class="pre">${esc(systemText())}</pre>`)}`
-    : `<div class="note">The harness sends the tool list in the <code>tools</code> parameter of the request: the tool definition of each tool that is on, a JSON schema in the format of the <a href="https://lmstudio.ai/docs/developer/openai-compat/tools" target="_blank" rel="noopener">OpenAI Function Calling API</a>. The system message is only your System prompt. LM Studio writes the note: for a model trained for tools (native tool use), it puts the tool definitions into the chat template with its special tool tokens; for other models (default tool use), it adds a text note with the <code>[TOOL_REQUEST]</code> format. After you send a message, see the exact prompt: Applying chat template → Details. To write the note yourself, select <button type="button" class="linkbtn" id="toPage">Custom</button>.</div>
-       ${noteDet("note-json", "JSON schema", `<div class="hint-s inj">Injected into the system prompt</div><pre class="pre json">${esc(JSON.stringify(active().map(schemaOf), null, 2) || "[]")}</pre>`)}`;
+    : `<div class="note">The harness sends the tool list in the <code>tools</code> parameter of the request, in the format of the <a href="https://lmstudio.ai/docs/developer/openai-compat/tools" target="_blank" rel="noopener">OpenAI Function Calling API</a>. LM Studio injects it into the system prompt: with the tool tokens of the model (native tool use), or as a text note with the <code>[TOOL_REQUEST]</code> format (default tool use). To write the note yourself, select <button type="button" class="linkbtn" id="toPage">Custom</button>.</div>
+       ${nOn ? noteDet("note-json", "JSON schema", `<div class="hint-s inj">Injected into the system prompt</div><pre class="pre json gen" title="Auto-generated from the tools that are on. You cannot edit it.">${esc(JSON.stringify(active().map(schemaOf), null, 2))}</pre>`)
+             : `<div class="hint-s inj">No tools are on. Turn one on in the Tools tab, or with the <button type="button" class="linkbtn" id="toPlus">+ button</button> in the message box.</div>`}`;
   if (page) {
     $("noteText").oninput = e => { noteText = e.target.value; keep(); const pv = document.querySelector('[data-nkey="note-prev"] .pre'); if (pv) pv.textContent = systemText(); };
     $("noteReset").onclick = () => { noteText = NOTE_DEFAULT; keep(); renderNote(); };
     fit($("noteText"), 400);
   } else $("toPage").onclick = () => { if (busy) return; document.querySelector('#noteBy [data-v="page"]').click(); };
+  if ($("toPlus")) $("toPlus").onclick = e => { e.stopPropagation(); $("plusBtn").scrollIntoView({ block: "center", behavior: "smooth" }); if ($("plusMenu").hidden) $("plusBtn").click(); };
 }
 function renderTools() {
   $("toolList").innerHTML = tools.map((t, i) => {
     const builtin = t.kind === "builtin";
-    const head = `<div class="tool-hd"><label class="on" title="${t.on ? "On: the model gets this tool" : "Off: the model does not get this tool"}"><input type="checkbox" data-on="${i}"${t.on ? " checked" : ""}>${t.on ? "On" : "Off"}</label>${iconHtml(t.icon, i)}<span class="nm" title="Function name: ${esc(t.name)}">${esc(t.title || t.name)}</span>
+    const head = `<div class="tool-hd"><label class="on" title="${t.on ? "On: the model gets this tool" : "Off: the model does not get this tool"}"><input type="checkbox" role="switch" data-on="${i}"${t.on ? " checked" : ""} aria-label="${esc(t.title || t.name)}"><span class="sw"></span></label>${iconHtml(t.icon, i)}<span class="nm" title="Function name: ${esc(t.name)}">${esc(t.title || t.name)}</span>
       <span class="badge${builtin ? "" : " blue"}" tabindex="0" data-tip-title="${builtin ? "Built-in tool" : "URL tool"}" data-tip="${builtin ? "Python code in server.py. You can change the description, not the parameters." : "The server sends a GET request to the URL. Each {name} in the URL becomes the argument of that name."}">${builtin ? "Built-in" : "URL"}</span>
       <span class="right"><button type="button" class="copy" data-edit="${i}" title="${editing === i ? "Done" : "Edit this tool"}" aria-label="Edit ${esc(t.name)}">${ICON_EDIT}</button><button type="button" class="copy del" data-del="${i}" title="Delete this tool" aria-label="Delete ${esc(t.name)}">${ICON_DEL}</button></span></div>`;
     if (editing !== i) return `<div class="tool${t.on ? "" : " off"}">${head}<div class="tool-bd tv"><div class="tv-row"><span class="tv-lbl">Function</span><div class="tv-val"><span class="sig">${esc(signature(t))}</span><span>${esc(t.description)}</span><span class="src">${builtin ? "Python code in server.py" : `GET ${esc(t.url)}`}</span></div></div>
@@ -1965,7 +1976,11 @@ function sizeChat() {
   log.style.height = Math.max(320, innerHeight - top - bar.offsetHeight - 52) + "px";
 }
 addEventListener("resize", sizeChat);
-new ResizeObserver(sizeChat).observe(document.querySelector(".composer"));
+// Refit the chat log when anything above it changes height: the settings card, and the rows of the Chat panel
+// (System prompt, Tool list) as they open, close or grow.
+const fitObs = new ResizeObserver(sizeChat);
+fitObs.observe(document.querySelector(".composer"));
+document.querySelectorAll("#pane-chat details.opt").forEach(d => fitObs.observe(d));
 
 // ---- Tabs
 function setTab(v) {
@@ -2021,7 +2036,7 @@ function renderPerm() {
   $("permBtn").setAttribute("aria-label", `Permissions: ${cur.label}`);
   $("permMenu").innerHTML = `<div class="hd">Choose how the harness gets tool approvals</div>` + PERMS.map(p => `<button type="button" role="menuitemradio" aria-checked="${p.v === S.perm}" data-perm="${p.v}">${p.icon}<span>${p.label}</span>${p.v === S.perm ? '<span class="ck">✓</span>' : "<span></span>"}<span class="d">${p.desc}</span></button>`).join("");
 }
-// Wikipedia button: turns the search_wikipedia tool On or Off, the same as its On box on the Tools tab.
+// Wikipedia button: turns the search_wikipedia tool On or Off, the same as its switch on the Tools tab.
 // Like "Search the web" in a chatbot: the button only adds one tool to the request.
 function renderWiki() {
   const on = !!tools.find(t => t.name === "search_wikipedia")?.on, b = $("wikiBtn");
@@ -2041,7 +2056,7 @@ $("wikiBtn").onclick = () => {
   else tools.push({ ...clone(LIBRARY.find(x => x.name === "search_wikipedia")), on: true });  // deleted from the list: add it again
   saveTools(); renderTools(); renderChat();
 };
-// + menu: Tools ›, then each tool with an On/Off switch: the same On box as on the Tools tab.
+// + menu: Tools ›, then each tool with an On/Off switch: the same switch as on the Tools tab.
 // Each row shows the display name (the title field), else the function name, and the icon of the Icon field.
 // Icons: Lucide (ISC license), from the Iconify API.
 const LUCIDE = {"calculator":"<rect width=\"16\" height=\"20\" x=\"4\" y=\"2\" rx=\"2\"/><path d=\"M8 6h8m0 8v4m0-8h.01M12 10h.01M8 10h.01M12 14h.01M8 14h.01M12 18h.01M8 18h.01\"/>","cloud-sun":"<path fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M12 2v2m-7.07.93l1.41 1.41M20 12h2m-2.93-7.07l-1.41 1.41m-1.713 6.31a4 4 0 0 0-5.925-4.128M13 22H7a5 5 0 1 1 4.9-6H13a3 3 0 0 1 0 6\"/>","arrow-left-right":"<path fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M8 3L4 7l4 4M4 7h16m-4 14l4-4l-4-4m4 4H4\"/>","newspaper":"<path d=\"M15 18h-5m8-4h-8m-6 8h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-4 0v-9a2 2 0 0 1 2-2h2\"/><rect width=\"8\" height=\"4\" x=\"10\" y=\"6\" rx=\"1\"/>","brain":"<path d=\"M12 18V5m3 8a4.17 4.17 0 0 1-3-4a4.17 4.17 0 0 1-3 4m8.707-6.706A3 3 0 1 0 12 5a3 3 0 1 0-5.707 1.294\"/><path d=\"M17.996 5.125a4 4 0 0 1 2.526 5.77\"/><path d=\"M18 18a4 4 0 0 0 2-7.465\"/><path d=\"M19.967 17.482a4 4 0 1 1-7.967.517a4 4 0 1 1-7.967-.517\"/><path d=\"M6 18a4 4 0 0 1-2-7.465\"/><path d=\"M6.004 5.125a4 4 0 0 0-2.526 5.77\"/>","globe":"<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"M12 2a14.5 14.5 0 0 0 0 20a14.5 14.5 0 0 0 0-20M2 12h20\"/>","bitcoin":"<path fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M11.767 19.089c4.924.868 6.14-6.025 1.216-6.894m-1.216 6.894L5.86 18.047m5.908 1.042l-.347 1.97m1.563-8.864c4.924.869 6.14-6.025 1.215-6.893m-1.215 6.893l-3.94-.694m5.155-6.2L8.29 4.26m5.908 1.042l.348-1.97M7.48 20.364l3.126-17.727\"/>","book-open":"<path fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M12 5v16m8.001-2A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2a5 5 0 0 1 4-2z\"/>","trending-up":"<path d=\"M16 7h6v6\"/><path d=\"m22 7l-8.5 8.5l-5-5L2 17\"/>","file-text":"<path d=\"M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z\"/><path d=\"M14 2v5a1 1 0 0 0 1 1h5M10 9H8m8 4H8m8 4H8\"/>","megaphone":"<path d=\"M11 6a13 13 0 0 0 8.4-2.8A1 1 0 0 1 21 4v12a1 1 0 0 1-1.6.8A13 13 0 0 0 11 14H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z\"/><path d=\"M6 14a12 12 0 0 0 2.4 7.2a2 2 0 0 0 3.2-2.4A8 8 0 0 1 10 14M8 6v8\"/>","link":"<path d=\"M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71\"/><path d=\"M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71\"/>","wrench":"<path fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.106-3.105c.32-.322.863-.22.983.218a6 6 0 0 1-8.259 7.057l-7.91 7.91a1 1 0 0 1-2.999-3l7.91-7.91a6 6 0 0 1 7.057-8.259c.438.12.54.662.219.984z\"/>","plus":"<path fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M5 12h14m-7-7v14\"/>","settings-2":"<path d=\"M14 17H5M19 7h-9\"/><circle cx=\"17\" cy=\"17\" r=\"3\"/><circle cx=\"7\" cy=\"7\" r=\"3\"/>","blocks":"<path d=\"M10 22V7a1 1 0 0 0-1-1H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5a1 1 0 0 0-1-1H2\"/><rect width=\"8\" height=\"8\" x=\"14\" y=\"2\" rx=\"1\"/>"};
