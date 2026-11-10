@@ -269,9 +269,11 @@ The 3 new facts are in both stores: the page writes the file and embeds the fact
 
 Open **Tools** in the sidebar. The page is a playground for tool usage. You trace every step of how an LLM uses a tool, from your question to the final answer. The tools go into the prompt (in-context learning), the model writes a tool call, and the harness runs the tool and sends the result back.
 
+The page is built on the [tool use API of LM Studio](https://lmstudio.ai/docs/developer/openai-compat/tools), which follows the format of the OpenAI Function Calling API. The harness sends the tool list in the `tools` parameter of the request: the tool definition (a JSON schema) of each tool that is on. LM Studio puts the tool definitions into the prompt with the chat template of the model, and converts the tool call of the model into `tool_calls` in the response.
+
 The page has two tabs:
 
-- **Tools:** your tools, each with a display name, a function name, a description and parameters. The **+** menu in the message box shows the display name. The model gets the function name. Click **Create tool** to write your own (a GET request to a URL), or **Add from the library…** to add a ready tool, like **crypto_price**. Only the tools that are **On** go to the model.
+- **Tools:** your tools. Each tool shows its **Tool creation** (the function name, the description, the parameters, and the URL or the Python code that runs) and its **Tool definition** (the JSON schema that the harness makes from them). The **+** menu in the message box shows the display name of each tool. The model gets the function name. Click **Create tool** to write your own (a GET request to a URL), or **Add from the library…** to add a ready tool, like **crypto_price**. Only the tools that are **On** go to the model.
 - **Chat:** ask a question and follow the rows. Each row shows who does the work: the **Harness**, **LM Studio**, the **Model** or the **Tool**. Click **Details** to see what passed through that step.
 
 ### What you can do
@@ -308,3 +310,4 @@ Thank you to the authors of these works. They are the basis of the ideas and exa
 - Kojima et al. (2022). [Large Language Models are Zero-Shot Reasoners](https://arxiv.org/abs/2205.11916).
 - Renze & Guven (2024). [The Benefits of a Concise Chain of Thought on Problem-Solving in Large Language Models](https://arxiv.org/abs/2401.05618).
 - Jay Alammar and Maarten Grootendorst. [An Illustrated Guide to AI Agents](https://learning.oreilly.com/library/view/an-illustrated-guide/9798341662681/). O'Reilly. The book explains how language models reason, from chain-of-thought prompting to reasoning models trained with reinforcement learning. The penguin and flamingo examples in LM Trace come from this book. The examples on the Memory page come from chapter 4 ([code](https://github.com/HandsOnLLM/An-Illustrated-Guide-To-AI-Agents/tree/main/chapter04)).
+- LM Studio. [Tool Use](https://lmstudio.ai/docs/developer/openai-compat/tools). The OpenAI-compatible tool use API that the Tools page is built on.

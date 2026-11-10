@@ -378,6 +378,8 @@
   .chat-empty { margin: auto; text-align: center; color: var(--ink-3); font-size: 14px; max-width: 360px; line-height: 1.6; }
   .bubble { max-width: 80%; padding: 8px 12px; border-radius: 12px; font-size: 14px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
   .bubble.user { align-self: flex-end; background: var(--paper-2); border-bottom-right-radius: 4px; }
+  .capture .chatlog { height: auto !important; overflow: visible !important; }
+  .capture .side { position: static; height: auto; align-self: stretch; }  /* the sidebar runs the full length of the page */
   .tok-meta { font-size: 12px; color: var(--ink-3); margin-top: -6px; cursor: help; }
   .tok-meta.user { align-self: flex-end; }
   .tok-meta.assistant { align-self: flex-start; }
@@ -424,6 +426,8 @@
   .raw .tx { cursor: help; border-radius: 4px; padding: 0 2px; box-shadow: inset 0 0 0 1px var(--stone-2); background: rgba(var(--shadow-rgb), .03); }
   .raw .nl { color: var(--stone-2); }
   .raw .hint, .hint-s { font: 12.5px var(--sans); color: var(--ink-3); }
+  .nd .inj { margin: 6px 0 6px; }
+  .pre.gen { background: var(--paper); border-color: transparent; color: var(--ink-3); cursor: default; }
   .legend { display: flex; gap: 6px 14px; flex-wrap: wrap; align-items: center; font-size: 12px; color: var(--ink-3); }
   .legend .raw { display: inline; padding: 0; border: 0; background: none; }
   .msg { display: grid; grid-template-columns: 80px minmax(0, 1fr); gap: 8px; padding: 6px 10px; }
@@ -477,6 +481,18 @@
   .tool-bd { padding: 10px 12px; display: grid; gap: 6px; font-size: 13px; color: var(--ink-2); }
   .tool-bd .sig { font: 12.5px var(--mono); color: var(--ink); }
   .tool-bd .src { font: 11.5px var(--mono); color: var(--ink-3); word-break: break-all; }
+  .tool-bd.tv { padding: 14px 16px; gap: 0; }
+  .tv-row { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 12px; padding: 12px 0; }
+  .tv-row:first-child { padding-top: 2px; }
+  .tv-row:last-child { padding-bottom: 2px; }
+  .tv-row + .tv-row { border-top: 1px solid var(--paper-2); }
+  .tv-lbl { font-size: 12.5px; font-weight: 500; color: var(--ink-2); }
+  .tv-val { display: grid; gap: 8px; min-width: 0; line-height: 1.5; }
+  .tv-val details.x { border-top: 0; }
+  .tv-val details.x > summary { padding: 0; }
+  .tv-val details.x[open] > summary { margin-bottom: 8px; }
+  .edit > .grp { grid-column: 1 / -1; margin-top: 10px; padding-top: 14px; border-top: 1px solid var(--paper-2); font: 600 13px var(--sans); color: var(--ink); }
+  .edit .src-b { font: 12.5px var(--mono); color: var(--ink-3); padding-top: 8px; }
   .tool .copy { width: 28px; height: 28px; margin: 0; }
   .tool .copy.del:hover { color: var(--danger); }
   .edit { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 8px 12px; align-items: start; }
@@ -631,6 +647,7 @@
     .ev .meta:empty { display: none; }
     .ev-bd { padding-left: 14px; }
     .edit { grid-template-columns: 1fr; }
+    .tv-row { grid-template-columns: 1fr; gap: 6px; }
     .edit > span { padding-top: 0; }
     .prow { grid-template-columns: 1fr 1fr; }
   }
@@ -663,7 +680,7 @@
     <h1>Tools</h1>
     <select id="chatModel" class="field" aria-label="Chat model" hidden></select>
     <span class="spacer"></span>
-    <button type="button" id="resetAll" class="hdr-btn" title="Clear the chat. The tools stay.">Reset all</button>
+    <button type="button" id="resetAll" class="hdr-btn" title="Clear the chat and set all the settings back to their defaults. Your tools stay.">Reset all</button>
     <span class="seg" id="theme" role="group" aria-label="Theme">
       <button data-theme="light" aria-pressed="false">Light</button>
       <button data-theme="dark" aria-pressed="false">Dark</button>
@@ -675,13 +692,13 @@
       <details class="more"><summary>How it works</summary>
         <p>The model does not call a tool. It only writes a tool call: the intention to use a tool. Two programs do the rest. LM Studio, the inference server, runs the model and parses its output into JSON. The harness (this page and its server) executes the tool and sends the result back.</p>
         <ol class="how">
-          <li><b>Tool creation</b> · <i>Tools tab</i>. You create a tool: a function with a name, a description and parameters. Only the tools that are on go to the model.</li>
-          <li><b>Tool definition</b> · <i>Tool note</i>. The harness defines each tool that is on. LM Studio (structured function calling): a JSON schema. Custom note: text in the system prompt. <i>Sending request</i> sends the definitions in each model call, and <i>Applying chat template</i> puts them into the prompt.</li>
+          <li><b>Tool creation</b> · <i>Tools tab</i>. You create a tool: a function with a name, a description and parameters, and the URL or the Python code that runs it. The harness turns it into the tool definition, a JSON schema. Only the tools that are on go to the model.</li>
+          <li><b>Tool definition</b> · <i>Tool list</i>. The harness defines each tool that is on. LM Studio: a JSON schema in the format of the <a href="https://lmstudio.ai/docs/developer/openai-compat/tools" target="_blank" rel="noopener">OpenAI Function Calling API</a>. Custom note: text in the system prompt. <i>Sending request</i> sends the definitions in each model call, and <i>Applying chat template</i> puts them into the prompt.</li>
           <li><b>Tool selection</b> · <i>Generating tokens</i>. The model thinks, and selects a tool or no tool.</li>
           <li><b>Tool calling</b> · <i>Generating tokens</i>: the model writes the call. <i>Parsing output</i>, <i>Serializing JSON</i>: LM Studio parses it. <i>Parsing tool_calls</i>, <i>Validating tool call</i>: the harness parses and validates it. <i>Executing tool</i>: the server executes it. With Permissions set to Ask every time, the harness asks you first: Allow or Deny.</li>
           <li><b>Output processing</b> · <i>Appending observation</i>: the result goes back to the model as an observation. In the next model call, the model writes the answer.</li>
         </ol>
-        <p>Some models learned special tool tokens in training. LM Studio puts the tools into the chat template of these models. Other models get the tools as a text note, and must follow it.</p>
+        <p>Some models learned special tool tokens in training (native tool use). LM Studio puts the tools into the chat template of these models. Other models get the tools as a text note with the <code>[TOOL_REQUEST]</code> format (default tool use), and must follow it.</p>
       </details></div>
   </section>
 
@@ -693,9 +710,8 @@
 
   <div class="tabpane" id="pane-chat" role="tabpanel">
   <section class="panel" aria-label="Chat">
-    <div class="panel-head"><h2>Chat</h2>
-      <span class="stats" id="stats"></span>
-      <button type="button" id="newChat" class="btn ghost" title="Start a new chat. The tools stay.">New chat</button></div>
+    <div class="panel-head"><button type="button" id="newChat" class="btn ghost" title="Start a new chat: clear the conversation. The settings and the tools stay.">New chat</button>
+      <span class="stats" id="stats"></span></div>
     <!-- System prompt: the same row as on the Trace page. Sent first, in every model call. -->
     <div class="opts sysrow">
       <details class="opt" id="optSystem">
@@ -708,10 +724,10 @@
         </div>
       </details>
     </div>
-    <!-- Tool note: how the tools reach the model. The switch is in the settings row below. -->
+    <!-- Tool list: how the tools reach the model. The switch is in the settings row below. -->
     <div class="opts sysrow">
       <details class="opt" id="optNote">
-        <summary><span class="chev"></span><span class="opt-title">Tool note</span><span class="opt-state" id="stNote"></span><span class="sum-ctl"><span class="seg" id="noteBy" role="group" aria-label="Tool note"><button data-v="lmstudio" aria-pressed="true" title="LM Studio writes the tool note from the JSON schemas">LM Studio</button><button data-v="page" aria-pressed="false" title="You write the tool note in the system prompt">Custom</button></span><span class="info" tabindex="0" data-tip-title="Tool note" data-tip="The text that tells the model which tools it has and how to call one. LM Studio: the page sends the tools as JSON schemas, and LM Studio writes the note (the chat template of a model trained for tools, else a text note). Custom: you write the note into the system prompt, and the harness reads the reply itself.">i</span></span></summary>
+        <summary><span class="chev"></span><span class="opt-title">Tool list</span><span class="opt-state" id="stNote"></span><span class="sum-ctl"><span class="seg" id="noteBy" role="group" aria-label="Tool list"><button data-v="lmstudio" aria-pressed="true" title="LM Studio writes the tool note from the tool definitions">LM Studio</button><button data-v="page" aria-pressed="false" title="You write the tool note in the system prompt">Custom</button></span><span class="info" tabindex="0" data-tip-title="Tool list" data-tip="The text that tells the model which tools it has and how to call one. LM Studio: the page sends the tool definitions as JSON schemas, in the format of the OpenAI Function Calling API, and LM Studio writes the note (the chat template of a model trained for tools, else a text note). Custom: you write the note into the system prompt, and the harness reads the reply itself.">i</span></span></summary>
         <div class="note-box" id="noteBox"></div>
       </details>
     </div>
@@ -768,7 +784,7 @@
 
   <div class="tabpane" id="pane-tools" role="tabpanel" hidden>
   <section class="panel" aria-label="Tools">
-    <div class="panel-head"><h2>Tools</h2><span class="sub">Tool creation: a tool is a function with a name, a description and parameters</span></div>
+    <div class="panel-head"><h2>Tools</h2><span class="sub">Tool creation: a function with a name, a description and parameters. Tool definition: its JSON schema</span></div>
     <div class="card-tools top">
       <button type="button" class="btn ghost" id="addTool" title="Create a URL tool: the server calls the URL with the arguments in it">Create tool</button>
       <select id="library" class="field" aria-label="Add a tool from the library"></select>
@@ -854,38 +870,42 @@ To use a tool, respond with JSON: {"tool": "name", "kwargs": {"param": "value"}}
 // only search_memory, because it searches the facts on this computer (URL tools may not call local addresses).
 const P = (name, type, required, description, extra) => ({ name, type, required, description, ...extra });
 const STARTER = [
-  { name: "multiply", title: "Multiply", icon: "lucide:calculator", kind: "url", on: true, url: "https://api.mathjs.org/v4/?expr={a}*{b}", description: "Multiply two numbers (math.js).",
-    params: [P("a", "number", true, "The first number"), P("b", "number", true, "The second number")] },
+  { name: "multiply", title: "Multiply", icon: "lucide:calculator", kind: "url", on: true, url: "https://api.mathjs.org/v4/?expr={a}*{b}", description: "Multiply two numbers with math.js. Use it for every multiplication, so the result is exact. Returns the product as plain text, for example 90.",
+    params: [P("a", "number", true, "The first number, for example 12"), P("b", "number", true, "The second number, for example 7.5")] },
   { name: "get_weather", title: "Weather", icon: "wi:day-cloudy", kind: "url", on: true, url: "https://wttr.in/{city}?format=%l:+%C,+%t,+feels+like+%f,+wind+%w,+humidity+%h",
-    description: "Get the current weather in a city: conditions, temperature, wind and humidity. Live data from wttr.in.",
-    params: [P("city", "string", true, "The name of the city, for example Toronto")] },
+    description: "Get the current weather in a city from wttr.in: conditions, temperature, feels-like temperature, wind and humidity. Use it when the user asks about the weather now. It gives no forecast. Returns one line of text, for example: Toronto: Sunny, +9°C, feels like +7°C, wind →15km/h, humidity 72%",
+    params: [P("city", "string", true, "The name of the city in English, for example Toronto or New York")] },
   { name: "exchange_rate", title: "Currency Exchange", icon: "andrsrxn:currency-exchange", kind: "url", on: true, url: "https://api.frankfurter.dev/v1/latest?amount={amount}&base={base}&symbols={target}",
-    description: "Convert an amount of money from one currency to another, with today's rate of the European Central Bank (Frankfurter).",
-    params: [P("amount", "number", true, "The amount of money to convert"), P("base", "string", true, "The currency to convert from, as a 3-letter code, for example USD"),
-      P("target", "string", true, "The currency to convert to, as a 3-letter code, for example CAD")] },
+    description: "Convert an amount of money from one currency to another, with the latest daily rate of the European Central Bank (Frankfurter). Use it for currencies like USD, CAD and EUR. It does not convert cryptocurrencies. Returns JSON: amount and base are the input, date is the date of the rate, and rates holds the converted amount in the target currency.",
+    params: [P("amount", "number", true, "The amount of money to convert, for example 100"), P("base", "string", true, "The currency to convert from, as a 3-letter ISO code, for example USD"),
+      P("target", "string", true, "The currency to convert to, as a 3-letter ISO code, for example CAD")] },
   { name: "top_tech_news", title: "Hacker News", icon: "la:hacker-news", kind: "url", on: true, url: "https://hn.algolia.com/api/v1/search?tags=front_page&hitsPerPage={count}&attributesToRetrieve=title,url,points",
-    description: "Get stories on the Hacker News front page now, sorted by points: the title, the points and the link of each story (Algolia).",
+    description: "Get the stories on the Hacker News front page now, sorted by points (Algolia). Use it when the user asks for tech news or what is popular on Hacker News. Returns JSON: hits is the list of stories, each with a title, its points and its url.",
     params: [P("count", "integer", true, "How many stories, from 1 to 10. Use 3 if the user does not say.")] },
-  { name: "search_memory", title: "Memory search", icon: "andrsrxn:database-search", kind: "builtin", on: true, description: "Search the saved facts of the Memory page (the long-term memory). Returns the facts nearest to the query.",
-    params: [P("query", "string", true, "What to look for, for example: Where does Ilse live?")] },
+  { name: "search_memory", title: "Memory search", icon: "andrsrxn:database-search", kind: "builtin", on: true, description: "Search the saved facts about the user on the Memory page (the long-term memory). Use it when the question needs a fact about the user, like where they live or what they like. Returns the 3 facts nearest to the query as plain text, one per line, or a note that no facts are saved.",
+    params: [P("query", "string", true, "What to look for, as a short question or phrase, for example: Where does Ilse live?")] },
   { name: "search_wikipedia", title: "Wikipedia", icon: "tabler:brand-wikipedia", kind: "url", on: true, url: "https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch={query}&srlimit={count}&srprop=snippet&format=json",
-    description: "Search English Wikipedia. Returns the title and a short snippet of each page found.",
+    description: "Search English Wikipedia for pages about a topic. Use it for facts about people, places, events and ideas. Returns JSON: query.search is the list of pages found, each with a title and a snippet, a short extract that contains HTML tags.",
     params: [P("query", "string", true, "What to search for, for example: Model Context Protocol"), P("count", "integer", true, "How many pages, from 1 to 10. Use 3 if the user does not say.")] },
 ];
+// Each definition says the purpose, when to use it, what the output means, and the format of each parameter
+// (OpenAI function calling guide, "Best practices for defining functions"). crypto_price is long, so it has constants.
+const CRYPTO_DESC = "Get the current spot price of a cryptocurrency from Coinbase. Use it when the user asks for the price of a coin today, like Bitcoin or Ethereum. It gives no past prices. Returns JSON: data.amount is the price (a string), data.base is the coin and data.currency is the currency of the price.";
+const CRYPTO_PAIR = "The coin and the currency of the price, in the format COIN-CURRENCY with ticker symbols, for example BTC-USD (Bitcoin in US dollars) or ETH-CAD (Ethereum in Canadian dollars)";
 // More free APIs that need no key (each one tested). URL tools, so you can see and change the URL.
 const LIBRARY = [
   { name: "search_wikipedia", title: "Wikipedia", icon: "tabler:brand-wikipedia", kind: "url", on: true, url: "https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch={query}&srlimit={count}&srprop=snippet&format=json",
-    description: "Search English Wikipedia. Returns the title and a short snippet of each page found.",
+    description: "Search English Wikipedia for pages about a topic. Use it for facts about people, places, events and ideas. Returns JSON: query.search is the list of pages found, each with a title and a snippet, a short extract that contains HTML tags.",
     params: [P("query", "string", true, "What to search for, for example: Model Context Protocol"), P("count", "integer", true, "How many pages, from 1 to 10. Use 3 if the user does not say.")] },
-  { name: "crypto_price", title: "Cryptocurrency", icon: "ri:btc-line", kind: "url", url: "https://api.coinbase.com/v2/prices/{pair}/spot", description: "Get the current price of a crypto currency (Coinbase).",
-    params: [P("pair", "string", true, "The pair, for example BTC-USD or ETH-CAD")] },
-  { name: "wikipedia_summary", title: "Wikipedia summary", icon: "lucide:book-open", kind: "url", url: "https://en.wikipedia.org/api/rest_v1/page/summary/{title}", description: "Get the summary of an English Wikipedia article.",
-    params: [P("title", "string", true, "The title of the article, for example Rayleigh scattering")] },
-  { name: "mastodon_trends", title: "Mastodon trends", icon: "lucide:trending-up", kind: "url", url: "https://mastodon.social/api/v1/trends/tags?limit={limit}", description: "Get the hashtags that are popular on mastodon.social now.",
-    params: [P("limit", "integer", true, "How many hashtags, from 1 to 10")] },
-  { name: "sample_post", title: "Sample post", icon: "lucide:file-text", kind: "url", url: "https://jsonplaceholder.typicode.com/posts/{id}", description: "Get a sample blog post (fake test data from JSONPlaceholder).",
+  { name: "crypto_price", title: "Cryptocurrency", icon: "ri:btc-line", kind: "url", url: "https://api.coinbase.com/v2/prices/{pair}/spot", description: CRYPTO_DESC,
+    params: [P("pair", "string", true, CRYPTO_PAIR)] },
+  { name: "wikipedia_summary", title: "Wikipedia summary", icon: "lucide:book-open", kind: "url", url: "https://en.wikipedia.org/api/rest_v1/page/summary/{title}", description: "Get the summary of one English Wikipedia article by its exact title. Use it when you know the title, for example after search_wikipedia. Returns JSON: title is the title of the article, description is a short description and extract is the summary.",
+    params: [P("title", "string", true, "The exact title of the article, for example Rayleigh scattering")] },
+  { name: "mastodon_trends", title: "Mastodon trends", icon: "lucide:trending-up", kind: "url", url: "https://mastodon.social/api/v1/trends/tags?limit={limit}", description: "Get the hashtags that are popular on mastodon.social now. Use it when the user asks what people talk about on Mastodon. Returns a JSON list: each item has the name of the hashtag, its url and its history, the uses and the accounts for each of the last 7 days, newest first.",
+    params: [P("limit", "integer", true, "How many hashtags, from 1 to 10. Use 5 if the user does not say.")] },
+  { name: "sample_post", title: "Sample post", icon: "lucide:file-text", kind: "url", url: "https://jsonplaceholder.typicode.com/posts/{id}", description: "Get a sample blog post from JSONPlaceholder: fake test data in Latin-like text. Use it only to test tool calls. Returns JSON: id, userId, title and body.",
     params: [P("id", "integer", true, "The number of the post, from 1 to 100")] },
-  { name: "corporate_buzzword", title: "Corporate buzzwords", icon: "lucide:megaphone", kind: "url", url: "https://corporatebs-generator.sameerkumar.website/", description: "Get a random phrase of corporate buzzwords (a joke API).", params: [] },
+  { name: "corporate_buzzword", title: "Corporate buzzwords", icon: "lucide:megaphone", kind: "url", url: "https://corporatebs-generator.sameerkumar.website/", description: "Get a random phrase of corporate buzzwords (a joke API). Use it when the user asks for a buzzword or a corporate-speak joke. Returns JSON: phrase is the phrase.", params: [] },
 ];
 const TYPES = ["string", "number", "integer", "boolean"];
 const NAME_RE = /^[A-Za-z_][A-Za-z0-9_]{0,63}$/;
@@ -933,6 +953,29 @@ async function loadTools() {
     const d = [...STARTER, ...LIBRARY].find(x => x.name === t.name);
     if (d?.title) { t.title = d.title; moved = true; }
   }
+  // Tools saved with the first, short definitions (before 2026-11-10): the detailed definition, for each text you did not change.
+  const OLD_TEXT = {
+    multiply: { d: "Multiply two numbers (math.js).", p: { a: "The first number", b: "The second number" } },
+    get_weather: { d: "Get the current weather in a city: conditions, temperature, wind and humidity. Live data from wttr.in.", p: { city: "The name of the city, for example Toronto" } },
+    exchange_rate: { d: "Convert an amount of money from one currency to another, with today's rate of the European Central Bank (Frankfurter).", p: { amount: "The amount of money to convert", base: "The currency to convert from, as a 3-letter code, for example USD", target: "The currency to convert to, as a 3-letter code, for example CAD" } },
+    top_tech_news: { d: "Get stories on the Hacker News front page now, sorted by points: the title, the points and the link of each story (Algolia)." },
+    search_memory: { d: "Search the saved facts of the Memory page (the long-term memory). Returns the facts nearest to the query.", p: { query: "What to look for, for example: Where does Ilse live?" } },
+    search_wikipedia: { d: "Search English Wikipedia. Returns the title and a short snippet of each page found." },
+    wikipedia_summary: { d: "Get the summary of an English Wikipedia article.", p: { title: "The title of the article, for example Rayleigh scattering" } },
+    mastodon_trends: { d: "Get the hashtags that are popular on mastodon.social now.", p: { limit: "How many hashtags, from 1 to 10" } },
+    sample_post: { d: "Get a sample blog post (fake test data from JSONPlaceholder)." },
+    corporate_buzzword: { d: "Get a random phrase of corporate buzzwords (a joke API)." },
+    crypto_price: { d: "Get the current price of a crypto currency (Coinbase).", p: { pair: "The pair, for example BTC-USD or ETH-CAD" } },
+  };
+  for (const t of tools) {
+    const o = OLD_TEXT[t.name], d = [...STARTER, ...LIBRARY].find(x => x.name === t.name);
+    if (!o || !d) continue;
+    if (t.description === o.d) { t.description = d.description; moved = true; }
+    for (const p of t.params) {
+      const n = d.params.find(x => x.name === p.name);
+      if (n && o.p?.[p.name] === p.description) { p.description = n.description; moved = true; }
+    }
+  }
   if (moved) saveTools();
 }
 let saveTimer = null;
@@ -943,7 +986,8 @@ function saveTools() {
 }
 
 // ---- Settings (remembered in this browser)
-const S = { noteBy: "lmstudio", harness: "on", stepMode: "auto", perm: "allow", tab: "chat", temp: 0, maxTokens: 1500, maxCalls: 5 };
+const S_DEFAULT = { noteBy: "lmstudio", harness: "on", stepMode: "auto", perm: "allow", tab: "chat", temp: 0, maxTokens: 1500, maxCalls: 5 };
+const S = { ...S_DEFAULT };
 try { Object.assign(S, JSON.parse(localStorage.getItem("toolsPage2") || "{}")); noteText = localStorage.getItem("toolNote") || NOTE_DEFAULT; if (noteText === NOTE_OLD) noteText = NOTE_DEFAULT; } catch {}
 if (!["manual", "auto"].includes(S.stepMode)) S.stepMode = "auto";
 const keep = () => { try { localStorage.setItem("toolsPage2", JSON.stringify(S)); localStorage.setItem("toolNote", noteText); } catch {} };
@@ -1099,7 +1143,7 @@ function promptView(text, model, body) {
       const later = prev && prev.role !== "system" && prev.role !== "developer";  // after the conversation started
       const lbl = tool && next?.role === "tool" ? ["call", "Tool call · from an earlier reply, as the chat template writes it"]
         : tool && later ? ["call", "Tool call and tool result · LM Studio writes them in the format of the chat template"]
-        : tool ? ["tool", "Tools · LM Studio writes them from the JSON schema, in the format of the chat template"] : ["sys", "Chat template · text that the template adds"];
+        : tool ? ["tool", "Tools · LM Studio writes them from the tool definitions, in the format of the chat template"] : ["sys", "Chat template · text that the template adds"];
       out += `<div class="pb k-${lbl[0]}"><div class="pb-lbl">${lbl[1]}</div>${code(mid, model)}</div>`;
     }
     line(tail);
@@ -1400,8 +1444,8 @@ const short = (t, max = 90) => { t = String(t ?? "").replace(/\s+/g, " ").trim()
 const tipped = (label, text) => tipSpan(label, label, text);
 const tipSpan = (label, title, tip) => `<span tabindex="0" data-tip-title="${esc(title)}" data-tip="${esc(tip)}">${esc(label)}</span>`;
 const KIND = {
-  native: ["Native format", "The model learned tools in training. LM Studio puts the tools into its chat template, with the special tool tokens of the model. Click Details to see what the model gets."],
-  lmnote: ["LM Studio text note", "The model did not learn tools in training. LM Studio adds a text note with the tools and the [TOOL_REQUEST] format. The model must follow it as plain text."],
+  native: ["Native format", "Native tool use: the model learned tools in training. LM Studio puts the tools into its chat template, with the special tool tokens of the model. Click Details to see what the model gets."],
+  lmnote: ["Default format", "Default tool use: the model did not learn tools in training. LM Studio adds a text note with the tools and the [TOOL_REQUEST] format. The model must follow it as plain text."],
   page: ["Custom note", "Your tool note is in the system prompt, as plain text. The model must follow it."],
   none: ["", ""], unknown: ["", ""],
 };
@@ -1418,7 +1462,7 @@ function rowHtml(s, k) {
     const b = s.body, nt = b.tools?.length || 0;
     const sentence = tipped("Sending request", nt ? "The harness sends the messages and the tool definitions to LM Studio (POST /v1/chat/completions). It sends them again in each model call." : "The harness sends the messages to LM Studio (POST /v1/chat/completions). No tools are on.");
     const body = det(k + "m", "Messages", msgRows(b.messages, b.messages.length - 1), `${b.messages.length}`)
-      + (nt ? det(k + "t", "Tools (JSON schema)", `<pre class="pre">${esc(JSON.stringify(b.tools, null, 2))}</pre>`, plural(nt, "tool")) : "")
+      + (nt ? det(k + "t", "Tool list", `<pre class="pre">${esc(JSON.stringify(b.tools, null, 2))}</pre>`, plural(nt, "tool")) : "")
       + (() => { const { messages, tools, ...rest } = b; return det(k + "p", "Parameters", `<pre class="pre">${esc(JSON.stringify(rest, null, 2))}</pre>`, `${Object.keys(rest).length}`); })();
     return row(k, "Harness", sentence, "", body);
   }
@@ -1538,7 +1582,7 @@ let editing = null;  // the index of the tool in edit mode
 let editSnap = null;  // the tool as it was when the editor opened (null: a new tool), for Cancel
 // The note box is in a closed row at first: fit its height when the row opens.
 document.addEventListener("toggle", e => { if (e.target.id === "optNote" && e.target.open && $("noteText")) fit($("noteText"), 400); }, true);
-// The parts of the Tool note row start open. What you close stays closed.
+// The parts of the Tool list row start open. What you close stays closed.
 const noteClosed = new Set();
 const noteDet = (key, title, body) => `<details class="x nd" data-nkey="${key}"${noteClosed.has(key) ? "" : " open"}><summary><span class="chev"></span>${title}</summary>${body}</details>`;
 document.addEventListener("toggle", e => { const k = e.target.dataset?.nkey; if (k) e.target.open ? noteClosed.delete(k) : noteClosed.add(k); }, true);
@@ -1546,16 +1590,16 @@ document.addEventListener("toggle", e => { const k = e.target.dataset?.nkey; if 
 document.querySelector("#optNote > summary").addEventListener("click", e => { if (e.target.closest(".sum-ctl")) e.preventDefault(); });
 function renderNote() {
   const page = S.noteBy === "page";
-  $("stNote").textContent = page ? "Custom: your note in the system prompt" : `LM Studio: ${active().length} JSON schemas`;
+  const nOn = active().length, nTools = `${nOn} tool${nOn === 1 ? "" : "s"}`;
+  $("stNote").textContent = nOn ? nTools : "No tools are on";
   $("stNote").classList.toggle("on", page);
   $("noteBox").innerHTML = page
     ? `<div class="note">Tool definition with a custom note: the request has no tools parameter. The harness adds this note to the system prompt, after the System prompt. <code>{tools}</code> becomes one line per tool that is on. The model must answer in the JSON format of the note; the harness reads it.</div>
        <textarea id="noteText" class="input" spellcheck="false" aria-label="Tool note">${esc(noteText)}</textarea>
        <div class="send-tools"><button type="button" class="btn ghost" id="noteReset" title="Use the first note again">Reset note</button></div>
        ${noteDet("note-prev", "System prompt that the model gets", `<pre class="pre">${esc(systemText())}</pre>`)}`
-    : `<div class="note">Tool definition with structured function calling: the harness sends each tool that is on as a JSON schema in the <code>tools</code> parameter of the request, and the system message is only your System prompt. LM Studio writes the note: for a model trained for tools, it puts the schemas into the chat template with its special tool tokens; for other models, it adds a text note with the <code>[TOOL_REQUEST]</code> format. After you send a message, see the exact prompt: Applying chat template → Details. To write the note yourself, select <button type="button" class="linkbtn" id="toPage">Custom</button>.</div>
-       ${noteDet("note-json", `Tools parameter (JSON schema) · ${active().length} tool${active().length === 1 ? "" : "s"}`, `<pre class="pre json">${esc(JSON.stringify(active().map(schemaOf), null, 2) || "[]")}</pre>`)}
-       ${noteDet("note-prev", "System prompt that the model gets", `<pre class="pre">${esc(systemText() || "(none: the request has no system message)")}</pre>`)}`;
+    : `<div class="note">The harness sends the tool list in the <code>tools</code> parameter of the request: the tool definition of each tool that is on, a JSON schema in the format of the <a href="https://lmstudio.ai/docs/developer/openai-compat/tools" target="_blank" rel="noopener">OpenAI Function Calling API</a>. The system message is only your System prompt. LM Studio writes the note: for a model trained for tools (native tool use), it puts the tool definitions into the chat template with its special tool tokens; for other models (default tool use), it adds a text note with the <code>[TOOL_REQUEST]</code> format. After you send a message, see the exact prompt: Applying chat template → Details. To write the note yourself, select <button type="button" class="linkbtn" id="toPage">Custom</button>.</div>
+       ${noteDet("note-json", "JSON schema", `<div class="hint-s inj">Injected into the system prompt</div><pre class="pre json">${esc(JSON.stringify(active().map(schemaOf), null, 2) || "[]")}</pre>`)}`;
   if (page) {
     $("noteText").oninput = e => { noteText = e.target.value; keep(); const pv = document.querySelector('[data-nkey="note-prev"] .pre'); if (pv) pv.textContent = systemText(); };
     $("noteReset").onclick = () => { noteText = NOTE_DEFAULT; keep(); renderNote(); };
@@ -1568,21 +1612,24 @@ function renderTools() {
     const head = `<div class="tool-hd"><label class="on" title="${t.on ? "On: the model gets this tool" : "Off: the model does not get this tool"}"><input type="checkbox" data-on="${i}"${t.on ? " checked" : ""}>${t.on ? "On" : "Off"}</label>${iconHtml(t.icon, i)}<span class="nm" title="Function name: ${esc(t.name)}">${esc(t.title || t.name)}</span>
       <span class="badge${builtin ? "" : " blue"}" tabindex="0" data-tip-title="${builtin ? "Built-in tool" : "URL tool"}" data-tip="${builtin ? "Python code in server.py. You can change the description, not the parameters." : "The server sends a GET request to the URL. Each {name} in the URL becomes the argument of that name."}">${builtin ? "Built-in" : "URL"}</span>
       <span class="right"><button type="button" class="copy" data-edit="${i}" title="${editing === i ? "Done" : "Edit this tool"}" aria-label="Edit ${esc(t.name)}">${ICON_EDIT}</button><button type="button" class="copy del" data-del="${i}" title="Delete this tool" aria-label="Delete ${esc(t.name)}">${ICON_DEL}</button></span></div>`;
-    if (editing !== i) return `<div class="tool${t.on ? "" : " off"}">${head}<div class="tool-bd"><span class="sig">${esc(signature(t))}</span><span>${esc(t.description)}</span>${t.kind === "url" ? `<span class="src">GET ${esc(t.url)}</span>` : ""}
-      ${det("schema" + i, "JSON schema", `<pre class="pre">${esc(JSON.stringify(schemaOf(t), null, 2))}</pre>`, "what LM Studio gets")}</div></div>`;
+    if (editing !== i) return `<div class="tool${t.on ? "" : " off"}">${head}<div class="tool-bd tv"><div class="tv-row"><span class="tv-lbl">Function</span><div class="tv-val"><span class="sig">${esc(signature(t))}</span><span>${esc(t.description)}</span><span class="src">${builtin ? "Python code in server.py" : `GET ${esc(t.url)}`}</span></div></div>
+      <div class="tv-row"><span class="tv-lbl">Definition</span><div class="tv-val">${det("schema" + i, "JSON schema", `<pre class="pre gen" title="Auto-generated from the tool creation fields. You cannot edit it.">${esc(JSON.stringify(schemaOf(t), null, 2))}</pre>`)}</div></div></div></div>`;
     const prow = (p, j) => `<div class="prow"><input class="field mono" data-p="${i}.${j}.name" value="${esc(p.name)}" aria-label="Parameter name"${builtin ? " disabled" : ""}>
       <select class="field" data-p="${i}.${j}.type" aria-label="Type"${builtin ? " disabled" : ""}>${TYPES.map(y => `<option${y === p.type ? " selected" : ""}>${y}</option>`).join("")}</select>
       <label><input type="checkbox" data-p="${i}.${j}.required"${p.required ? " checked" : ""}${builtin ? " disabled" : ""}>required</label>
-      <input class="field" data-p="${i}.${j}.description" value="${esc(p.description || "")}" placeholder="What the model must give" aria-label="Description">
+      <input class="field" data-p="${i}.${j}.description" value="${esc(p.description || "")}" placeholder="What the model must give, its format and an example" aria-label="Description">
       ${builtin ? "<span></span>" : `<button type="button" class="copy del" data-pdel="${i}.${j}" title="Delete this parameter" aria-label="Delete parameter">${ICON_DEL}</button>`}</div>`;
     return `<div class="tool">${head}<div class="tool-bd"><div class="edit">
       <span>Display name</span><input class="field" data-f="${i}.title" value="${esc(t.title || "")}" placeholder="${esc(t.name)}" aria-label="Display name" title="The name in the + Tools menu. The model never sees it.">
       <span>Icon</span><div class="icon-row">${iconHtml(t.icon, i)}<input class="field mono" data-f="${i}.icon" value="${esc(t.icon || "")}" placeholder="lucide:wrench" aria-label="Icon" title="An Iconify icon name, prefix:name. The model never sees it."><a href="https://icon-sets.iconify.design/lucide/" target="_blank" rel="noopener">Browse icons</a></div>
+      <div class="grp">Tool creation</div>
+      ${t.kind === "url" ? `<span>URL</span><input class="field mono" data-f="${i}.url" value="${esc(t.url || "")}" placeholder="https://api.example.com/x?city={city}" aria-label="URL">` : `<span>Code</span><span class="src-b">Python code in server.py</span>`}
       <span>Function name</span><input class="field mono" data-f="${i}.name" value="${esc(t.name)}"${builtin ? " disabled" : ""} aria-label="Function name" title="The name the model gets, and writes in its tool call">
-      <span>Description</span><textarea class="field" data-f="${i}.description" aria-label="Description">${esc(t.description)}</textarea>
-      ${t.kind === "url" ? `<span>URL</span><input class="field mono" data-f="${i}.url" value="${esc(t.url || "")}" placeholder="https://api.example.com/x?city={city}" aria-label="URL">` : ""}
+      <span>Description</span><textarea class="field" data-f="${i}.description" placeholder="What the tool does, when to use it (and when not), and what it returns. The model reads this to decide when to use the tool." aria-label="Description">${esc(t.description)}</textarea>
       <span>Parameters</span><div class="ptab"><div class="prow hd"><span>Name</span><span>Type</span><span></span><span>Description</span><span></span></div>${t.params.map(prow).join("")}
         ${builtin ? "" : `<div><button type="button" class="btn ghost small-btn" data-padd="${i}">Add parameter</button></div>`}</div>
+      <div class="grp">Tool definition</div>
+      <span>JSON schema</span><pre class="pre gen" id="tdef${i}" title="Auto-generated from the tool creation fields. You cannot edit it.">${esc(JSON.stringify(schemaOf(t), null, 2))}</pre>
       </div><div class="error" id="terr${i}"></div>
       <div class="edit-actions"><button type="button" class="btn ghost small-btn" data-cancel="${i}" title="Undo the changes since you opened the editor (Esc)">Cancel</button><button type="button" class="btn small-btn" data-done="${i}">Done</button></div></div></div>`;
   }).join("") || `<div class="hint-s">No tools. Click Create tool, or Reset tools.</div>`;
@@ -1598,6 +1645,7 @@ function toolError(i) {
   if (names.some(n => !NAME_RE.test(n))) return "A parameter name must be letters, digits or _ (no spaces).";
   if (new Set(names).size !== names.length) return "Two parameters have the same name.";
   if (t.kind === "url" && !/^https?:\/\//.test(t.url || "")) return "The URL must start with https:// or http://.";
+  if (!(t.description || "").trim()) return "Write a description. The model reads it to decide when to use the tool.";
   return "";
 }
 document.addEventListener("input", e => {
@@ -1607,6 +1655,7 @@ document.addEventListener("input", e => {
   else { const [i, j, k] = p.split("."); tools[+i].params[+j][k] = e.target.type === "checkbox" ? e.target.checked : e.target.value; }
   const i = +(f || p).split(".")[0], err = toolError(i);
   $("terr" + i).textContent = err;
+  const def = $("tdef" + i); if (def) def.textContent = JSON.stringify(schemaOf(tools[i]), null, 2);
   if (!err) saveTools();
   if (f?.endsWith(".icon")) document.querySelectorAll(`[data-ticon="${i}"]`).forEach(el => { el.dataset.icon = tools[i].icon; el.innerHTML = iconSvg(tools[i].icon); });
   if (f?.endsWith(".icon") || f?.endsWith(".title")) renderWiki();
@@ -1632,7 +1681,7 @@ document.addEventListener("click", e => {
 });
 $("addTool").onclick = () => {
   let n = 1; while (tools.some(t => t.name === `my_tool_${n}`)) n++;
-  tools.push({ name: `my_tool_${n}`, title: "", icon: "lucide:link", kind: "url", on: true, url: "https://", description: "What the tool does. The model reads this to decide when to use the tool.", params: [P("city", "string", true, "")] });
+  tools.push({ name: `my_tool_${n}`, title: "", icon: "lucide:link", kind: "url", on: true, url: "https://", description: "", params: [P("city", "string", true, "")] });
   openEditor(tools.length - 1, true);
 };
 // The editor saves as you type. Cancel puts the tool back as it was when the editor opened; a new tool is removed.
@@ -1892,12 +1941,26 @@ $("msg").addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey
 $("msg").addEventListener("input", () => fit($("msg")));
 $("newChat").onclick = () => { if (busy) return; newChat(); renderChat(); setStatus(""); };
 const waitIdle = () => new Promise(r => { const f = () => busy ? setTimeout(f, 50) : r(); f(); });
-$("resetAll").onclick = async () => { stop(); await waitIdle(); chat = []; history = []; stats = { calls: 0, tools: 0, tokens: 0, ctx: 0 }; openKeys.clear(); rawKeys.clear(); setStatus(""); $("error").textContent = ""; renderChat(); };
+// Reset all: the chat and all the settings (System prompt, Tool list, sliders, Harness, Mode, Permissions) back to their
+// defaults, as on the Trace page. The tools stay: Reset tools on the Tools tab is for them.
+$("resetAll").onclick = async () => {
+  stop(); await waitIdle();
+  newChat(); setStatus(""); $("error").textContent = "";
+  Object.assign(S, { ...S_DEFAULT, tab: S.tab }); noteText = NOTE_DEFAULT; keep();
+  ["noteBy", "harness", "stepMode"].forEach(id => setSeg(id, S[id]));
+  $("system").value = SYSTEM; $("system").dispatchEvent(new Event("input"));
+  renderSampling(); renderPerm(); renderAll();
+};
 
 // The chat fills the window above the message box: the box stays in view, and the chat scrolls.
+// tools.html?capture: the chat has no scroll of its own and grows with its content, so a full-page screenshot
+// (DevTools "Capture full size screenshot", or a capture extension) shows the whole chat.
+var CAPTURE = new URLSearchParams(location.search).has("capture");  // var: sizeChat may run before this line
+if (CAPTURE) document.documentElement.classList.add("capture");
 function sizeChat() {
   const log = $("log"), bar = document.querySelector(".sendbar");
   if (!log.offsetParent) return;
+  if (CAPTURE) { log.style.height = "auto"; return; }
   const top = log.getBoundingClientRect().top + scrollY;
   log.style.height = Math.max(320, innerHeight - top - bar.offsetHeight - 52) + "px";
 }
