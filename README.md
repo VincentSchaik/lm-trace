@@ -265,6 +265,28 @@ The 3 new facts are in both stores: the page writes the file and embeds the fact
 
 ![Example 5: the new facts in the stores](docs/memory-5-stores.png)
 
+## Tools
+
+Open **Tools** in the sidebar. The page is a playground for tool usage. You trace every step of how an LLM uses a tool, from your question to the final answer. The tools go into the prompt (in-context learning), the model writes a tool call, and the harness runs the tool and sends the result back.
+
+The page has two tabs:
+
+- **Tools:** your tools, each with a display name, a function name, a description and parameters. The **+** menu in the message box shows the display name. The model gets the function name. Click **Create tool** to write your own (a GET request to a URL), or **Add from the library…** to add a ready tool, like **crypto_price**. Only the tools that are **On** go to the model.
+- **Chat:** ask a question and follow the rows. Each row shows who does the work: the **Harness**, **LM Studio**, the **Model** or the **Tool**. Click **Details** to see what passed through that step.
+
+### What you can do
+
+- **Follow a tool call from start to finish.** Ask "What is the price of Bitcoin today?" and follow the five steps of tool usage: tool creation, tool definition, tool selection, tool calling and output processing. The model writes the call, LM Studio converts it to JSON, the harness validates it and calls Coinbase, and the model writes the answer from the result.
+- **Inspect the prompt and the tokens.** Open **Applying chat template** to see where your tools go in the prompt, and **Generating tokens** to see the tool call as the model wrote it.
+- **Compare tools for the same question.** Turn on **exchange_rate** and ask for the price of Bitcoin in CAD in two ways. Each tool uses different data.
+- **Write guardrails.** Put a rule in the **System prompt**, or select one from the **Examples** menu, and see how it changes tool selection. **Permissions** (Deny all, Ask every time, Allow all) control which tools run.
+- **Compare models.** Load a small model, like Gemma 3 1B, and ask the same questions. **Validating tool call** shows the calls that do not match the schema.
+- **Create your own tools.** Give a name, a description, a URL and parameters, and see how well each model uses them.
+
+![Tools: one tool call for the price of Bitcoin, with Gemma 4 12B](docs/t-price-of-bitcoin.png)
+
+Your tools are in `tools.json`. Git ignores this file.
+
 ## Limitations
 
 These limitations come from LM Studio:

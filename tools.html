@@ -298,6 +298,33 @@
   .panel { flex: none; }
   html, body { height: auto; min-height: 100vh; }
   #chatModel { min-width: 300px; }
+  /* + menu: Tools ›, then a list of the tools with On/Off switches (like the Connectors menu of a chatbot). */
+  .plus-wrap { margin-right: 8px; }
+  .perm-menu.plus-menu { width: 220px; }
+  .perm-menu.tools-menu { left: 228px; width: 300px; max-height: 420px; overflow-y: auto; }
+  .perm-menu .sub { grid-template-columns: 20px 1fr 16px; }
+  .perm-menu .sub[aria-expanded="true"] { background: var(--paper); }
+  .perm-menu .sep { height: 1px; margin: 6px 8px; background: var(--line); }
+  .perm-menu .tl { grid-template-columns: 20px 1fr 34px; }
+  .perm-menu .tl .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .plus-wrap .perm-menu { border-radius: 14px; padding: 6px; }
+  .plus-wrap .perm-menu button { padding: 7px 10px; border-radius: 8px; font-size: 14px; }
+  .plus-wrap .perm-menu button svg { width: 17px; height: 17px; color: var(--ink-2); }
+  .perm-menu .tl[aria-checked="true"] { background: transparent; color: var(--ink); }
+  .perm-menu .tl:hover { background: var(--paper); }
+  .sw { position: relative; width: 34px; height: 20px; border-radius: 10px; background: var(--stone-2); transition: background .15s; }
+  .sw::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.25); transition: transform .15s; }
+  [aria-checked="true"] > .sw { background: var(--primary); }
+  [aria-checked="true"] > .sw::after { transform: translateX(14px); }
+  .perm-menu .none { padding: 8px 10px; font-size: 13px; color: var(--ink-3); }
+  @media (max-width: 640px) { .perm-menu.tools-menu { left: 0; } }
+  /* Wikipedia: a pill with the icon and the word, like the Search button of a chatbot. On: blue. */
+  .wiki-btn { flex: none; display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px 0 10px; margin-left: 8px; border: 1px solid var(--line); border-radius: 18px; background: var(--field); color: var(--ink-2); font: 500 14px var(--sans); cursor: pointer; }
+  .wiki-btn svg { width: 18px; height: 18px; }
+  .wiki-btn:hover { color: var(--ink); background: var(--paper); border-color: var(--stone-2); }
+  .wiki-btn[aria-pressed="true"] { color: var(--primary); background: rgba(var(--red-rgb), .12); border-color: transparent; }
+  .wiki-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+  @media (max-width: 640px) { .wiki-btn { width: 36px; padding: 0; justify-content: center; } .wiki-btn span { display: none; } }
   .lede { margin-bottom: 14px; }
   .lede .more { display: inline; }
   .lede .more[open] { display: block; }
@@ -351,6 +378,9 @@
   .chat-empty { margin: auto; text-align: center; color: var(--ink-3); font-size: 14px; max-width: 360px; line-height: 1.6; }
   .bubble { max-width: 80%; padding: 8px 12px; border-radius: 12px; font-size: 14px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
   .bubble.user { align-self: flex-end; background: var(--paper-2); border-bottom-right-radius: 4px; }
+  .tok-meta { font-size: 12px; color: var(--ink-3); margin-top: -6px; cursor: help; }
+  .tok-meta.user { align-self: flex-end; }
+  .tok-meta.assistant { align-self: flex-start; }
   .bubble.assistant { align-self: flex-start; background: var(--field); border: 1px solid var(--line); border-bottom-left-radius: 4px; }
   .bubble .wait, .bubble .ph { color: var(--ink-3); }
 
@@ -440,7 +470,7 @@
   .tool { border: 1px solid var(--line); border-radius: 8px; background: var(--field); overflow: hidden; }
   .tool.off { opacity: .6; }
   .tool-hd { display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; padding: 8px 12px; background: var(--paper); border-bottom: 1px solid var(--line); }
-  .tool-hd .nm { font: 600 13px var(--mono); color: var(--ink); }
+  .tool-hd .nm { font: 600 14px var(--sans); color: var(--ink); }  /* the display name; the function name is in the signature below */
   .tool-hd .right { margin-left: auto; display: flex; gap: 6px; align-items: center; }
   .tool-hd label.on { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink-2); cursor: pointer; }
   .tool-hd input[type=checkbox], .prow input[type=checkbox] { accent-color: var(--red); width: 15px; height: 15px; margin: 0; cursor: pointer; }
@@ -563,6 +593,21 @@
   @keyframes pulse { 50% { opacity: .25; } }
   @media (prefers-reduced-motion: reduce) { .busy-dot { animation: none; } }
   .small-btn { height: 30px !important; padding: 0 12px !important; font-size: 12.5px !important; }
+  .ti { display: inline-grid; place-items: center; flex: none; color: var(--ink-2); }
+  .ti svg { width: 17px; height: 17px; }
+  .tool-hd .ti { margin-right: -2px; }
+  .icon-row { display: flex; align-items: center; gap: 10px; }
+  .icon-row .ti { width: 36px; height: 36px; border: 1px solid var(--line); border-radius: 8px; background: var(--field); }
+  .icon-row .ti svg { width: 20px; height: 20px; }
+  .icon-row input { flex: 1; min-width: 0; }
+  .icon-row a { flex: none; font-size: 13px; color: var(--primary); }
+  .ctx { display: inline-flex; align-items: center; gap: 6px; cursor: help; }
+  .ctx svg { width: 15px; height: 15px; transform: rotate(-90deg); }
+  .ctx circle { fill: none; stroke: var(--line); stroke-width: 2.5; }
+  .ctx circle.arc { stroke: var(--primary); stroke-linecap: round; }
+  .ctx.high circle.arc { stroke: #d98e04; }
+  .ctx.full circle.arc { stroke: var(--danger); }
+  .edit-actions { display: flex; justify-content: flex-end; gap: 8px; padding-top: 10px; }
   .note-box { padding: 0 0 14px; display: grid; gap: 10px; }
   .opt > summary .sum-ctl { margin-left: auto; display: inline-flex; align-items: center; gap: 10px; cursor: default; }
   .sum-ctl .seg { padding: 2px; } .sum-ctl .seg button { height: 26px; }
@@ -643,7 +688,7 @@
   <div class="tabbox">
   <div class="tabs" role="tablist" aria-label="Views">
     <button type="button" role="tab" data-tab="chat" aria-selected="true">Chat</button>
-    <button type="button" role="tab" data-tab="tools" aria-selected="false">Tools <span class="cnt" id="toolCount"></span></button>
+    <button type="button" role="tab" data-tab="tools" aria-selected="false">Tools</button>
   </div>
 
   <div class="tabpane" id="pane-chat" role="tabpanel">
@@ -703,8 +748,12 @@
     <div class="cbox">
       <div class="cbox-top"><textarea id="msg" class="cbox-input" rows="1" placeholder="Ask something, or select an example." title="Enter sends the message. Shift + Enter adds a line."></textarea><div class="input-tools"><button type="button" class="copy" id="saveMsg" title="Save as an example: it shows below the message box" aria-label="Save as an example"></button><button type="button" class="copy" id="copyMsg" title="Copy the message" aria-label="Copy the message"></button></div></div>
       <div class="cbox-bar">
+        <div class="perm-wrap plus-wrap"><button type="button" class="perm-btn" id="plusBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="plusMenu" title="Tools" aria-label="Tools"></button>
+          <div class="perm-menu plus-menu" id="plusMenu" role="menu" aria-label="Add" hidden></div>
+          <div class="perm-menu tools-menu" id="toolsMenu" role="menu" aria-label="Tools" hidden></div></div>
         <div class="perm-wrap"><button type="button" class="perm-btn" id="permBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="permMenu"></button>
           <div class="perm-menu" id="permMenu" role="menu" aria-label="Permissions" hidden></div></div>
+        <button type="button" class="wiki-btn" id="wikiBtn" aria-pressed="false"></button>
         <div id="chatPick" class="grow"></div>
         <button id="sendBtn" class="send-round" title="Send the message (Enter)" aria-label="Send"></button>
       </div>
@@ -801,37 +850,42 @@ If needed, you can only use the following tools to assist you in completing task
 
 To use a tool, respond with JSON: {"tool": "name", "kwargs": {"param": "value"}}`;
 
-// ---- Tools: the starter set. Built-in tools run as Python on the server; URL tools are a GET request.
+// ---- Tools: the starter set. URL tools are a GET request to a free API. Built-in tools run as Python on the server:
+// only search_memory, because it searches the facts on this computer (URL tools may not call local addresses).
 const P = (name, type, required, description, extra) => ({ name, type, required, description, ...extra });
 const STARTER = [
-  { name: "multiply", kind: "builtin", on: true, description: "Multiply two numbers.",
+  { name: "multiply", title: "Multiply", icon: "lucide:calculator", kind: "url", on: true, url: "https://api.mathjs.org/v4/?expr={a}*{b}", description: "Multiply two numbers (math.js).",
     params: [P("a", "number", true, "The first number"), P("b", "number", true, "The second number")] },
-  { name: "get_weather", kind: "builtin", on: true, description: "Get the current weather in a city: temperature, wind and conditions. Live data from Open-Meteo.",
+  { name: "get_weather", title: "Weather", icon: "wi:day-cloudy", kind: "url", on: true, url: "https://wttr.in/{city}?format=%l:+%C,+%t,+feels+like+%f,+wind+%w,+humidity+%h",
+    description: "Get the current weather in a city: conditions, temperature, wind and humidity. Live data from wttr.in.",
     params: [P("city", "string", true, "The name of the city, for example Toronto")] },
-  { name: "exchange_rate", kind: "url", on: true, url: "https://api.frankfurter.dev/v1/latest?amount={amount}&base={base}&symbols={target}",
+  { name: "exchange_rate", title: "Currency Exchange", icon: "andrsrxn:currency-exchange", kind: "url", on: true, url: "https://api.frankfurter.dev/v1/latest?amount={amount}&base={base}&symbols={target}",
     description: "Convert an amount of money from one currency to another, with today's rate of the European Central Bank (Frankfurter).",
     params: [P("amount", "number", true, "The amount of money to convert"), P("base", "string", true, "The currency to convert from, as a 3-letter code, for example USD"),
       P("target", "string", true, "The currency to convert to, as a 3-letter code, for example CAD")] },
-  { name: "top_tech_news", kind: "builtin", on: true, description: "Get the top stories on Hacker News right now: the title, the points and the link of each story.",
-    params: [P("count", "integer", false, "How many stories, from 1 to 10. The default is 3.")] },
-  { name: "search_memory", kind: "builtin", on: true, description: "Search the saved facts of the Memory page (the long-term memory). Returns the facts nearest to the query.",
+  { name: "top_tech_news", title: "Hacker News", icon: "la:hacker-news", kind: "url", on: true, url: "https://hn.algolia.com/api/v1/search?tags=front_page&hitsPerPage={count}&attributesToRetrieve=title,url,points",
+    description: "Get stories on the Hacker News front page now, sorted by points: the title, the points and the link of each story (Algolia).",
+    params: [P("count", "integer", true, "How many stories, from 1 to 10. Use 3 if the user does not say.")] },
+  { name: "search_memory", title: "Memory search", icon: "andrsrxn:database-search", kind: "builtin", on: true, description: "Search the saved facts of the Memory page (the long-term memory). Returns the facts nearest to the query.",
     params: [P("query", "string", true, "What to look for, for example: Where does Ilse live?")] },
-  { name: "search_wikipedia", kind: "builtin", on: true, description: "Search English Wikipedia. Returns the title, a short snippet and the link of each page found.",
-    params: [P("query", "string", true, "What to search for, for example: Model Context Protocol"), P("count", "integer", false, "How many pages, from 1 to 10. The default is 3.")] },
+  { name: "search_wikipedia", title: "Wikipedia", icon: "tabler:brand-wikipedia", kind: "url", on: true, url: "https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch={query}&srlimit={count}&srprop=snippet&format=json",
+    description: "Search English Wikipedia. Returns the title and a short snippet of each page found.",
+    params: [P("query", "string", true, "What to search for, for example: Model Context Protocol"), P("count", "integer", true, "How many pages, from 1 to 10. Use 3 if the user does not say.")] },
 ];
 // More free APIs that need no key (each one tested). URL tools, so you can see and change the URL.
 const LIBRARY = [
-  { name: "search_wikipedia", kind: "builtin", on: true, description: "Search English Wikipedia. Returns the title, a short snippet and the link of each page found.",
-    params: [P("query", "string", true, "What to search for, for example: Model Context Protocol"), P("count", "integer", false, "How many pages, from 1 to 10. The default is 3.")] },
-  { name: "crypto_price", kind: "url", url: "https://api.coinbase.com/v2/prices/{pair}/spot", description: "Get the current price of a crypto currency (Coinbase).",
+  { name: "search_wikipedia", title: "Wikipedia", icon: "tabler:brand-wikipedia", kind: "url", on: true, url: "https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch={query}&srlimit={count}&srprop=snippet&format=json",
+    description: "Search English Wikipedia. Returns the title and a short snippet of each page found.",
+    params: [P("query", "string", true, "What to search for, for example: Model Context Protocol"), P("count", "integer", true, "How many pages, from 1 to 10. Use 3 if the user does not say.")] },
+  { name: "crypto_price", title: "Cryptocurrency", icon: "ri:btc-line", kind: "url", url: "https://api.coinbase.com/v2/prices/{pair}/spot", description: "Get the current price of a crypto currency (Coinbase).",
     params: [P("pair", "string", true, "The pair, for example BTC-USD or ETH-CAD")] },
-  { name: "wikipedia_summary", kind: "url", url: "https://en.wikipedia.org/api/rest_v1/page/summary/{title}", description: "Get the summary of an English Wikipedia article.",
+  { name: "wikipedia_summary", title: "Wikipedia summary", icon: "lucide:book-open", kind: "url", url: "https://en.wikipedia.org/api/rest_v1/page/summary/{title}", description: "Get the summary of an English Wikipedia article.",
     params: [P("title", "string", true, "The title of the article, for example Rayleigh scattering")] },
-  { name: "mastodon_trends", kind: "url", url: "https://mastodon.social/api/v1/trends/tags?limit={limit}", description: "Get the hashtags that are popular on mastodon.social now.",
+  { name: "mastodon_trends", title: "Mastodon trends", icon: "lucide:trending-up", kind: "url", url: "https://mastodon.social/api/v1/trends/tags?limit={limit}", description: "Get the hashtags that are popular on mastodon.social now.",
     params: [P("limit", "integer", true, "How many hashtags, from 1 to 10")] },
-  { name: "sample_post", kind: "url", url: "https://jsonplaceholder.typicode.com/posts/{id}", description: "Get a sample blog post (fake test data from JSONPlaceholder).",
+  { name: "sample_post", title: "Sample post", icon: "lucide:file-text", kind: "url", url: "https://jsonplaceholder.typicode.com/posts/{id}", description: "Get a sample blog post (fake test data from JSONPlaceholder).",
     params: [P("id", "integer", true, "The number of the post, from 1 to 100")] },
-  { name: "corporate_buzzword", kind: "url", url: "https://corporatebs-generator.sameerkumar.website/", description: "Get a random phrase of corporate buzzwords (a joke API).", params: [] },
+  { name: "corporate_buzzword", title: "Corporate buzzwords", icon: "lucide:megaphone", kind: "url", url: "https://corporatebs-generator.sameerkumar.website/", description: "Get a random phrase of corporate buzzwords (a joke API).", params: [] },
 ];
 const TYPES = ["string", "number", "integer", "boolean"];
 const NAME_RE = /^[A-Za-z_][A-Za-z0-9_]{0,63}$/;
@@ -857,6 +911,29 @@ async function loadTools() {
   try { list = await fetch("/tools").then(r => r.json()); } catch {}
   tools = Array.isArray(list) && list.length ? list.filter(t => t && NAME_RE.test(t.name) && Array.isArray(t.params)) : clone(STARTER);
   if (!tools.length) tools = clone(STARTER);
+  // Tools saved during a short-lived rename (2026-11-09, e.g. Weather): back to the function name; drop the extra key.
+  const UNDO = { Multiply: "multiply", Weather: "get_weather", Tech_News: "top_tech_news", Memory: "search_memory", Wikipedia: "search_wikipedia",
+    Exchange_Rate: "exchange_rate", Crypto_Price: "crypto_price", Wikipedia_Summary: "wikipedia_summary", Mastodon_Trends: "mastodon_trends",
+    Sample_Post: "sample_post", Corporate_Buzzword: "corporate_buzzword" };
+  let moved = false;
+  for (const t of tools) if (UNDO[t.name] && !tools.some(x => x.name === UNDO[t.name])) {
+    t.name = UNDO[t.name]; delete t.builtin; moved = true;
+  }
+  // Tools saved when these were built-in (before 2026-11-09): the URL version, with the same On and display name.
+  for (const [k, t] of tools.entries()) {
+    const d = STARTER.find(x => x.name === t.name && x.kind === "url");
+    if (d && t.kind === "builtin") { tools[k] = { ...clone(d), on: t.on, title: t.title ?? d.title }; moved = true; }
+  }
+  // Tools saved before the Icon field: the default icon of a starter or library tool, else link (URL) or wrench.
+  for (const t of tools) if (t.icon === undefined) {
+    t.icon = [...STARTER, ...LIBRARY].find(x => x.name === t.name)?.icon || (t.kind === "url" ? "lucide:link" : "lucide:wrench"); moved = true;
+  }
+  // Tools saved before display names: the default display name of a starter or library tool.
+  for (const t of tools) if (t.title === undefined) {
+    const d = [...STARTER, ...LIBRARY].find(x => x.name === t.name);
+    if (d?.title) { t.title = d.title; moved = true; }
+  }
+  if (moved) saveTools();
 }
 let saveTimer = null;
 function saveTools() {
@@ -907,9 +984,10 @@ async function loadModels() {
     let saved = null; try { saved = localStorage.getItem("toolsModel"); } catch {}
     $("chatModel").value = keys.includes(saved) ? saved : keys.find(k => /gemma-4-e4b/i.test(k)) || keys.find(k => k === "google/gemma-4-12b") || keys.find(k => trained(k)) || keys[0];
   } catch (e) { $("error").textContent = `LM Studio unreachable: ${e.message || e}`; }
+  renderChat(true);  // the context meter needs the model list
 }
 const trained = k => modelInfo.find(m => m.key === k)?.capabilities?.trained_for_tool_use;
-$("chatModel").onchange = () => { try { localStorage.setItem("toolsModel", $("chatModel").value); } catch {} };
+$("chatModel").onchange = () => { try { localStorage.setItem("toolsModel", $("chatModel").value); } catch {} renderChat(true); };
 // ---- The message box: the model picker and the Send button come from composer.js, the same on all pages.
 const chatPick = Composer.picker({ select: $("chatModel"), mount: $("chatPick"), label: "Chat model", reasoning: true, isBusy: () => busy, onError: m => { $("error").textContent = m; } });
 Composer.setSend($("sendBtn"), false, { key: "Enter" });
@@ -988,11 +1066,12 @@ function code(t, model) {
   return items.map(x => x.tag ? chip(x.tag, model) : txt(json ? jsonPretty(x.t) : x.t, json ? "json" : false)).join("");
 }
 const tagsLine = (t, model) => t.split(TAG_RE).map((x, i) => !x ? "" : i % 2 ? chip(x, model) : esc(x).replace(/\n/g, '<span class="nl">↵</span>')).join("");
-const LBL_REPLY = { think: "Thinking · not shown to the user" };
+const LBL_REPLY = { think: "Reasoning · reasoning_content" };
 const LBL_MSG = { system: ["sys", "System message"], developer: ["sys", "System message"], user: ["user", "User message"], assistant: ["ans", "Model · text from an earlier reply"], tool: ["resp", "Tool result · from the harness"] };
 // The prompt: each message of the request, found in the exact text, in order. The text between two messages comes
-// from the chat template. If it has the name of a tool, it is the tools (LM Studio writes them from the JSON schema),
-// or an earlier tool call (before a tool result). null: no message is in the text.
+// from the chat template. If it has the name of a tool, it is the tools (LM Studio writes them from the JSON schema,
+// before the first user message), or an earlier tool call. After a user message, it is a tool call, and also the tool
+// result when the template rewrote the result so the page cannot find it as a message. null: no message is in the text.
 function promptView(text, model, body) {
   const msgs = body?.messages || [], names = (body?.tools || []).map(t => t.function?.name).filter(Boolean), parts = [];
   let pos = 0;
@@ -1005,7 +1084,7 @@ function promptView(text, model, body) {
   let out = "", at = 0;
   // The tags at the two ends of a gap (and a short word between them, as a role name) go on their own line.
   const edge = x => x.tag || (/^\s*[A-Za-z_]{0,12}\s*$/.test(x.t) && !names.includes(x.t.trim()));  // a tool name is not an edge
-  const gap = (g, next) => {
+  const gap = (g, next, prev) => {
     if (!g.trim()) return;
     const items = g.split(TAG_RE).map((x, i) => i % 2 ? { tag: x } : { t: x }).filter(x => x.tag || x.t), join = a => a.map(x => x.tag ?? x.t).join("");
     let i = 0, j = items.length;
@@ -1017,32 +1096,36 @@ function promptView(text, model, body) {
     const tool = names.some(n => mid.includes(n));
     if (mid && !tool && (mid.match(/[A-Za-z]/g) || []).length < 3) line(mid);  // only a brace or a mark
     else if (mid) {
+      const later = prev && prev.role !== "system" && prev.role !== "developer";  // after the conversation started
       const lbl = tool && next?.role === "tool" ? ["call", "Tool call · from an earlier reply, as the chat template writes it"]
+        : tool && later ? ["call", "Tool call and tool result · LM Studio writes them in the format of the chat template"]
         : tool ? ["tool", "Tools · LM Studio writes them from the JSON schema, in the format of the chat template"] : ["sys", "Chat template · text that the template adds"];
       out += `<div class="pb k-${lbl[0]}"><div class="pb-lbl">${lbl[1]}</div>${code(mid, model)}</div>`;
     }
     line(tail);
   };
+  let prev = null;
   for (const p of parts) {
-    gap(text.slice(at, p.s), p.m);
+    gap(text.slice(at, p.s), p.m, prev);
+    prev = p.m;
     const [k, lbl] = LBL_MSG[p.m.role] || ["sys", p.m.role];
     out += `<div class="pb k-${k}"><div class="pb-lbl">${esc(lbl)}</div>${code(text.slice(p.s, p.e), model)}</div>`;
     at = p.e;
   }
-  gap(text.slice(at), null);
+  gap(text.slice(at), null, prev);
   return `<div class="pv">${out}</div>`;
 }
 // No data to find: the exact text, with tags as chips.
 const plainView = (text, model) => `<div class="pv"><div class="pb k-sys">${code(text || "", model)}</div></div>`;
 // The reply, in parts, for any model: LM Studio already split the tokens into fields (thinking, content,
 // tool_calls). The page finds each field in the raw text, so it needs no list of model tags:
-// Thinking = the thinking field; Text = content; Tool call = from the last tag before the tool name, to the end.
+// Reasoning = the reasoning field; Text = content; Tool call = from the last tag before the tool name, to the end.
 // The tags between the parts stay as they are, on their own line. null: a part is not in the raw text.
 function replyView(raw, msg, model, key) {
   const parts = [], calls = msg.tool_calls || [];
   let pos = 0;
   const find = (t, from) => { t = (t || "").trim(); if (!t) return null; const i = raw.indexOf(t, from); return i < 0 ? null : { s: i, e: i + t.length }; };
-  // Thinking: LM Studio's field, else the start and end text in Settings.
+  // Reasoning: LM Studio's field, else the start and end text in Settings.
   const field = msg.reasoning_content ?? msg.reasoning;
   let th = find(field, 0);
   if (!th) { const sp = thinkSpans(raw, model)[0]; if (sp) th = { s: sp.b, e: sp.e }; }
@@ -1060,7 +1143,7 @@ function replyView(raw, msg, model, key) {
     parts.push({ kind: "call", s: s0, e: raw.length });
   }
   // Draw: the parts in the order that the model wrote them, and the tags between them.
-  const LBL = { ans: "Answer · shown to the user", text: "Text · not shown: the reply has a tool call, so the harness runs the tool", call: "Tool call · LM Studio took it out, as tool_calls" };
+  const LBL = { ans: "Answer · content", text: "Text · not shown: the reply has a tool call, so the harness runs the tool", call: "Tool call · LM Studio took it out, as tool_calls" };
   let out = "", at = 0;
   parts.forEach((p, n) => {
     const gap = raw.slice(at, p.s);
@@ -1068,7 +1151,7 @@ function replyView(raw, msg, model, key) {
     const body = raw.slice(p.s, p.e);
     if (p.kind === "think") {
       const words = body.split(/\s+/).filter(Boolean).length, k2 = `${key}.th${n}`, open = words <= 60 || openKeys.has(k2);
-      out += `<div class="pb k-think"><details class="x th" data-key="${k2}"${open ? " open" : ""}><summary><span class="pb-lbl">${LBL_REPLY.think} · ${words ? `${words} word${words === 1 ? "" : "s"}` : "empty: the model closed it at once"}</span></summary>${txt(body.replace(/^\n/, ""))}</details></div>`;
+      out += `<div class="pb k-think"><details class="x th" data-key="${k2}"${open ? " open" : ""}><summary><span class="pb-lbl">${LBL_REPLY.think} · ${words ? `${words} word${words === 1 ? "" : "s"}` : "empty"}</span></summary>${txt(body.replace(/^\n/, ""))}</details></div>`;
     } else if (p.kind === "call") {
       const html = code(body, model);
       out += `<div class="pb k-call"><div class="pb-lbl">${LBL.call}</div>${html}</div>`;
@@ -1121,10 +1204,10 @@ async function logEntry(kind, since, keepWaiting = () => false) {
 // history = the messages that the harness sends to the model (the conversation memory of the book: the full history).
 let chat = [], history = [], busy = false, ctrl = null, pending = null;
 const openKeys = new Set();  // the open ▸ sections, kept when the chat draws again
-let stats = { calls: 0, tools: 0, tokens: 0 };
+let stats = { calls: 0, tools: 0, tokens: 0, ctx: 0 };
 // New chat: clear the chat, the history and the counts. The tools and the settings stay.
 function newChat() {
-  chat = []; history = []; stats = { calls: 0, tools: 0, tokens: 0 }; openKeys.clear(); rawKeys.clear();
+  chat = []; history = []; stats = { calls: 0, tools: 0, tokens: 0, ctx: 0 }; openKeys.clear(); rawKeys.clear();
 }
 
 // The request of one model call. LM Studio note: the tools parameter. Page note: the tools as text in the system prompt.
@@ -1207,7 +1290,7 @@ async function must(next, approve, force) {
 async function runTurn(text) {
   const model = $("chatModel").value;
   if (!model) throw new Error("Select a chat model.");
-  const turn = { user: text, steps: [], answer: null, done: false };
+  const turn = { user: text, steps: [], answer: null, done: false, t0: Date.now() };
   chat.push(turn);
   const before = history.length;
   history.push({ role: "user", content: text });
@@ -1225,6 +1308,7 @@ async function runTurn(text) {
       const inpP = logEntry("input", t0, () => reply.wait && !ctrl?.signal.aborted).then(async inp => { req.formatted = inp; await countTags(model, [inp]); req.kind = replyKind(req); renderChat(); return inp; });
       const j = await post("/v1/chat/completions", body, ctrl.signal);
       stats.calls++; stats.tokens += j.usage?.total_tokens || 0;
+      stats.ctx = (j.usage?.prompt_tokens || 0) + (j.usage?.completion_tokens || 0);  // what the context held after this call
       const msg = j.choices?.[0]?.message || {}, finish = j.choices?.[0]?.finish_reason;
       const calls = parseReply(msg);
       const answerText = cleanText(msg.content);
@@ -1284,7 +1368,7 @@ async function runTurn(text) {
   } catch (e) {
     history.length = before;  // a stopped or failed turn does not stay in the conversation
     throw e;
-  } finally { turn.done = true; pending = null; renderChat(); }
+  } finally { turn.done = true; turn.t1 = Date.now(); pending = null; renderChat(); }
 }
 
 // What kind of tool note the model got, from the real prompt.
@@ -1398,6 +1482,14 @@ function pendingRow(p) {
 }
 const callCard = (call, rows) => `<section class="callcard"><div class="callcard-hd">Model call ${call}</div>${rows}</section>`;
 const fmt = t => esc(t).replace(/\*\*(.+?)\*\*/g, "$1").replace(/^(\s*)[*-]\s+/gm, "$1• ");
+// Time and tokens under a message, in the style of a coding agent: 5.5 s · ↓ 1.4k tokens.
+const fmtSecs = x => `${x < 10 ? x.toFixed(1) : Math.round(x)} s`;
+const fmtTok = n => n >= 1000 ? `${(n / 1000).toFixed(1).replace(/\.0$/, "")}k` : String(n);
+function liveText(t) {
+  const made = t.steps.filter(s => s.type === "reply" && s.usage).reduce((a, s) => a + (s.usage.completion_tokens || 0), 0);
+  return `Running… (${fmtSecs((Date.now() - t.t0) / 1000)} · ↓ ${fmtTok(made)} tokens)`;
+}
+setInterval(() => { const el = document.getElementById("liveMeta"), t = chat.at(-1); if (el && t && !t.done) el.textContent = liveText(t); }, 200);
 function renderChat(hold) {
   showStarters();
   $("replay").disabled = busy || !chat.some(t => t.user);
@@ -1416,10 +1508,23 @@ function renderChat(hold) {
     const cards = [...groups].map(([c, rows]) => callCard(c, rows)).join("");
     const ans = t.answer != null ? `<div class="bubble assistant">${t.answer ? fmt(t.answer) : '<span class="ph">No answer.</span>'}</div>`
       : t.done && t.stopped ? `<div class="bubble assistant"><span class="ph">Stopped.</span></div>` : "";
-    return `<div class="bubble user">${esc(t.user)}</div>${cards}${ans}`;
+    // Like a coding agent: ↑ under your message, the tokens sent in the first model call (system prompt, tool
+    // definitions, history, your message). Under the answer, the time and ↓ the tokens the model generated for this
+    // message, in all its model calls (tool calls and answer). While it runs, the same line counts up.
+    // Exact, from LM Studio (usage).
+    const used = t.steps.filter(s => s.type === "reply" && s.usage).map(s => s.usage);
+    const sent = used[0]?.prompt_tokens, made = used.reduce((a, u) => a + (u.completion_tokens || 0), 0);
+    const live = !t.done && ti === last;
+    let out = `<div class="bubble user">${esc(t.user)}</div>`;
+    if (sent) out += `<div class="tok-meta user"><span tabindex="0" data-tip-title="Tokens sent" data-tip="What the harness sent in the first model call for this message: the system prompt, the tool definitions, the earlier messages and your message.">↑ ${fmtTok(sent)} tokens</span></div>`;
+    out += cards + ans;
+    if (live) out += `<div class="tok-meta assistant" id="liveMeta">${liveText(t)}</div>`;
+    else if (t.answer != null && t.t1) out += `<div class="tok-meta assistant"><span tabindex="0" data-tip-title="Time" data-tip="From Send to the answer: all the model calls and tool calls of this message. In Step mode, or with Permissions set to Ask every time, it also counts the time the page waited for you.">${fmtSecs((t.t1 - t.t0) / 1000)}</span> · <span tabindex="0" data-tip-title="Tokens generated" data-tip="What the model wrote for this message, in all its model calls: ${used.length > 1 ? "the tool calls and the answer" : "the answer"}.${used.length > 1 ? ` The answer alone is ${(used.at(-1)?.completion_tokens || 0).toLocaleString()} tokens.` : ""}">↓ ${fmtTok(made)} tokens</span></div>`;
+    return out;
   }).join("");
   log.scrollTop = atEnd ? log.scrollHeight : top;
-  $("stats").innerHTML = `<span title="The tools that are on: the harness sends their definitions in each model call">Tools on <b>${active().length}</b></span><span>Model calls <b>${stats.calls}</b></span><span>Tool calls <b>${stats.tools}</b></span><span>Tokens <b>${stats.tokens.toLocaleString()}</b></span>`;
+  $("stats").innerHTML = `<span title="The tools that are on: the harness sends their definitions in each model call">Tools on <b>${active().length}</b></span><span>Model calls <b>${stats.calls}</b></span><span>Tool calls <b>${stats.tools}</b></span>${ctxHtml()}`;
+  estimateCtx();
 }
 document.addEventListener("toggle", e => { const d = e.target; if (d.matches?.("details.x, details.ev")) d.open ? openKeys.add(d.dataset.key) : openKeys.delete(d.dataset.key); }, true);
 document.addEventListener("click", e => {
@@ -1430,6 +1535,7 @@ document.addEventListener("click", e => {
 
 // ---- Tools tab
 let editing = null;  // the index of the tool in edit mode
+let editSnap = null;  // the tool as it was when the editor opened (null: a new tool), for Cancel
 // The note box is in a closed row at first: fit its height when the row opens.
 document.addEventListener("toggle", e => { if (e.target.id === "optNote" && e.target.open && $("noteText")) fit($("noteText"), 400); }, true);
 // The parts of the Tool note row start open. What you close stays closed.
@@ -1457,10 +1563,9 @@ function renderNote() {
   } else $("toPage").onclick = () => { if (busy) return; document.querySelector('#noteBy [data-v="page"]').click(); };
 }
 function renderTools() {
-  $("toolCount").textContent = `· ${active().length} on`;
   $("toolList").innerHTML = tools.map((t, i) => {
     const builtin = t.kind === "builtin";
-    const head = `<div class="tool-hd"><label class="on" title="On: the model gets this tool"><input type="checkbox" data-on="${i}"${t.on ? " checked" : ""}>On</label><span class="nm">${esc(t.name)}</span>
+    const head = `<div class="tool-hd"><label class="on" title="${t.on ? "On: the model gets this tool" : "Off: the model does not get this tool"}"><input type="checkbox" data-on="${i}"${t.on ? " checked" : ""}>${t.on ? "On" : "Off"}</label>${iconHtml(t.icon, i)}<span class="nm" title="Function name: ${esc(t.name)}">${esc(t.title || t.name)}</span>
       <span class="badge${builtin ? "" : " blue"}" tabindex="0" data-tip-title="${builtin ? "Built-in tool" : "URL tool"}" data-tip="${builtin ? "Python code in server.py. You can change the description, not the parameters." : "The server sends a GET request to the URL. Each {name} in the URL becomes the argument of that name."}">${builtin ? "Built-in" : "URL"}</span>
       <span class="right"><button type="button" class="copy" data-edit="${i}" title="${editing === i ? "Done" : "Edit this tool"}" aria-label="Edit ${esc(t.name)}">${ICON_EDIT}</button><button type="button" class="copy del" data-del="${i}" title="Delete this tool" aria-label="Delete ${esc(t.name)}">${ICON_DEL}</button></span></div>`;
     if (editing !== i) return `<div class="tool${t.on ? "" : " off"}">${head}<div class="tool-bd"><span class="sig">${esc(signature(t))}</span><span>${esc(t.description)}</span>${t.kind === "url" ? `<span class="src">GET ${esc(t.url)}</span>` : ""}
@@ -1471,19 +1576,24 @@ function renderTools() {
       <input class="field" data-p="${i}.${j}.description" value="${esc(p.description || "")}" placeholder="What the model must give" aria-label="Description">
       ${builtin ? "<span></span>" : `<button type="button" class="copy del" data-pdel="${i}.${j}" title="Delete this parameter" aria-label="Delete parameter">${ICON_DEL}</button>`}</div>`;
     return `<div class="tool">${head}<div class="tool-bd"><div class="edit">
-      <span>Name</span><input class="field mono" data-f="${i}.name" value="${esc(t.name)}"${builtin ? " disabled" : ""} aria-label="Tool name">
+      <span>Display name</span><input class="field" data-f="${i}.title" value="${esc(t.title || "")}" placeholder="${esc(t.name)}" aria-label="Display name" title="The name in the + Tools menu. The model never sees it.">
+      <span>Icon</span><div class="icon-row">${iconHtml(t.icon, i)}<input class="field mono" data-f="${i}.icon" value="${esc(t.icon || "")}" placeholder="lucide:wrench" aria-label="Icon" title="An Iconify icon name, prefix:name. The model never sees it."><a href="https://icon-sets.iconify.design/lucide/" target="_blank" rel="noopener">Browse icons</a></div>
+      <span>Function name</span><input class="field mono" data-f="${i}.name" value="${esc(t.name)}"${builtin ? " disabled" : ""} aria-label="Function name" title="The name the model gets, and writes in its tool call">
       <span>Description</span><textarea class="field" data-f="${i}.description" aria-label="Description">${esc(t.description)}</textarea>
       ${t.kind === "url" ? `<span>URL</span><input class="field mono" data-f="${i}.url" value="${esc(t.url || "")}" placeholder="https://api.example.com/x?city={city}" aria-label="URL">` : ""}
       <span>Parameters</span><div class="ptab"><div class="prow hd"><span>Name</span><span>Type</span><span></span><span>Description</span><span></span></div>${t.params.map(prow).join("")}
         ${builtin ? "" : `<div><button type="button" class="btn ghost small-btn" data-padd="${i}">Add parameter</button></div>`}</div>
-      </div><div class="error" id="terr${i}"></div></div></div>`;
+      </div><div class="error" id="terr${i}"></div>
+      <div class="edit-actions"><button type="button" class="btn ghost small-btn" data-cancel="${i}" title="Undo the changes since you opened the editor (Esc)">Cancel</button><button type="button" class="btn small-btn" data-done="${i}">Done</button></div></div></div>`;
   }).join("") || `<div class="hint-s">No tools. Click Create tool, or Reset tools.</div>`;
   $("library").replaceChildren(new Option("Add from the library…", ""), ...LIBRARY.filter(l => !tools.some(t => t.name === l.name)).map(l => new Option(`${l.name} · ${l.description.split(" (")[0]}`, l.name)));
   renderNote();
+  renderWiki();
+  if (!$("toolsMenu").hidden) renderToolsMenu();
 }
 function toolError(i) {
   const t = tools[i], names = t.params.map(p => p.name);
-  if (!NAME_RE.test(t.name)) return "The name must be letters, digits or _ (no spaces), for example get_time.";
+  if (!NAME_RE.test(t.name)) return "The function name must be letters, digits or _ (no spaces), for example get_time. Put spaces in the display name.";
   if (tools.some((x, j) => j !== i && x.name === t.name)) return "Two tools have the same name.";
   if (names.some(n => !NAME_RE.test(n))) return "A parameter name must be letters, digits or _ (no spaces).";
   if (new Set(names).size !== names.length) return "Two parameters have the same name.";
@@ -1498,6 +1608,12 @@ document.addEventListener("input", e => {
   const i = +(f || p).split(".")[0], err = toolError(i);
   $("terr" + i).textContent = err;
   if (!err) saveTools();
+  if (f?.endsWith(".icon")) document.querySelectorAll(`[data-ticon="${i}"]`).forEach(el => { el.dataset.icon = tools[i].icon; el.innerHTML = iconSvg(tools[i].icon); });
+  if (f?.endsWith(".title")) {  // the card header shows the display name: update it as you type
+    const nm = document.querySelector(`[data-on="${i}"]`)?.closest(".tool-hd")?.querySelector(".nm");
+    if (nm) nm.textContent = tools[i].title || tools[i].name;
+    if (!$("toolsMenu").hidden) renderToolsMenu();
+  }
 });
 document.addEventListener("change", e => {
   if (e.target.dataset?.on !== undefined) { tools[+e.target.dataset.on].on = e.target.checked; saveTools(); renderTools(); renderChat(); }
@@ -1505,16 +1621,30 @@ document.addEventListener("change", e => {
 });
 document.addEventListener("click", e => {
   const ed = e.target.closest("[data-edit]"), del = e.target.closest("[data-del]"), padd = e.target.closest("[data-padd]"), pdel = e.target.closest("[data-pdel]");
-  if (ed) { const i = +ed.dataset.edit; if (editing === i && toolError(i)) return; editing = editing === i ? null : i; renderTools(); }
-  else if (del) { const i = +del.dataset.del; tools.splice(i, 1); editing = null; saveTools(); renderTools(); renderChat(); }
+  const cancel = e.target.closest("[data-cancel]"), done = e.target.closest("[data-done]");
+  if (ed) { const i = +ed.dataset.edit; if (editing === i && toolError(i)) return; openEditor(editing === i ? null : i); }
+  else if (cancel) cancelEdit();
+  else if (done) { const i = +done.dataset.done, err = toolError(i); if (err) { $("terr" + i).textContent = err; return; } saveTools(); openEditor(null); renderChat(); }
+  else if (del) { const i = +del.dataset.del; tools.splice(i, 1); editing = null; editSnap = null; saveTools(); renderTools(); renderChat(); }
   else if (padd) { tools[+padd.dataset.padd].params.push(P(`param${tools[+padd.dataset.padd].params.length + 1}`, "string", true, "")); renderTools(); }
   else if (pdel) { const [i, j] = pdel.dataset.pdel.split(".").map(Number); tools[i].params.splice(j, 1); if (!toolError(i)) saveTools(); renderTools(); }
 });
 $("addTool").onclick = () => {
   let n = 1; while (tools.some(t => t.name === `my_tool_${n}`)) n++;
-  tools.push({ name: `my_tool_${n}`, kind: "url", on: true, url: "https://", description: "What the tool does. The model reads this to decide when to use the tool.", params: [P("city", "string", true, "")] });
-  editing = tools.length - 1; renderTools();
+  tools.push({ name: `my_tool_${n}`, title: "", icon: "lucide:link", kind: "url", on: true, url: "https://", description: "What the tool does. The model reads this to decide when to use the tool.", params: [P("city", "string", true, "")] });
+  openEditor(tools.length - 1, true);
 };
+// The editor saves as you type. Cancel puts the tool back as it was when the editor opened; a new tool is removed.
+function openEditor(i, isNew = false) {
+  editing = i; editSnap = i == null ? null : { i, tool: isNew ? null : clone(tools[i]) }; renderTools();
+}
+function cancelEdit() {
+  if (!editSnap) return;
+  const { i, tool } = editSnap;
+  if (tool) tools[i] = tool; else tools.splice(i, 1);
+  saveTools(); openEditor(null); renderChat();
+}
+document.addEventListener("keydown", e => { if (e.key === "Escape" && editing != null && e.target.closest?.(".tool")) cancelEdit(); });
 $("library").onchange = e => {
   const l = LIBRARY.find(x => x.name === e.target.value);
   if (!l) return;
@@ -1596,10 +1726,49 @@ $("msg").addEventListener("input", syncSave);
 renderStarters();
 syncSave();
 fetch("/tool-prompts").then(r => r.json()).then(list => { if (Array.isArray(list)) { savedMsgs = list.filter(p => p && typeof p.text === "string" && typeof p.name === "string"); renderStarters(); syncSave(); } }).catch(() => {});
-// The chips show only while the chat is empty. New chat shows them again.
+// The chips always show, so you can select a new example at any time.
 function showStarters() {
-  const hide = chat.length > 0;
-  if ($("starters").hidden !== hide) { $("starters").hidden = hide; sizeChat(); }
+  if ($("starters").hidden) { $("starters").hidden = false; sizeChat(); }
+}
+
+// ---- Context window: how much of the loaded context length the conversation uses.
+// After a model call: exact, from LM Studio (prompt tokens + output tokens of the last call). Before the first call: an
+// estimate, the token count of the system prompt and the JSON schemas of the tools that are on. The chat template writes
+// the tools shorter than JSON, so the estimate is a little high.
+let ctxEst = { key: "", n: 0 }, ctxTimer = null;
+function ctxSize() {
+  const m = Composer.info($("chatModel").value);
+  return m?.loaded_instances?.[0]?.config?.context_length || m?.max_context_length || 0;
+}
+// The size: the context length that LM Studio loaded the model with, and the maximum of the model (LM Studio's fields).
+function ctxSizeTip(size) {
+  const m = Composer.info($("chatModel").value), max = m?.max_context_length, loaded = m?.loaded_instances?.[0]?.config?.context_length;
+  if (!loaded) return ` ${size.toLocaleString()} tokens: the maximum of the model. LM Studio sets the size when it loads the model.`;
+  return ` ${size.toLocaleString()} tokens: the context length that LM Studio loaded the model with.`
+    + (max > loaded ? ` The model supports up to ${max.toLocaleString()}. A larger context needs more memory. Change it in LM Studio: the Context Length load setting, then load the model again.` : "");
+}
+function ctxHtml() {
+  const size = ctxSize(), exact = stats.ctx > 0, used = exact ? stats.ctx : ctxEst.n;
+  // While the model list or the estimate loads: the same meter with dashes, so the bar does not jump.
+  if (!size || !used) return `<span class="ctx" tabindex="0" data-tip-title="Context window" data-tip="Loading the context length of the model and the size of the tool definitions…"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6"/></svg>Context <b>–</b> / ${size ? size.toLocaleString() : "–"}</span>`;
+  const pct = Math.min(1, used / size), lvl = pct > .9 ? " full" : pct > .75 ? " high" : "", C = 2 * Math.PI * 6;
+  const tip = exact ? `The last model call used ${used.toLocaleString()} of ${size.toLocaleString()} tokens of the context window (${(pct * 100).toFixed(1)}%): the prompt, with the tool definitions and the history, plus the reply. The next call adds your new message.`
+    : `Estimate before the first call: the system prompt and the definitions of the ${active().length} ${active().length === 1 ? "tool that is" : "tools that are"} on take about ${used.toLocaleString()} tokens of ${size.toLocaleString()}. The real number shows after the model call.`;
+  return `<span class="ctx${lvl}" tabindex="0" data-tip-title="Context window" data-tip="${esc(tip + ctxSizeTip(size))}"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6"/><circle cx="8" cy="8" r="6" class="arc" stroke-dasharray="${(pct * C).toFixed(2)} ${C.toFixed(2)}"/></svg>Context <b>${exact ? "" : "≈ "}${used.toLocaleString()}</b> / ${size.toLocaleString()}</span>`;
+}
+function estimateCtx() {
+  if (stats.ctx) return;
+  const model = $("chatModel").value, list = S.noteBy === "lmstudio" ? active().map(schemaOf) : [];
+  const text = [systemText(), list.length ? JSON.stringify(list) : ""].filter(Boolean).join("\n");
+  const key = model + "\u0000" + text;
+  if (!model || key === ctxEst.key) return;
+  clearTimeout(ctxTimer);
+  ctxTimer = setTimeout(async () => {
+    try {
+      const r = await fetch("/tokenize", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model, texts: [text], count: true }) }).then(r => r.json());
+      if (Array.isArray(r.counts)) { ctxEst = { key, n: r.counts[0] }; if (!stats.ctx) renderChat(true); }
+    } catch {}
+  }, 400);
 }
 
 // ---- System prompt: an Examples menu (your saved prompts, the examples, the guardrails), save, delete and copy.
@@ -1689,9 +1858,17 @@ async function send(text) {
   catch (e) {
     const t = chat.filter(x => x.user).at(-1);
     if (t) t.stopped = true;
-    if (e.name !== "AbortError") $("error").textContent = String(e.message || e); else setStatus("Stopped.");
+    if (e.name === "AbortError") setStatus("Stopped.");
+    else $("error").textContent = contextError(String(e.message || e));
     return false;
   } finally { busy = false; ctrl = null; setBusy(); renderChat(); }
+}
+// LM Studio refuses a prompt that is longer than the loaded context length. Say it in plain words, then LM Studio's text.
+function contextError(msg) {
+  if (!/context length|context window|context size/i.test(msg)) return msg;
+  const size = ctxSize();
+  return `The conversation no longer fits in the ${size ? size.toLocaleString() + "-token " : ""}context of the model. `
+    + `Click New chat, or load the model with a larger context length in LM Studio. LM Studio says: ${msg}`;
 }
 function stop() { ctrl?.abort(); if (pending) { const p = pending; pending = null; p.resolve(null); } }
 function setBusy() {
@@ -1712,9 +1889,9 @@ $("sendBtn").onclick = () => {
 };
 $("msg").addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); $("sendBtn").click(); } });
 $("msg").addEventListener("input", () => fit($("msg")));
-$("newChat").onclick = () => { if (busy) return; newChat(); renderChat(); setStatus("New chat. The tools stay."); };
+$("newChat").onclick = () => { if (busy) return; newChat(); renderChat(); setStatus(""); };
 const waitIdle = () => new Promise(r => { const f = () => busy ? setTimeout(f, 50) : r(); f(); });
-$("resetAll").onclick = async () => { stop(); await waitIdle(); chat = []; history = []; stats = { calls: 0, tools: 0, tokens: 0 }; openKeys.clear(); rawKeys.clear(); setStatus(""); $("error").textContent = ""; renderChat(); };
+$("resetAll").onclick = async () => { stop(); await waitIdle(); chat = []; history = []; stats = { calls: 0, tools: 0, tokens: 0, ctx: 0 }; openKeys.clear(); rawKeys.clear(); setStatus(""); $("error").textContent = ""; renderChat(); };
 
 // The chat fills the window above the message box: the box stays in view, and the chat scrolls.
 function sizeChat() {
@@ -1780,13 +1957,95 @@ function renderPerm() {
   $("permBtn").setAttribute("aria-label", `Permissions: ${cur.label}`);
   $("permMenu").innerHTML = `<div class="hd">Choose how the harness gets tool approvals</div>` + PERMS.map(p => `<button type="button" role="menuitemradio" aria-checked="${p.v === S.perm}" data-perm="${p.v}">${p.icon}<span>${p.label}</span>${p.v === S.perm ? '<span class="ck">✓</span>' : "<span></span>"}<span class="d">${p.desc}</span></button>`).join("");
 }
+// Wikipedia button: turns the search_wikipedia tool On or Off, the same as its On box on the Tools tab.
+// Like "Search the web" in a chatbot: the button only adds one tool to the request.
+function renderWiki() {
+  const on = !!tools.find(t => t.name === "search_wikipedia")?.on, b = $("wikiBtn");
+  b.innerHTML = SVG('<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><ellipse cx="12" cy="12" rx="3.6" ry="9"/>') + "<span>Wikipedia</span>";
+  b.setAttribute("aria-pressed", on);
+  b.title = on ? "Wikipedia search: On. The model gets the Wikipedia tool. Click to turn it off."
+    : "Wikipedia search: Off. Click to give the model the Wikipedia tool.";
+  b.setAttribute("aria-label", `Wikipedia search: ${on ? "On" : "Off"}`);
+}
+$("wikiBtn").onclick = () => {
+  if (busy) return;
+  let t = tools.find(x => x.name === "search_wikipedia");
+  if (t) t.on = !t.on;
+  else tools.push({ ...clone(LIBRARY.find(x => x.name === "search_wikipedia")), on: true });  // deleted from the list: add it again
+  saveTools(); renderTools(); renderChat();
+};
+// + menu: Tools ›, then each tool with an On/Off switch: the same On box as on the Tools tab.
+// Each row shows the display name (the title field), else the function name, and the icon of the Icon field.
+// Icons: Lucide (ISC license), from the Iconify API.
+const LUCIDE = {"calculator":"<rect width=\"16\" height=\"20\" x=\"4\" y=\"2\" rx=\"2\"/><path d=\"M8 6h8m0 8v4m0-8h.01M12 10h.01M8 10h.01M12 14h.01M8 14h.01M12 18h.01M8 18h.01\"/>","cloud-sun":"<path fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M12 2v2m-7.07.93l1.41 1.41M20 12h2m-2.93-7.07l-1.41 1.41m-1.713 6.31a4 4 0 0 0-5.925-4.128M13 22H7a5 5 0 1 1 4.9-6H13a3 3 0 0 1 0 6\"/>","arrow-left-right":"<path fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M8 3L4 7l4 4M4 7h16m-4 14l4-4l-4-4m4 4H4\"/>","newspaper":"<path d=\"M15 18h-5m8-4h-8m-6 8h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-4 0v-9a2 2 0 0 1 2-2h2\"/><rect width=\"8\" height=\"4\" x=\"10\" y=\"6\" rx=\"1\"/>","brain":"<path d=\"M12 18V5m3 8a4.17 4.17 0 0 1-3-4a4.17 4.17 0 0 1-3 4m8.707-6.706A3 3 0 1 0 12 5a3 3 0 1 0-5.707 1.294\"/><path d=\"M17.996 5.125a4 4 0 0 1 2.526 5.77\"/><path d=\"M18 18a4 4 0 0 0 2-7.465\"/><path d=\"M19.967 17.482a4 4 0 1 1-7.967.517a4 4 0 1 1-7.967-.517\"/><path d=\"M6 18a4 4 0 0 1-2-7.465\"/><path d=\"M6.004 5.125a4 4 0 0 0-2.526 5.77\"/>","globe":"<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"M12 2a14.5 14.5 0 0 0 0 20a14.5 14.5 0 0 0 0-20M2 12h20\"/>","bitcoin":"<path fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M11.767 19.089c4.924.868 6.14-6.025 1.216-6.894m-1.216 6.894L5.86 18.047m5.908 1.042l-.347 1.97m1.563-8.864c4.924.869 6.14-6.025 1.215-6.893m-1.215 6.893l-3.94-.694m5.155-6.2L8.29 4.26m5.908 1.042l.348-1.97M7.48 20.364l3.126-17.727\"/>","book-open":"<path fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M12 5v16m8.001-2A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2a5 5 0 0 1 4-2z\"/>","trending-up":"<path d=\"M16 7h6v6\"/><path d=\"m22 7l-8.5 8.5l-5-5L2 17\"/>","file-text":"<path d=\"M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z\"/><path d=\"M14 2v5a1 1 0 0 0 1 1h5M10 9H8m8 4H8m8 4H8\"/>","megaphone":"<path d=\"M11 6a13 13 0 0 0 8.4-2.8A1 1 0 0 1 21 4v12a1 1 0 0 1-1.6.8A13 13 0 0 0 11 14H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z\"/><path d=\"M6 14a12 12 0 0 0 2.4 7.2a2 2 0 0 0 3.2-2.4A8 8 0 0 1 10 14M8 6v8\"/>","link":"<path d=\"M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71\"/><path d=\"M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71\"/>","wrench":"<path fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.106-3.105c.32-.322.863-.22.983.218a6 6 0 0 1-8.259 7.057l-7.91 7.91a1 1 0 0 1-2.999-3l7.91-7.91a6 6 0 0 1 7.057-8.259c.438.12.54.662.219.984z\"/>","plus":"<path fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M5 12h14m-7-7v14\"/>","settings-2":"<path d=\"M14 17H5M19 7h-9\"/><circle cx=\"17\" cy=\"17\" r=\"3\"/><circle cx=\"7\" cy=\"7\" r=\"3\"/>","blocks":"<path d=\"M10 22V7a1 1 0 0 0-1-1H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5a1 1 0 0 0-1-1H2\"/><rect width=\"8\" height=\"8\" x=\"14\" y=\"2\" rx=\"1\"/>"};
+const LI = k => SVG(LUCIDE[k]);
+// The icon of a tool comes from its Icon field: an Iconify name, prefix:name (lucide:cloud-sun). Lucide icons are drawn
+// in the line style of the page; the ones above need no network. Other icons come from the Iconify API, once each.
+const ICON_RE = /^([a-z0-9]+(?:-[a-z0-9]+)*):([a-z0-9]+(?:[-_][a-z0-9]+)*)$/;
+// "prefix:name" → { body, w, h, lucide } or "missing". The default icons from other sets are built in (from Iconify).
+const ICON_CACHE = {"andrsrxn:currency-exchange":{"body":"<g fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"1.5\"><path d=\"M15.12 9.11c-.27-.85-1.5-1.51-2.95-1.51s-3.04.57-3.04 2.3c0 3.37 5.81.74 6.07 4.06c.13 1.59-1.55 2.44-3.03 2.44s-2.56-.66-3.04-1.54m3.04-7.26V6.52m0 10.96V16.4\"/><path d=\"M21.38 8.17c-2.02-3.67-4.98-5.93-9.2-5.93s-8.21 2.18-9.5 5.58m.37 7.8c1.68 3.19 4.88 6.12 9.1 6.12c4.2 0 8-2 9.54-5.75\"/><path d=\"m22.83 5.86l-.08.51c-.22 1.4-.33 2.1-.83 2.46c-.5.37-1.2.26-2.6.04l-.51-.08M1.72 18.12l.06-.61c.12-1.41.18-2.12.66-2.52s1.18-.33 2.6-.2l.6.05\"/></g>","w":24,"h":24},"andrsrxn:database-search":{"body":"<g fill=\"none\"><ellipse cx=\"12\" cy=\"5.23\" fill=\"currentColor\" opacity=\".2\" rx=\"8.88\" ry=\"3.44\" transform=\"rotate(-180 12 5.23)\"/><path fill=\"currentColor\" d=\"M3.25 16.75c0-1.31 0-1.97.4-2.27s1.06-.11 2.37.27c1.8.51 4.16 1.05 6.02.97c1.4-.05 2.01-.07 3.5-.56l-.27 1.14l-.68 2.71l2.1 2.54c-1.53.37-3.23.68-4.65.68c-2.46 0-5.76-1.05-7.54-1.69c-.59-.2-.88-.32-1.06-.57c-.19-.26-.19-.59-.19-1.24z\" opacity=\".2\"/><ellipse cx=\"12\" cy=\"5.23\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"1.5\" rx=\"8.88\" ry=\"3.44\" transform=\"rotate(-180 12 5.23)\"/><path stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"1.5\" d=\"M6.06 11.3c.4.26 1.15.59 2.2.8c1.17.22 1.74.25 2.67.25m-4.87 5.31c.4.25 1.15.58 2.2.79c1.17.23 1.74.26 2.67.26m-7.81.12c0 1.87 3.98 3.38 8.88 3.38M3.12 12.17c0 1.87 3.98 3.38 8.88 3.38M3.12 5.74V18.6M20.88 5.23v7.37m-.38 8.02l1.87 1.87m-.97-4.36a3.2 3.2 0 0 1-3.2 3.2a3.2 3.2 0 1 1 3.2-3.2\"/></g>","w":24,"h":24},"la:hacker-news":{"body":"<path fill=\"currentColor\" d=\"M5 5v22h22V5zm2 2h18v18H7zm4.5 4l3.5 6v5h2v-5l3.5-6h-2L16 15.281L13.5 11z\"/>","w":32,"h":32},"tabler:brand-wikipedia":{"body":"<g fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\"><path d=\"M3 4.984h2m3 0h2.5m4 0H17m5 0h-2m-16 0L9.455 19.5L16 4.984\"/><path d=\"M9 4.984L15 19.5l6-14.516\"/></g>","w":24,"h":24},"wi:day-cloudy":{"body":"<path fill=\"currentColor\" d=\"M1.56 16.9q0 1.35.66 2.49c.66 1.14 1.04 1.36 1.8 1.8s1.58.66 2.47.66h10.83c.89 0 1.72-.22 2.48-.66s1.37-1.04 1.81-1.8s.67-1.59.67-2.49c0-.66-.14-1.33-.42-2c.76-.92 1.14-2.03 1.14-3.3c0-.71-.14-1.39-.41-2.04s-.65-1.2-1.12-1.67s-1.02-.85-1.67-1.12c-.65-.28-1.33-.41-2.04-.41c-1.48 0-2.77.58-3.88 1.74q-1.155-.66-2.7-.66c-1.41 0-2.65.44-3.73 1.31a5.8 5.8 0 0 0-2.08 3.35c-1.12.26-2.03.83-2.74 1.73s-1.07 1.92-1.07 3.07m1.71 0c0-.84.28-1.56.84-2.17s1.26-.96 2.1-1.06l.5-.03c.12 0 .19-.06.19-.18l.07-.54c.14-1.08.61-1.99 1.41-2.71c.8-.73 1.74-1.09 2.81-1.09c1.1 0 2.06.37 2.87 1.1a4 4 0 0 1 1.37 2.71l.07.58c.02.11.09.17.21.17h1.61q1.32 0 2.28.96c.64.64.96 1.39.96 2.27c0 .91-.32 1.68-.95 2.32s-1.4.96-2.28.96H6.49c-.88 0-1.63-.32-2.27-.97c-.63-.65-.95-1.42-.95-2.32m6.7-12.27q0 .36.24.63l.66.64c.25.19.46.27.64.25c.21 0 .39-.09.55-.26s.24-.38.24-.62s-.09-.44-.26-.59l-.59-.66a.9.9 0 0 0-.61-.24c-.24 0-.45.08-.62.25c-.17.16-.25.36-.25.6m5.34 4.43c.69-.67 1.51-1 2.45-1c.99 0 1.83.34 2.52 1.03s1.04 1.52 1.04 2.51c0 .62-.17 1.24-.51 1.84c-.97-.96-2.13-1.44-3.49-1.44H17c-.25-1.09-.81-2.07-1.69-2.94m1.63-5.28c0 .26.08.46.23.62s.35.23.59.23c.26 0 .46-.08.62-.23c.16-.16.23-.36.23-.62V1.73c0-.24-.08-.43-.24-.59s-.36-.23-.61-.23c-.24 0-.43.08-.59.23s-.23.35-.23.59zm5.52 2.29c0 .26.07.46.22.62c.21.16.42.24.62.24c.18 0 .38-.08.59-.24l1.43-1.43c.16-.18.24-.39.24-.64q0-.36-.24-.6a.8.8 0 0 0-.59-.24c-.24 0-.43.08-.58.24l-1.47 1.43c-.15.19-.22.39-.22.62m.79 11.84c0 .24.08.45.25.63l.65.63c.15.16.34.24.58.24s.44-.08.6-.25a.86.86 0 0 0 .24-.62c0-.22-.08-.42-.24-.58l-.65-.65a.78.78 0 0 0-.57-.24q-.36 0-.6.24c-.17.16-.26.36-.26.6m1.47-6.31c0 .23.09.42.26.58c.16.16.37.24.61.24h2.04c.23 0 .42-.08.58-.23s.23-.35.23-.59s-.08-.44-.23-.6s-.35-.25-.58-.25h-2.04c-.24 0-.44.08-.61.25a.8.8 0 0 0-.26.6\"/>","w":30,"h":30},"ri:btc-line":{"body":"<path fill=\"currentColor\" d=\"M20 12a8 8 0 1 0-16 0a8 8 0 0 0 16 0m2 0c0 5.523-4.477 10-10 10S2 17.523 2 12S6.477 2 12 2s10 4.477 10 10m-5.294-1.436c-.174 1.053-.725 1.567-1.471 1.749c.992.555 1.47 1.398.959 2.877c-.635 1.854-2.057 2.022-3.94 1.663l-.486 1.957l-1.094-.271l.485-1.957c-.298-.08-.602-.138-.899-.223l-.485 1.957l-1.092-.27l.485-1.958l-2.176-.592l.54-1.384s.822.226.81.212c.304.074.453-.14.514-.288l.776-3.137l.566-2.23c.024-.241-.052-.557-.497-.677c.03-.017-.8-.198-.8-.198l.323-1.312l2.243.556l.475-1.917l1.13.28l-.475 1.917c.291.064.574.14.866.215l.474-1.917l1.1.272l-.488 1.967c1.387.51 2.386 1.263 2.157 2.709m-5.1.39c.657.198 2.605.783 2.933-.52c.306-1.24-1.382-1.618-2.166-1.794q-.14-.03-.235-.055l-.587 2.353zm-1.014 3.82l.095.029c.81.24 3.106.923 3.418-.37c.32-1.246-1.744-1.731-2.669-1.949q-.153-.035-.258-.062z\"/>","w":24,"h":24}};
+function iconSvg(name) {
+  const m = ICON_RE.exec(name || "");
+  if (!m) return LI("wrench");
+  if (m[1] === "lucide" && LUCIDE[m[2]]) return LI(m[2]);
+  const c = ICON_CACHE[name];
+  if (c === "missing") return LI("wrench");
+  if (c) return c.lucide ? SVG(c.body) : `<svg viewBox="0 0 ${c.w} ${c.h}" aria-hidden="true">${c.body}</svg>`;
+  fetchIcon(name, m[1], m[2]);
+  return '<svg viewBox="0 0 24 24" aria-hidden="true"></svg>';
+}
+const iconHtml = (name, i) => `<span class="ti" data-icon="${esc(name || "")}"${i == null ? "" : ` data-ticon="${i}"`}>${iconSvg(name)}</span>`;
+const iconWaiting = new Set();
+function fetchIcon(name, prefix, id) {
+  if (iconWaiting.has(name)) return;
+  iconWaiting.add(name);
+  fetch(`https://api.iconify.design/${prefix}.json?icons=${id}`).then(r => r.json()).then(j => {
+    const ic = j.icons?.[id];
+    ICON_CACHE[name] = !ic ? "missing" : prefix === "lucide"
+      ? { lucide: true, body: ic.body.replace(/^<g[^>]*>|<\/g>$/g, "") }
+      : { body: ic.body, w: ic.width || j.width || 24, h: ic.height || j.height || 24 };
+  }).catch(() => { ICON_CACHE[name] = "missing"; }).finally(() => {
+    iconWaiting.delete(name);
+    document.querySelectorAll(".ti").forEach(el => { if (el.dataset.icon === name) el.innerHTML = iconSvg(name); });
+  });
+}
+const toolIcon = t => iconHtml(t.icon);
+const ICON_PLUS = LI("plus"), ICON_CHEV = SVG('<path d="M9 6l6 6-6 6"/>');
+function renderPlus() {
+  $("plusBtn").innerHTML = ICON_PLUS;
+  $("plusMenu").innerHTML = `<button type="button" role="menuitem" class="sub" id="plusTools" aria-haspopup="menu" aria-expanded="${!$("toolsMenu").hidden}">${LI("blocks")}<span>Tools</span>${ICON_CHEV}</button>`;
+}
+function renderToolsMenu() {
+  $("toolsMenu").innerHTML = `<button type="button" role="menuitem" data-act="create">${ICON_PLUS}<span>Create tool</span><span></span></button>`
+    + `<button type="button" role="menuitem" data-act="manage">${LI("settings-2")}<span>Manage tools</span><span></span></button><div class="sep"></div>`
+    + (tools.map((t, i) => `<button type="button" role="menuitemcheckbox" class="tl" aria-checked="${!!t.on}" data-tool="${i}" title="${esc(t.name)}: ${esc(t.description)}">${toolIcon(t)}<span class="nm">${esc(t.title || t.name)}</span><span class="sw" aria-hidden="true"></span></button>`).join("")
+      || `<div class="none">No tools. Create one, or reset the tools on the Tools tab.</div>`);
+}
+function openPlus(open) {
+  $("plusMenu").hidden = !open; $("plusBtn").setAttribute("aria-expanded", open);
+  if (!open) $("toolsMenu").hidden = true;
+  renderPlus();
+}
+function openToolsMenu(open) { if (open) renderToolsMenu(); $("toolsMenu").hidden = !open; renderPlus(); }
+$("plusBtn").onclick = () => { if (!busy) openPlus($("plusMenu").hidden); };
+$("plusMenu").onclick = e => { if (e.target.closest("#plusTools")) openToolsMenu($("toolsMenu").hidden); };
+$("plusMenu").onmouseover = e => { if (e.target.closest("#plusTools") && $("toolsMenu").hidden) openToolsMenu(true); };
+$("toolsMenu").onclick = e => {
+  const t = e.target.closest("[data-tool]"), a = e.target.closest("[data-act]");
+  if (t && !busy) { const tool = tools[+t.dataset.tool]; tool.on = !tool.on; saveTools(); renderTools(); renderChat(); renderToolsMenu(); }
+  else if (a) { openPlus(false); setTab("tools"); if (a.dataset.act === "create") $("addTool").click(); }
+};
+// composedPath: the path at the time of the click, also when the clicked row was redrawn since.
+document.addEventListener("click", e => { if (!e.composedPath().some(n => n.classList?.contains("plus-wrap"))) openPlus(false); });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("plusMenu").hidden) { openPlus(false); $("plusBtn").focus(); } });
+renderPlus();
 function openPerm(open) {
   $("permMenu").hidden = !open; $("permBtn").setAttribute("aria-expanded", open);
   if (open) $("permMenu").querySelector('[aria-checked="true"]')?.focus();
 }
 $("permBtn").onclick = () => openPerm($("permMenu").hidden);
 $("permMenu").onclick = e => { const b = e.target.closest("[data-perm]"); if (!b) return; S.perm = b.dataset.perm; keep(); renderPerm(); openPerm(false); $("permBtn").focus(); };
-document.addEventListener("click", e => { if (!e.target.closest(".perm-wrap")) openPerm(false); });
+document.addEventListener("click", e => { if (!e.target.closest(".perm-wrap:not(.plus-wrap)")) openPerm(false); });
 $("permMenu").addEventListener("keydown", e => {
   const items = [...$("permMenu").querySelectorAll("[data-perm]")], i = items.indexOf(document.activeElement);
   if (e.key === "Escape") { openPerm(false); $("permBtn").focus(); }
