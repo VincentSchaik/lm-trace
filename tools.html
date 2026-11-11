@@ -444,7 +444,7 @@
   .note { padding: 8px 12px; border-radius: 6px; background: rgba(var(--shadow-rgb), .025); color: var(--ink-3); font-size: 12.5px; line-height: 1.5; }
   .note code { font-size: 11.5px; }
 
-  /* Next step (One at a time): where you look, at the end of the chat */
+  /* Allow or Deny (Permissions: Ask every time): where you look, at the end of the chat */
   .next { display: flex; align-items: center; gap: 10px 14px; flex-wrap: wrap; padding: 10px 12px; border: 1px dashed rgba(var(--red-rgb), .6); border-radius: 8px; background: rgba(var(--red-rgb), .04); font-size: 13.5px; color: var(--ink-2); }
   .next b { color: var(--ink); font-weight: 600; }
   .next .btns { margin-left: auto; display: flex; gap: 8px; }
@@ -606,15 +606,30 @@
   .sampling .ctl-seg { flex: none; min-width: 0; }
   .ctl-seg .seg button { height: 28px; }
   .sampling .ctl-calls { flex: 1 1 160px; min-width: 140px; max-width: 220px; }
-  .sampling .ctl-mode { margin-left: auto; }  /* Mode and Replay at the right, as on the Trace page */
-  .sampling .push { align-self: flex-end; height: 36px; width: 124px; padding: 0; justify-content: center; }
-  @media (max-width: 640px) { .sampling .ctl-mode { margin-left: 0; } }
   @media (max-width: 640px) { .sampling .ctl { flex: 1 1 100%; } }
   .pb-lbl { font: 11.5px var(--sans); color: var(--ink-3); margin-bottom: 2px; }
   .pb details.th > summary .pb-lbl { display: inline; margin-left: 8px; }
   /* The chat scrolls inside its panel, so the message box stays in view */
   .chatlog { height: 420px; overflow-y: auto; overscroll-behavior: contain; }
   .panel-head .stats span + span { margin-left: 12px; }
+  /* Archived chats: a menu below the Chats button, and a bar above an archived chat (read only) */
+  .cbox.archived { background: var(--paper-2); border-color: var(--line); }
+  .cbox.archived:hover { border-color: var(--line); }
+  .cbox.archived .cbox-input:disabled { cursor: not-allowed; background: transparent; }
+  .cbox.archived .send-round:disabled { opacity: .4; cursor: not-allowed; }
+  .chats-wrap { margin-left: -12px; }
+  .perm-menu.chats-menu { top: calc(100% + 6px); bottom: auto; width: 420px; max-height: 420px; overflow-y: auto; }
+  .chats-menu .chat-row { display: flex; align-items: center; gap: 4px; }
+  .chats-menu .chat-row > button:first-child { display: block; flex: 1; min-width: 0; }
+  .chats-menu .chat-row .nm { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .chats-menu .chat-row .d { display: block; }
+  .chats-menu .chat-row[aria-current="true"] > button:first-child { color: var(--primary); }
+  .chats-menu .chat-del { flex: none; width: 30px; height: 30px; display: grid; place-items: center; padding: 0; color: var(--ink-3); }
+  .chats-menu .chat-del:hover { color: var(--ink); }
+  .chats-menu .chat-del svg { width: 15px; height: 15px; }
+  .arch-end { margin: 18px auto 4px; text-align: center; font-size: 13px; color: var(--ink-3); line-height: 1.6; }
+  .arch-end .btn { margin-top: 10px; height: 36px; width: 124px; padding: 0; justify-content: center; }
+  .sampling input[type="range"]:disabled { opacity: .5; cursor: default; }  /* read only: an archived chat, or a run */
   /* Running: a timer where the model works */
   .busy-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--primary); margin-right: 6px; animation: pulse 1s ease-in-out infinite; }
   @keyframes pulse { 50% { opacity: .25; } }
@@ -721,7 +736,9 @@
 
   <div class="tabpane" id="pane-chat" role="tabpanel">
   <section class="panel" aria-label="Chat">
-    <div class="panel-head"><button type="button" id="newChat" class="btn ghost" title="Start a new chat: clear the conversation. The settings and the tools stay.">New chat</button>
+    <div class="panel-head"><button type="button" id="newChat" class="btn ghost" title="Start a new chat: clear the conversation. The settings and the tools stay.">New</button>
+      <div class="perm-wrap chats-wrap"><button type="button" id="chatsBtn" class="btn ghost" aria-haspopup="menu" aria-expanded="false" aria-controls="chatsMenu" title="Archived chats: each chat is archived when a message finishes. Open one to view it again, read only.">Archived</button>
+        <div class="perm-menu chats-menu" id="chatsMenu" role="menu" aria-label="Archived chats" hidden></div></div>
       <span class="stats" id="stats"></span></div>
     <!-- System prompt: the same row as on the Trace page. Sent first, in every model call. -->
     <div class="opts sysrow">
@@ -760,11 +777,6 @@
         <div class="ctl-label"><label for="maxCalls">Max model calls</label><span class="info" tabindex="0" data-tip-title="Max model calls" data-tip="A guardrail of the harness: it stops after this many model calls for one message. Without a limit, a model that keeps asking for tools would run forever.">i</span></div>
         <div class="ctl-row"><input type="range" id="maxCalls" min="1" max="10" step="1" aria-describedby="maxCallsV"><output id="maxCallsV"></output></div>
       </div>
-      <div class="ctl ctl-seg ctl-mode">
-        <div class="ctl-label"><span>Mode</span><span class="info" tabindex="0" data-tip-title="Mode" data-tip="Step: you click Next step for each step. Auto: the harness does each step by itself, up to the Max model calls.">i</span></div>
-        <div class="ctl-row"><span class="seg" id="stepMode" role="group" aria-label="Mode"><button data-v="manual" aria-pressed="false">Step</button><button data-v="auto" aria-pressed="true">Auto</button></span></div>
-      </div>
-      <button type="button" class="btn ghost push" id="replay" title="Send the messages of this chat again, in a new chat, with the settings you have now" disabled>Replay</button>
     </div>
   </section>
   <!-- The chat: its own card below the settings, as on the Trace page -->
@@ -1020,10 +1032,10 @@ function saveTools() {
 }
 
 // ---- Settings (remembered in this browser)
-const S_DEFAULT = { noteBy: "lmstudio", harness: "on", stepMode: "auto", perm: "allow", tab: "chat", temp: 0, maxTokens: 1500, maxCalls: 5 };
+const S_DEFAULT = { noteBy: "lmstudio", harness: "on", perm: "allow", tab: "chat", temp: 0, maxTokens: 1500, maxCalls: 5 };
 const S = { ...S_DEFAULT };
 try { Object.assign(S, JSON.parse(localStorage.getItem("toolsPage2") || "{}")); noteText = localStorage.getItem("toolNote") || NOTE_DEFAULT; if (noteText === NOTE_OLD) noteText = NOTE_DEFAULT; } catch {}
-if (!["manual", "auto"].includes(S.stepMode)) S.stepMode = "auto";
+delete S.stepMode;  // the Mode switch (Step | Auto) is gone: the harness always runs each step by itself
 const keep = () => { try { localStorage.setItem("toolsPage2", JSON.stringify(S)); localStorage.setItem("toolNote", noteText); } catch {} };
 const TOK_STEPS = [16, 32, 64, 128, 256, 512, 1024, 1500, 2048, 4096];
 function renderSampling() {
@@ -1037,12 +1049,11 @@ function setSeg(id, v) {
   document.querySelectorAll(`#${id} button`).forEach(b => b.setAttribute("aria-pressed", b.dataset.v === v));
   keep();
 }
-["noteBy", "harness", "stepMode"].forEach(id => document.querySelectorAll(`#${id} button`).forEach(b => b.onclick = () => {
-  if (busy && id !== "stepMode") return;
+["noteBy", "harness"].forEach(id => document.querySelectorAll(`#${id} button`).forEach(b => b.onclick = () => {
+  if (busy) return;
   const was = S[id];
   setSeg(id, b.dataset.v);
   if (id === "noteBy" && was !== b.dataset.v && chat.some(x => x.user)) { newChat(); setStatus("New chat: the tool format changed."); }
-  if (id === "stepMode" && pending && !pending.force && b.dataset.v === "auto") { const p = pending; pending = null; p.resolve(true); }
   renderAll();
 }));
 
@@ -1286,6 +1297,105 @@ let stats = { calls: 0, tools: 0, tokens: 0, ctx: 0 };
 // New chat: clear the chat, the history and the counts. The tools and the settings stay.
 function newChat() {
   chat = []; history = []; stats = { calls: 0, tools: 0, tokens: 0, ctx: 0 }; openKeys.clear(); rawKeys.clear();
+  chatId = null; viewing = null; renderViewBar();
+}
+
+// ---- Archived chats. The server keeps each chat in chats/<id>.json, with the settings of its run.
+// An archived chat is read only: the message box is off until you click New chat. chatId: the file of the chat on screen.
+// viewing: the archived settings while an archived chat is on screen, else null.
+var chatId = null, viewing = null;  // var: renderChat may run before this line
+function chatSettings() {
+  return { model: $("chatModel").value, system: $("system").value, noteBy: S.noteBy, harness: S.harness, perm: S.perm,
+    temp: S.temp, maxTokens: S.maxTokens, maxCalls: S.maxCalls, tools: active().map(t => t.title || t.name), toolNames: active().map(t => t.name),
+    noteText: S.noteBy === "page" ? noteText : undefined, ctxSize: ctxSize() };
+}
+async function saveChat() {
+  const turns = chat.filter(t => t.user);
+  if (viewing || !turns.length) return;
+  const now = Date.now();
+  if (!chatId) chatId = `${new Date(now).toISOString().slice(0, 19).replace(/[^0-9]/g, "")}-${Math.random().toString(36).slice(2, 6)}`;
+  const first = turns[0].t0 || now;
+  const body = { id: chatId, title: turns[0].user.slice(0, 120), created: first, updated: now, model: $("chatModel").value,
+    turns: turns.length, settings: chatSettings(), stats, chat };
+  try {
+    const r = await fetch(`/chats/${chatId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  } catch (e) { $("error").textContent = `Chat not saved: ${e.message}`; }
+}
+async function viewChat(id) {
+  if (busy) return;
+  try {
+    const r = await fetch(`/chats/${id}`);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const c = await r.json();
+    newChat();
+    chat = c.chat; stats = c.stats || stats; chatId = c.id; viewing = c.settings || {};
+    viewing.created = c.created; viewing.updated = c.updated;
+    applySettings(viewing);
+    chat.forEach(t => { t.done = true; });
+    $("error").textContent = ""; setStatus("");
+    renderViewBar(); renderChat();
+    $("log").scrollTop = 0;
+  } catch (e) { $("error").textContent = `Chat not loaded: ${e.message}`; }
+}
+// Opening an archived chat loads its settings into the controls, as opening a file does: what you see is what that
+// run used. The controls are read only while the archived chat is on screen. New keeps them for the next chat.
+function applySettings(v) {
+  ["temp", "maxTokens", "maxCalls", "perm"].forEach(k => { if (v[k] != null) S[k] = v[k]; });
+  ["noteBy", "harness"].forEach(k => { if (v[k] != null) setSeg(k, v[k]); });
+  if (v.noteText != null) noteText = v.noteText;
+  keep(); renderSampling(); renderPerm();
+  $("system").value = v.system || ""; $("system").dispatchEvent(new Event("input"));
+  // Tools: on if the archived run had them on (by function name; older archives have the display names only).
+  const names = new Set(v.toolNames || []), titles = new Set(v.tools || []);
+  let changed = false;
+  tools.forEach(t => { const on = names.size ? names.has(t.name) : titles.has(t.title || t.name); if (!!t.on !== on) { t.on = on; changed = true; } });
+  v.missing = (v.toolNames || v.tools || []).filter(n => !tools.some(t => (names.size ? t.name : t.title || t.name) === n));
+  if (changed) { saveTools(); renderTools(); }
+  // The model: only if LM Studio still lists it.
+  const sel = $("chatModel");
+  if (v.model && sel.value !== v.model && [...sel.options].some(o => o.value === v.model)) { sel.value = v.model; sel.dispatchEvent(new Event("change")); }
+  renderNote();
+}
+const fmtWhen = ms => new Date(ms).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+function renderViewBar() {
+  const v = viewing;
+  // Read only: the message box and the examples are off, and the box says why.
+  const box = $("msg");
+  setBusy();
+  box.disabled = !!v; $("sendBtn").disabled = !!v && !busy;
+  box.placeholder = v ? "This chat is archived: read only. Click New to start a new chat." : "Ask something, or select an example.";
+  document.querySelector(".cbox").classList.toggle("archived", !!v);
+  document.querySelectorAll(".starter").forEach(b => b.disabled = !!v || busy);
+  syncSave();
+}
+// The end of an archived chat: when it was archived, centered below the last message. The settings of the run show in
+// the controls above; the note says only what the controls cannot show.
+function archEnd() {
+  const v = viewing;
+  if (!v) return "";
+  const gone = [...(v.missing || []).map(n => `the tool ${esc(n)} no longer exists`),
+    ...(v.model && $("chatModel").value !== v.model ? [`the model was ${esc(v.model)}, and LM Studio no longer lists it`] : [])];
+  const when = v.updated || v.created;
+  return `<div class="arch-end">This chat was archived${when ? ` on ${fmtWhen(when)}` : ""}.`
+    + (gone.length ? `<br>Note: ${gone.join("; ")}.` : "")
+    + `<div><button type="button" class="btn ghost" id="runAgain" title="Send the messages of this chat again as new requests, in a new chat, with the settings you see. The model writes new replies, and the tools get new data. The archived chat does not change.">Run again</button></div></div>`;
+}
+// The Chats menu: the archived chats, newest first. Click one to view it; the trash button deletes it.
+async function renderChatsMenu() {
+  const m = $("chatsMenu");
+  m.innerHTML = `<div class="hd">Archived chats</div><div class="none">Loading…</div>`;
+  let list = [];
+  try { list = await fetch("/chats").then(r => r.json()); } catch (e) { m.innerHTML = `<div class="hd">Archived chats</div><div class="none">${esc(e.message)}</div>`; return; }
+  m.innerHTML = `<div class="hd">Archived chats</div>` + (list.length ? list.map(c => `<div class="chat-row"${c.id === chatId ? ' aria-current="true"' : ""}>`
+    + `<button type="button" role="menuitem" data-chat="${esc(c.id)}"><span class="nm">${esc(c.title || "(no title)")}</span>`
+    + `<span class="d">${c.created ? fmtWhen(c.created) : ""} · ${esc(c.model || "")} · ${c.turns || 0} ${c.turns === 1 ? "message" : "messages"}</span></button>`
+    + `<button type="button" class="chat-del" data-del-chat="${esc(c.id)}" title="Delete this archived chat" aria-label="Delete the archived chat: ${esc(c.title || "")}">${ICON_DEL}</button></div>`).join("")
+    : `<div class="none">No archived chats yet. Each chat is archived when a message finishes.</div>`);
+}
+function openChats(open) {
+  $("chatsMenu").hidden = !open; $("chatsBtn").setAttribute("aria-expanded", open);
+  if (open) renderChatsMenu();
 }
 
 // The request of one model call. LM Studio note: the tools parameter. Page note: the tools as text in the system prompt.
@@ -1349,10 +1459,11 @@ function checkCall(c) {
   return { errors, fixes, args, tool: t };
 }
 
-// Step: the harness waits for your click before each step. Auto: a short pause, so each row comes in one at a time.
+// A short pause before each step, so each row comes in one at a time. With Permissions set to Ask every time, the
+// harness waits for your click (force): Allow or Deny.
 const PACE = 300;
 function gate(next, approve, force) {
-  if (S.stepMode !== "manual" && !force) return sleep(PACE).then(() => true);
+  if (!force) return sleep(PACE).then(() => true);
   return new Promise(resolve => { pending = { next, approve, force, resolve }; renderChat(); });
 }
 function step(turn, s) { s.born = Date.now(); turn.steps.push(s); renderChat(); return s; }
@@ -1571,13 +1682,11 @@ function rowHtml(s, k) {
       : "The harness adds the result of the tool to the messages: a user message that starts with OBSERVATION, as the custom note asks. The model reads it in the next model call.");
     return row(k, "Harness", what, "", msgRows(s.added, 0, k + "a"));
   }
-  if (s.type === "stop") return row(k, "Harness", tipped("Stopping", `The limit is ${S.maxCalls} model calls: Max model calls.`), "", "", "bad");
+  if (s.type === "stop") return row(k, "Harness", tipped("Stopping", `The limit is ${s.call} model calls: Max model calls.`), "", "", "bad");
   return "";
 }
 function pendingRow(p) {
-  return `<div class="ev pending"><div class="ev-row"><span class="who">${esc(p.next.who)}</span><span class="what">${p.approve ? "" : "Next: "}${esc(p.next.text)}</span><span class="meta"></span><span class="more btns">${p.approve
-    ? `<button type="button" class="btn ghost" data-gate="deny" title="Do not run the tool. The model gets: the tool was denied.">Deny</button><button type="button" class="btn" data-gate="ok">Allow</button>`
-    : `<button type="button" class="btn" data-gate="ok">Next step</button>`}</span></div></div>`;
+  return `<div class="ev pending"><div class="ev-row"><span class="who">${esc(p.next.who)}</span><span class="what">${esc(p.next.text)}</span><span class="meta"></span><span class="more btns"><button type="button" class="btn ghost" data-gate="deny" title="Do not run the tool. The model gets: the tool was denied.">Deny</button><button type="button" class="btn" data-gate="ok">Allow</button></span></div></div>`;
 }
 const callCard = (call, rows) => `<section class="callcard"><div class="callcard-hd">Model call ${call}</div>${rows}</section>`;
 const fmt = t => esc(t).replace(/\*\*(.+?)\*\*/g, "$1").replace(/^(\s*)[*-]\s+/gm, "$1• ");
@@ -1591,7 +1700,6 @@ function liveText(t) {
 setInterval(() => { const el = document.getElementById("liveMeta"), t = chat.at(-1); if (el && t && !t.done) el.textContent = liveText(t); }, 200);
 function renderChat(hold) {
   showStarters();
-  $("replay").disabled = busy || !chat.some(t => t.user);
   if (!hold) $("log").style.paddingBottom = "";
   const log = $("log"), atEnd = !hold && log.scrollHeight - log.scrollTop - log.clientHeight < 80, top = log.scrollTop;
   const last = chat.length - 1;
@@ -1618,11 +1726,11 @@ function renderChat(hold) {
     if (sent) out += `<div class="tok-meta user"><span tabindex="0" data-tip-title="Tokens sent" data-tip="What the harness sent in the first model call for this message: the system prompt, the tool definitions, the earlier messages and your message.">↑ ${fmtTok(sent)} tokens</span></div>`;
     out += cards + ans;
     if (live) out += `<div class="tok-meta assistant" id="liveMeta">${liveText(t)}</div>`;
-    else if (t.answer != null && t.t1) out += `<div class="tok-meta assistant"><span tabindex="0" data-tip-title="Time" data-tip="From Send to the answer: all the model calls and tool calls of this message. In Step mode, or with Permissions set to Ask every time, it also counts the time the page waited for you.">${fmtSecs((t.t1 - t.t0) / 1000)}</span> · <span tabindex="0" data-tip-title="Tokens generated" data-tip="What the model wrote for this message, in all its model calls: ${used.length > 1 ? "the tool calls and the answer" : "the answer"}.${used.length > 1 ? ` The answer alone is ${(used.at(-1)?.completion_tokens || 0).toLocaleString()} tokens.` : ""}">↓ ${fmtTok(made)} tokens</span></div>`;
+    else if (t.answer != null && t.t1) out += `<div class="tok-meta assistant"><span tabindex="0" data-tip-title="Time" data-tip="From Send to the answer: all the model calls and tool calls of this message. With Permissions set to Ask every time, it also counts the time the page waited for you.">${fmtSecs((t.t1 - t.t0) / 1000)}</span> · <span tabindex="0" data-tip-title="Tokens generated" data-tip="What the model wrote for this message, in all its model calls: ${used.length > 1 ? "the tool calls and the answer" : "the answer"}.${used.length > 1 ? ` The answer alone is ${(used.at(-1)?.completion_tokens || 0).toLocaleString()} tokens.` : ""}">↓ ${fmtTok(made)} tokens</span></div>`;
     return out;
-  }).join("");
+  }).join("") + archEnd();
   log.scrollTop = atEnd ? log.scrollHeight : top;
-  $("stats").innerHTML = `<span title="The tools that are on: the harness sends their definitions in each model call">Tools on <b>${active().length}</b></span><span>Model calls <b>${stats.calls}</b></span><span>Tool calls <b>${stats.tools}</b></span>${ctxHtml()}`;
+  $("stats").innerHTML = `<span title="The tools that are on: the harness sends their definitions in each model call">Tools on <b>${viewing ? (viewing.tools || []).length : active().length}</b></span><span>Model calls <b>${stats.calls}</b></span><span>Tool calls <b>${stats.tools}</b></span>${ctxHtml()}`;
   estimateCtx();
 }
 document.addEventListener("toggle", e => { const d = e.target; if (d.matches?.("details.x, details.ev")) d.open ? openKeys.add(d.dataset.key) : openKeys.delete(d.dataset.key); }, true);
@@ -1778,7 +1886,7 @@ function syncSave() {
   const saved = !!v && savedMsgs.some(p => p.text === v), builtIn = !!v && PRESETS.some(p => p.msg === v);
   b.innerHTML = saved ? ICON_DEL : ICON_SAVE;
   b.classList.toggle("del", saved);
-  b.disabled = builtIn || busy;
+  b.disabled = builtIn || busy || !!viewing;
   b.title = saved ? "Delete this saved example" : builtIn ? "Already an example" : "Save as an example: it shows below the message box";
   b.setAttribute("aria-label", b.title);
 }
@@ -1802,7 +1910,7 @@ function renderStarters() {
     return w;
   });
   $("starters").replaceChildren(...PRESETS.map(p => chip(p.name, `${p.msg}\n\n${p.tip}`, p.msg)), ...saved);
-  if (busy) document.querySelectorAll(".starter").forEach(b => b.disabled = true);
+  if (busy || viewing) document.querySelectorAll(".starter").forEach(b => b.disabled = true);
   sizeChat();
 }
 async function storeMsgs() {
@@ -1842,6 +1950,7 @@ function showStarters() {
 // the tools shorter than JSON, so the estimate is a little high.
 let ctxEst = { key: "", n: 0 }, ctxTimer = null;
 function ctxSize() {
+  if (viewing?.ctxSize) return viewing.ctxSize;
   const m = Composer.info($("chatModel").value);
   return m?.loaded_instances?.[0]?.config?.context_length || m?.max_context_length || 0;
 }
@@ -1862,7 +1971,7 @@ function ctxHtml() {
   return `<span class="ctx${lvl}" tabindex="0" data-tip-title="Context window" data-tip="${esc(tip + ctxSizeTip(size))}"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6"/><circle cx="8" cy="8" r="6" class="arc" stroke-dasharray="${(pct * C).toFixed(2)} ${C.toFixed(2)}"/></svg>Context <b>${exact ? "" : "≈ "}${used.toLocaleString()}</b> / ${size.toLocaleString()}</span>`;
 }
 function estimateCtx() {
-  if (stats.ctx) return;
+  if (stats.ctx || viewing) return;
   const model = $("chatModel").value, list = S.noteBy === "lmstudio" ? active().map(schemaOf) : [];
   const text = [systemText(), list.length ? JSON.stringify(list) : ""].filter(Boolean).join("\n");
   const key = model + "\u0000" + text;
@@ -1958,6 +2067,7 @@ setInterval(() => document.querySelectorAll("[data-since]").forEach(el => {
 // ---- Send
 async function send(text) {
   if (busy) return false;
+  if (viewing) return false;
   busy = true; ctrl = new AbortController(); $("error").textContent = ""; setBusy(); setStatus("Running…");
   try { await runTurn(text); setStatus(""); return true; }
   catch (e) {
@@ -1966,22 +2076,24 @@ async function send(text) {
     if (e.name === "AbortError") setStatus("Stopped.");
     else $("error").textContent = contextError(String(e.message || e));
     return false;
-  } finally { busy = false; ctrl = null; setBusy(); renderChat(); }
+  } finally { busy = false; ctrl = null; setBusy(); renderChat(); saveChat(); }
 }
 // LM Studio refuses a prompt that is longer than the loaded context length. Say it in plain words, then LM Studio's text.
 function contextError(msg) {
   if (!/context length|context window|context size/i.test(msg)) return msg;
   const size = ctxSize();
   return `The conversation no longer fits in the ${size ? size.toLocaleString() + "-token " : ""}context of the model. `
-    + `Click New chat, or load the model with a larger context length in LM Studio. LM Studio says: ${msg}`;
+    + `Click New, or load the model with a larger context length in LM Studio. LM Studio says: ${msg}`;
 }
 function stop() { ctrl?.abort(); if (pending) { const p = pending; pending = null; p.resolve(null); } }
 function setBusy() {
   Composer.setSend($("sendBtn"), busy, { key: "Enter", stop: "Stop the run" });
-  chatPick.setDisabled(busy);
-  $("replay").disabled = busy || !chat.some(t => t.user);
-  ["newChat", "chatModel", "resetTools", "addTool", "library", "temp", "maxTok", "maxCalls", "system", "sysExamples", "saveSystem", "delSystem"].forEach(id => $(id).disabled = busy);
-  document.querySelectorAll("#noteBy button, #harness button, .starter").forEach(b => b.disabled = busy);
+  // An archived chat: the settings are read only too (they are the settings of that run).
+  const lock = busy || !!viewing;
+  chatPick.setDisabled(lock);
+  ["newChat", "chatsBtn", "resetTools", "addTool", "library"].forEach(id => $(id).disabled = busy);
+  ["chatModel", "temp", "maxTok", "maxCalls", "system", "sysExamples", "saveSystem", "delSystem", "plusBtn", "permBtn"].forEach(id => $(id).disabled = lock);
+  document.querySelectorAll("#noteBy button, #harness button, .starter").forEach(b => b.disabled = lock);
   syncSave();
 }
 function setStatus(t) { $("status").innerHTML = t === "Running…" ? `<span class="busy-dot" aria-hidden="true"></span>Running…` : esc(t); }
@@ -1995,6 +2107,18 @@ $("sendBtn").onclick = () => {
 $("msg").addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); $("sendBtn").click(); } });
 $("msg").addEventListener("input", () => fit($("msg")));
 $("newChat").onclick = () => { if (busy) return; newChat(); renderChat(); setStatus(""); };
+$("chatsBtn").onclick = () => openChats($("chatsMenu").hidden);
+$("chatsMenu").onclick = async e => {
+  const del = e.target.closest("[data-del-chat]"), open = e.target.closest("[data-chat]");
+  if (del) {
+    const id = del.dataset.delChat;
+    try { await fetch(`/chats/${id}`, { method: "DELETE", headers: { "Content-Type": "application/json" } }); } catch (err) { $("error").textContent = err.message; }
+    if (id === chatId) { newChat(); renderChat(); }
+    renderChatsMenu();
+  } else if (open) { openChats(false); viewChat(open.dataset.chat); }
+};
+document.addEventListener("click", e => { if (!$("chatsMenu").hidden && !e.target.closest(".chats-wrap")) openChats(false); });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("chatsMenu").hidden) { openChats(false); $("chatsBtn").focus(); } });
 const waitIdle = () => new Promise(r => { const f = () => busy ? setTimeout(f, 50) : r(); f(); });
 // Reset all: the chat and all the settings (System prompt, Tool list, sliders, Harness, Mode, Permissions) back to their
 // defaults, as on the Trace page. The tools stay: Reset tools on the Tools tab is for them.
@@ -2002,7 +2126,7 @@ $("resetAll").onclick = async () => {
   stop(); await waitIdle();
   newChat(); setStatus(""); $("error").textContent = "";
   Object.assign(S, { ...S_DEFAULT, tab: S.tab }); noteText = NOTE_DEFAULT; keep();
-  ["noteBy", "harness", "stepMode"].forEach(id => setSeg(id, S[id]));
+  ["noteBy", "harness"].forEach(id => setSeg(id, S[id]));
   $("system").value = SYSTEM; $("system").dispatchEvent(new Event("input"));
   renderSampling(); renderPerm(); renderAll();
 };
@@ -2020,10 +2144,11 @@ function sizeChat() {
   log.style.height = Math.max(320, innerHeight - top - bar.offsetHeight - 52) + "px";
 }
 addEventListener("resize", sizeChat);
-// Refit the chat log when anything above it changes height: the settings card, and the rows of the Chat panel
-// (System prompt, Tool list) as they open, close or grow.
+// Refit the chat log when anything above or below it changes height: the settings card, the rows of the Chat panel
+// (System prompt, Tool list) as they open, close or grow, and the message box (examples, status, errors).
 const fitObs = new ResizeObserver(sizeChat);
 fitObs.observe(document.querySelector(".composer"));
+fitObs.observe(document.querySelector(".sendbar"));
 document.querySelectorAll("#pane-chat details.opt").forEach(d => fitObs.observe(d));
 
 // ---- Tabs
@@ -2064,7 +2189,7 @@ function setTheme(v, save) {
 document.querySelectorAll("#theme button").forEach(b => { b.onclick = () => setTheme(b.dataset.theme, true); });
 setTheme(document.documentElement.dataset.theme, false);
 
-["noteBy", "harness", "stepMode"].forEach(id => setSeg(id, S[id]));
+["noteBy", "harness"].forEach(id => setSeg(id, S[id]));
 // ---- Permissions: how the harness gets your approval before a tool runs (human in the loop).
 const SVG = d => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
 const PERMS = [
@@ -2164,13 +2289,15 @@ renderSampling();
 $("temp").oninput = e => { S.temp = Math.round(+e.target.value * 10) / 10; keep(); renderSampling(); };
 $("maxTok").oninput = e => { S.maxTokens = TOK_STEPS[+e.target.value]; keep(); renderSampling(); };
 $("maxCalls").oninput = e => { S.maxCalls = +e.target.value; keep(); renderSampling(); };
-// Replay: the messages of this chat again, in a new chat, with the settings you have now (system prompt, tool note…).
-$("replay").onclick = async () => {
+// Run again (below an archived chat): its messages again, as new requests, in a new chat, with the settings you see
+// (system prompt, tool note…). Not a replay: the model and the tools run again. The archived chat shows the run as it was.
+document.addEventListener("click", e => { if (e.target.closest("#runAgain")) runAgain(); });
+async function runAgain() {
   const msgs = chat.map(t => t.user).filter(Boolean);
   if (busy || !msgs.length) return;
   newChat(); renderChat(); setStatus("");
   for (const m of msgs) if (!(await send(m))) break;
-};
+}
 setTab(S.tab === "tools" ? "tools" : "chat");
 renderAll();
 loadModels();

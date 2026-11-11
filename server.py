@@ -26,6 +26,30 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 # Saved lists: user prompts and system prompts, one JSON file each.
 LISTS = {k: os.path.join(ROOT, k.strip("/") + ".json") for k in ("/prompts", "/system-prompts", "/few-shot", "/schemas", "/presets",
                                                                    "/embed-texts", "/rag-docs", "/rag-questions", "/tools", "/model-formats", "/embed-prefixes", "/tool-prompts")}
+# Saved chats of the Tools page: one JSON file each, view only. The id is the file name.
+CHATS = os.path.join(ROOT, "chats")
+CHAT_ID = re.compile(r"^[0-9a-z-]{1,40}$")
+
+
+def chat_path(path):
+    """/chats/<id> → the file of the chat, or None for a bad id."""
+    cid = path[len("/chats/"):]
+    return os.path.join(CHATS, cid + ".json") if path.startswith("/chats/") and CHAT_ID.match(cid) else None
+
+
+def chat_list():
+    """The saved chats, newest first: id, title, time and model. Not the turns."""
+    out = []
+    for f in glob.glob(os.path.join(CHATS, "*.json")):
+        try:
+            with open(f) as h:
+                c = json.load(h)
+            out.append({k: c.get(k) for k in ("id", "title", "created", "updated", "model", "turns")})
+        except (OSError, ValueError):
+            continue
+    return sorted(out, key=lambda c: c.get("created") or 0, reverse=True)
+
+
 # Starting values of a list, until you save it. Model formats: where the thinking starts and ends in the raw text
 # of the model, as each model wrote it in a real run. You can edit them in Settings.
 LIST_START = {"/model-formats": [
@@ -737,6 +761,15 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     return self._json(200, json.load(f))
             except FileNotFoundError:
                 return self._json(200, LIST_START.get(self.path, []))
+        if self.path == "/chats":
+            return self._json(200, chat_list())
+        if self.path.startswith("/chats/"):
+            f = chat_path(self.path)
+            try:
+                with open(f) as h:
+                    return self._json(200, json.load(h))
+            except (TypeError, FileNotFoundError):
+                return self._json(404, {"error": "no such chat"})
         if self.path.startswith(("/model-input", "/model-output")):
             # Newest formatted input (or raw output) received at or after `since` (ms epoch), if any.
             q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
@@ -771,6 +804,21 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     def do_PUT(self):
         if self._blocked(write=True):
             return
+        if self.path.startswith("/chats/"):
+            f = chat_path(self.path)
+            if not f:
+                return self._json(400, {"error": "bad chat id"})
+            try:
+                c = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))))
+                if not isinstance(c, dict) or not isinstance(c.get("chat"), list):
+                    raise ValueError
+            except ValueError:
+                return self._json(400, {"error": "expected a chat object"})
+            os.makedirs(CHATS, exist_ok=True)
+            with open(f + ".tmp", "w") as h:
+                json.dump(c, h, ensure_ascii=False)
+            os.replace(f + ".tmp", f)
+            return self._json(200, {"ok": True})
         # Saved lists: the page sends the whole list as [{"name": ..., <data>}, ...].
         if self.path not in LISTS:
             return self.send_error(404)
@@ -786,6 +834,18 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             json.dump(items, f, indent=2, ensure_ascii=False)
         os.replace(tmp, path)  # atomic: never a half-written file
         return self._json(200, items)
+
+    def do_DELETE(self):
+        if self._blocked(write=True):
+            return
+        f = chat_path(self.path)
+        if not f:
+            return self.send_error(404)
+        try:
+            os.remove(f)
+        except FileNotFoundError:
+            pass
+        return self._json(200, {"ok": True})
 
     def do_POST(self):
         if self._blocked(write=True):
