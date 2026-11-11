@@ -284,6 +284,9 @@ The page has two tabs:
 - **Write guardrails.** Put a rule in the **System prompt**, or select one from the **Examples** menu, and see how it changes tool selection. **Permissions** (Deny all, Ask every time, Allow all) control which tools run.
 - **Compare models.** Load a small model, like Gemma 3 1B, and ask the same questions. **Validating tool call** shows the calls that do not match the schema.
 - **Create your own tools.** Give a name, a description, a URL and parameters, and see how well each model uses them.
+- **Chain tool calls.** The library has **power** and **future_value** (math.js), for example to get the price of Bitcoin and then calculate its value in 10 years at 10% a year. **multiply** returns large numbers in fixed notation, not like `1.9e+5`.
+
+**Reasoning between tool calls.** A reasoning model like Gemma 4 plans before it calls a tool. The harness sends that reasoning back with the tool result (`reasoning_content` in the assistant message), so the model keeps its plan during one turn. When you send a new question, the harness removes the old reasoning. This follows the [Gemma 4 thinking guide](https://ai.google.dev/gemma/docs/capabilities/thinking). In **Messages**, click `reasoning_content` to see the full text. **Parsing output** shows what LM Studio found in the output: `reasoning_content`, `content` and `tool_calls`.
 
 ![Tools: one tool call for the price of Bitcoin, with Gemma 4 12B](docs/t-price-of-bitcoin.png)
 
