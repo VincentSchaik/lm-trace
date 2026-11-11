@@ -431,6 +431,13 @@
   .msg.new { box-shadow: inset 3px 0 0 var(--primary); }
   .role { font: 500 10.5px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); padding-top: 2px; }
   .msg-text { font: 12px/1.55 var(--mono); white-space: pre-wrap; word-break: break-word; color: var(--ink); }
+  .msg-text details.x { border-top: 0; }
+  .msg-text details.x > summary { padding: 0; font: inherit; color: var(--ink); white-space: normal; align-items: flex-start; gap: 4px; }
+  .msg-text details.x > summary .chev { margin-top: 3px; flex: none; }
+  .msg-text details.x > summary .rc-lbl { flex: 1 1 auto; min-width: 0; }
+  .msg-text details.x > summary .rc-n { color: var(--ink-3); }
+  .msg-text details.x[open] .rc-pv { display: none; }
+  .rc-full { margin: 4px 0 6px 18px; padding-left: 10px; border-left: 2px solid var(--paper-2); color: var(--ink-2); }
   .pre { margin: 0; padding: 8px 10px; border: 1px solid var(--paper-2); border-radius: 6px; font: 12px/1.55 var(--mono); white-space: pre-wrap; word-break: break-word; color: var(--ink-2); background: var(--input-bg); }
   .note { padding: 8px 12px; border-radius: 6px; background: rgba(var(--shadow-rgb), .025); color: var(--ink-3); font-size: 12.5px; line-height: 1.5; }
   .note code { font-size: 11.5px; }
@@ -870,8 +877,12 @@ To use a tool, respond with JSON: {"tool": "name", "kwargs": {"param": "value"}}
 // ---- Tools: the starter set. URL tools are a GET request to a free API. Built-in tools run as Python on the server:
 // only search_memory, because it searches the facts on this computer (URL tools may not call local addresses).
 const P = (name, type, required, description, extra) => ({ name, type, required, description, ...extra });
+// math.js: format(…, {notation: "fixed"}) writes 191536.71 instead of 1.9153671e+5, so a large result is easy to read.
+// The braces and quotes of the options are URL-encoded, so they are not read as a {parameter}.
+const MATH_URL = expr => `https://api.mathjs.org/v4/?expr=format(${expr},%7Bnotation:%22fixed%22%7D)`;
+const MULTIPLY_DESC = 'Multiply two numbers with math.js. Use it for every multiplication, so the result is exact. Returns the product as text in quotes, for example "90".';
 const STARTER = [
-  { name: "multiply", title: "Multiply", icon: "lucide:calculator", kind: "url", on: true, url: "https://api.mathjs.org/v4/?expr={a}*{b}", description: "Multiply two numbers with math.js. Use it for every multiplication, so the result is exact. Returns the product as plain text, for example 90.",
+  { name: "multiply", title: "Multiply", icon: "lucide:calculator", kind: "url", on: true, url: MATH_URL("{a}*{b}"), description: MULTIPLY_DESC,
     params: [P("a", "number", true, "The first number, for example 12"), P("b", "number", true, "The second number, for example 7.5")] },
   { name: "get_weather", title: "Weather", icon: "wi:day-cloudy", kind: "url", on: true, url: "https://wttr.in/{city}?format=%l:+%C,+%t,+feels+like+%f,+wind+%w,+humidity+%h",
     description: "Get the current weather in a city from wttr.in: conditions, temperature, feels-like temperature, wind and humidity. Use it when the user asks about the weather now. It gives no forecast. Returns one line of text, for example: Toronto: Sunny, +9°C, feels like +7°C, wind →15km/h, humidity 72%",
@@ -895,6 +906,15 @@ const CRYPTO_DESC = "Get the current spot price of a cryptocurrency from Coinbas
 const CRYPTO_PAIR = "The coin and the currency of the price, in the format COIN-CURRENCY with ticker symbols, for example BTC-USD (Bitcoin in US dollars) or ETH-CAD (Ethereum in Canadian dollars)";
 // More free APIs that need no key (each one tested). URL tools, so you can see and change the URL.
 const LIBRARY = [
+  { name: "power", title: "Power", icon: "lucide:superscript", kind: "url", url: MATH_URL("{base}%5E{exponent}"),
+    description: 'Raise a number to a power with math.js. Use it for every power, so the result is exact, for example the growth factor (1 + r)^n of compound growth: 10% a year for 10 years is base 1.1 and exponent 10. Returns the result as text in quotes, for example "2.5937424601".',
+    params: [P("base", "number", true, "The number to raise, for example 1.1"), P("exponent", "number", true, "The power, for example 10")] },
+  // One tool for a calculation that always takes the same steps (OpenAI guide: combine functions that are always called in sequence).
+  // %2B is the + of the formula: a + in a URL query means a space.
+  { name: "future_value", title: "Future value", icon: "lucide:chart-line", kind: "url", url: MATH_URL("{present_value}*(1%2B{rate})%5E{years}"),
+    description: 'Calculate the future value of an amount that grows at a fixed rate each year (compound growth), with math.js: present_value × (1 + rate)^years. Use it when the user asks what an amount or a price will be worth after some years at a yearly return. Returns the future value as text in quotes, for example "191535.03".',
+    params: [P("present_value", "number", true, "The amount or the price today, for example 73845.05"), P("rate", "number", true, "The yearly rate as a decimal, for example 0.1 for 10% or -0.05 for -5%"),
+      P("years", "number", true, "The number of years, for example 10")] },
   { name: "search_wikipedia", title: "Wikipedia", icon: "tabler:brand-wikipedia", kind: "url", on: true, url: "https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch={query}&srlimit={count}&srprop=snippet&format=json",
     description: "Search English Wikipedia for pages about a topic. Use it for facts about people, places, events and ideas. Returns JSON: query.search is the list of pages found, each with a title and a snippet, a short extract that contains HTML tags.",
     params: [P("query", "string", true, "What to search for, for example: Model Context Protocol"), P("count", "integer", true, "How many pages, from 1 to 10. Use 3 if the user does not say.")] },
@@ -944,6 +964,11 @@ async function loadTools() {
   for (const [k, t] of tools.entries()) {
     const d = STARTER.find(x => x.name === t.name && x.kind === "url");
     if (d && t.kind === "builtin") { tools[k] = { ...clone(d), on: t.on, title: t.title ?? d.title }; moved = true; }
+  }
+  // multiply saved before 2026-11-10: the URL without fixed notation (a large product came back as 1.9e+5).
+  for (const t of tools) if (t.name === "multiply" && t.url === "https://api.mathjs.org/v4/?expr={a}*{b}") {
+    t.url = MATH_URL("{a}*{b}"); moved = true;
+    if (t.description === "Multiply two numbers with math.js. Use it for every multiplication, so the result is exact. Returns the product as plain text, for example 90.") t.description = MULTIPLY_DESC;
   }
   // Tools saved before the Icon field: the default icon of a starter or library tool, else link (URL) or wrench.
   for (const t of tools) if (t.icon === undefined) {
@@ -1338,6 +1363,8 @@ async function runTurn(text) {
   const turn = { user: text, steps: [], answer: null, done: false, t0: Date.now() };
   chat.push(turn);
   const before = history.length;
+  // A new question: the thinking of the earlier turns is removed, as the chat templates of the models do.
+  history.forEach(m => { delete m.reasoning_content; });
   history.push({ role: "user", content: text });
   try {
     let lastResults = 0;
@@ -1371,7 +1398,9 @@ async function runTurn(text) {
       }
       await must({ call, who: "Harness", text: S.noteBy === "page" ? "Parsing content" : "Parsing tool_calls" });
       // The assistant message goes into the history, as the book's TinyAgent adds it to its memory.
-      if (S.noteBy === "lmstudio" && msg.tool_calls?.length) history.push({ role: "assistant", content: answerText, tool_calls: msg.tool_calls });
+      // The thinking goes back with the tool calls until the final answer, so the model keeps its plan between the calls
+      // (Gemma 4: "thoughts must NOT be removed between the function calls"; Qwen3 and gpt-oss work the same way).
+      if (S.noteBy === "lmstudio" && msg.tool_calls?.length) history.push({ role: "assistant", content: answerText, tool_calls: msg.tool_calls, ...(msg.reasoning_content ? { reasoning_content: msg.reasoning_content } : {}) });
       else history.push({ role: "assistant", content: answerText });
       const lost = !calls.length && /\[TOOL_REQUEST\]|<tool_call>|"tool"\s*:|tool_call/i.test(msg.content || "");
       step(turn, { type: "parse", call, calls, noteBy: S.noteBy, lost, kind: req.kind, cut: finish === "length", text: answerText });
@@ -1432,11 +1461,15 @@ function row(key, who, what, meta, body, cls = "") {
     ? `<details class="ev${cls ? " " + cls : ""}" data-key="${key}"${openKeys.has(key) ? " open" : ""}><summary>${head}<span class="more">Details<span class="chev"></span></span></summary><div class="ev-bd">${body}</div></details>`
     : `<div class="ev${cls ? " " + cls : ""}"><div class="ev-row">${head}<span class="more"></span></div></div>`;
 }
-function msgRows(messages, newFrom = Infinity) {
+function msgRows(messages, newFrom = Infinity, key = "m") {
   return `<div class="msgs">${messages.map((m, i) => {
     let text = m.content ?? "";
     if (m.tool_calls?.length) text = (text ? text + "\n" : "") + m.tool_calls.map(c => `tool_calls: ${c.function.name}(${c.function.arguments})`).join("\n");
-    return `<div class="msg${i >= newFrom ? " new" : ""}"><span class="role">${esc(m.role)}</span><div class="msg-text">${esc(text)}</div></div>`;
+    // The reasoning (the plan) the harness sends back: closed, a short preview; open, the full text.
+    const rc = m.reasoning_content
+      ? det(`${key}rc${i}`, `<span class="rc-lbl">reasoning_content <span class="rc-n">(${m.reasoning_content.length.toLocaleString()} characters)</span><span class="rc-pv">: ${esc(short(m.reasoning_content, 100))}</span></span>`, `<div class="rc-full">${esc(m.reasoning_content.trim())}</div>`)
+      : "";
+    return `<div class="msg${i >= newFrom ? " new" : ""}"><span class="role">${esc(m.role)}</span><div class="msg-text">${rc}${esc(text)}</div></div>`;
   }).join("")}</div>`;
 }
 const argText = a => Object.entries(a || {}).map(([k, v]) => `${k}: ${JSON.stringify(v)}`).join(", ");
@@ -1462,7 +1495,7 @@ function rowHtml(s, k) {
   if (s.type === "request") {
     const b = s.body, nt = b.tools?.length || 0;
     const sentence = tipped("Sending request", nt ? "The harness sends the messages and the tool definitions to LM Studio (POST /v1/chat/completions). It sends them again in each model call." : "The harness sends the messages to LM Studio (POST /v1/chat/completions). No tools are on.");
-    const body = det(k + "m", "Messages", msgRows(b.messages, b.messages.length - 1), `${b.messages.length}`)
+    const body = det(k + "m", "Messages", msgRows(b.messages, b.messages.length - 1, k + "m"), `${b.messages.length}`)
       + (nt ? det(k + "t", "Tool list", `<pre class="pre">${esc(JSON.stringify(b.tools, null, 2))}</pre>`, plural(nt, "tool")) : "")
       + (() => { const { messages, tools, ...rest } = b; return det(k + "p", "Parameters", `<pre class="pre">${esc(JSON.stringify(rest, null, 2))}</pre>`, `${Object.keys(rest).length}`); })();
     return row(k, "Harness", sentence, "", body);
@@ -1515,7 +1548,7 @@ function rowHtml(s, k) {
     const tool = s.added[0]?.role === "tool";
     const what = tipped("Appending observation", tool ? "The harness adds the result of the tool to the messages: a message with the role tool and the id of the call. The model reads it in the next model call."
       : "The harness adds the result of the tool to the messages: a user message that starts with OBSERVATION, as the custom note asks. The model reads it in the next model call.");
-    return row(k, "Harness", what, "", msgRows(s.added, 0));
+    return row(k, "Harness", what, "", msgRows(s.added, 0, k + "a"));
   }
   if (s.type === "stop") return row(k, "Harness", tipped("Stopping", `The limit is ${S.maxCalls} model calls: Max model calls.`), "", "", "bad");
   return "";
