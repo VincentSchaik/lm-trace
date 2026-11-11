@@ -298,12 +298,34 @@
   .panel { flex: none; }
   html, body { height: auto; min-height: 100vh; }
   #chatModel { min-width: 300px; }
+  /* + menu: Tools ›, then a list of the tools with On/Off switches (like the Connectors menu of a chatbot). */
+  .plus-wrap { margin-right: 8px; }
+  .perm-menu.plus-menu { width: 220px; }
+  .perm-menu.tools-menu { left: 228px; width: 300px; max-height: 420px; overflow-y: auto; }
+  .perm-menu .sub { grid-template-columns: 20px 1fr 16px; }
+  .perm-menu .sub[aria-expanded="true"] { background: var(--paper); }
+  .perm-menu .sep { height: 1px; margin: 6px 8px; background: var(--line); }
+  .perm-menu .tl { grid-template-columns: 20px 1fr 34px; }
+  .perm-menu .tl .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .plus-wrap .perm-menu { border-radius: 14px; padding: 6px; }
+  .plus-wrap .perm-menu button { padding: 7px 10px; border-radius: 8px; font-size: 14px; }
+  .plus-wrap .perm-menu button svg { width: 17px; height: 17px; color: var(--ink-2); }
+  .perm-menu .tl[aria-checked="true"] { background: transparent; color: var(--ink); }
+  .perm-menu .tl:hover { background: var(--paper); }
+  .sw { position: relative; width: 34px; height: 20px; border-radius: 10px; background: var(--stone-2); transition: background .15s; }
+  .sw::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.25); transition: transform .15s; }
+  [aria-checked="true"] > .sw { background: var(--primary); }
+  [aria-checked="true"] > .sw::after { transform: translateX(14px); }
+  .perm-menu .none { padding: 8px 10px; font-size: 13px; color: var(--ink-3); }
+  @media (max-width: 640px) { .perm-menu.tools-menu { left: 0; } }
   .lede { margin-bottom: 14px; }
   .lede .more { display: inline; }
   .lede .more[open] { display: block; }
   .lede .more > summary { margin-left: 6px; color: var(--red); }
   .lede .more p { margin: 6px 0 0; }
   .linkbtn { border: 0; background: none; padding: 0; font: inherit; color: var(--red); cursor: pointer; }
+  .note a { color: var(--red); text-decoration: none; }
+  .note a:hover, .linkbtn:hover { text-decoration: underline; }
   .linkbtn:hover { text-decoration: underline; }
   .preset-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
   .preset-row select.field { width: 340px; max-width: 100%; height: 36px; font-weight: 400; font-size: 14px; }
@@ -351,6 +373,11 @@
   .chat-empty { margin: auto; text-align: center; color: var(--ink-3); font-size: 14px; max-width: 360px; line-height: 1.6; }
   .bubble { max-width: 80%; padding: 8px 12px; border-radius: 12px; font-size: 14px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
   .bubble.user { align-self: flex-end; background: var(--paper-2); border-bottom-right-radius: 4px; }
+  .capture .chatlog { height: auto !important; overflow: visible !important; }
+  .capture .side { position: static; height: auto; align-self: stretch; }  /* the sidebar runs the full length of the page */
+  .tok-meta { font-size: 12px; color: var(--ink-3); margin-top: -6px; cursor: help; }
+  .tok-meta.user { align-self: flex-end; }
+  .tok-meta.assistant { align-self: flex-start; }
   .bubble.assistant { align-self: flex-start; background: var(--field); border: 1px solid var(--line); border-bottom-left-radius: 4px; }
   .bubble .wait, .bubble .ph { color: var(--ink-3); }
 
@@ -394,6 +421,8 @@
   .raw .tx { cursor: help; border-radius: 4px; padding: 0 2px; box-shadow: inset 0 0 0 1px var(--stone-2); background: rgba(var(--shadow-rgb), .03); }
   .raw .nl { color: var(--stone-2); }
   .raw .hint, .hint-s { font: 12.5px var(--sans); color: var(--ink-3); }
+  .nd .inj { margin: 6px 0 6px; }
+  .pre.gen { background: var(--paper); border-color: transparent; color: var(--ink-3); cursor: default; }
   .legend { display: flex; gap: 6px 14px; flex-wrap: wrap; align-items: center; font-size: 12px; color: var(--ink-3); }
   .legend .raw { display: inline; padding: 0; border: 0; background: none; }
   .msg { display: grid; grid-template-columns: 80px minmax(0, 1fr); gap: 8px; padding: 6px 10px; }
@@ -402,6 +431,15 @@
   .msg.new { box-shadow: inset 3px 0 0 var(--primary); }
   .role { font: 500 10.5px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); padding-top: 2px; }
   .msg-text { font: 12px/1.55 var(--mono); white-space: pre-wrap; word-break: break-word; color: var(--ink); }
+  .msg-text details.x { border-top: 0; }
+  .msg-text details.x > summary { padding: 0; font: inherit; color: var(--ink); white-space: normal; align-items: flex-start; gap: 4px; }
+  .msg-text details.x > summary .chev { margin-top: 3px; flex: none; }
+  .msg-text details.x > summary .rc-lbl { flex: 1 1 auto; min-width: 0; }
+  .msg-text details.x > summary .rc-n { color: var(--ink-3); }
+  .msg-text details.x[open] .rc-pv { display: none; }
+  .found .msg { grid-template-columns: 136px minmax(0, 1fr); }
+  .found .role { font: 12px/1.55 var(--mono); letter-spacing: 0; text-transform: none; padding-top: 0; }
+  .rc-full { margin: 4px 0 6px 18px; padding-left: 10px; border-left: 2px solid var(--paper-2); color: var(--ink-2); }
   .pre { margin: 0; padding: 8px 10px; border: 1px solid var(--paper-2); border-radius: 6px; font: 12px/1.55 var(--mono); white-space: pre-wrap; word-break: break-word; color: var(--ink-2); background: var(--input-bg); }
   .note { padding: 8px 12px; border-radius: 6px; background: rgba(var(--shadow-rgb), .025); color: var(--ink-3); font-size: 12.5px; line-height: 1.5; }
   .note code { font-size: 11.5px; }
@@ -413,6 +451,9 @@
   .next .btn { height: 34px; padding: 0 16px; font-size: 13.5px; }
 
   .sendbar { padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+  /* The message box stays at the bottom of the window when open settings rows make the page taller. */
+  #pane-chat .sendbar { position: sticky; bottom: 35px; z-index: 5; }  /* 35px: where sizeChat puts it, so it does not move */
+  .capture #pane-chat .sendbar { position: static; }
   /* Examples: chips below the message box while the chat is empty. A click fills the box; you send it. */
   .starters { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; padding: 4px 2px 0; }
   .starters[hidden] { display: none; }
@@ -440,13 +481,29 @@
   .tool { border: 1px solid var(--line); border-radius: 8px; background: var(--field); overflow: hidden; }
   .tool.off { opacity: .6; }
   .tool-hd { display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; padding: 8px 12px; background: var(--paper); border-bottom: 1px solid var(--line); }
-  .tool-hd .nm { font: 600 13px var(--mono); color: var(--ink); }
+  .tool-hd .nm { font: 600 14px var(--sans); color: var(--ink); }  /* the display name; the function name is in the signature below */
   .tool-hd .right { margin-left: auto; display: flex; gap: 6px; align-items: center; }
-  .tool-hd label.on { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink-2); cursor: pointer; }
+  .tool-hd label.on { position: relative; display: inline-flex; align-items: center; cursor: pointer; }
+  .tool-hd label.on input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+  .tool-hd label.on input:checked + .sw { background: var(--primary); }
+  .tool-hd label.on input:checked + .sw::after { transform: translateX(14px); }
+  .tool-hd label.on input:focus-visible + .sw { outline: 2px solid var(--primary); outline-offset: 2px; }
   .tool-hd input[type=checkbox], .prow input[type=checkbox] { accent-color: var(--red); width: 15px; height: 15px; margin: 0; cursor: pointer; }
   .tool-bd { padding: 10px 12px; display: grid; gap: 6px; font-size: 13px; color: var(--ink-2); }
   .tool-bd .sig { font: 12.5px var(--mono); color: var(--ink); }
   .tool-bd .src { font: 11.5px var(--mono); color: var(--ink-3); word-break: break-all; }
+  .tool-bd.tv { padding: 14px 16px; gap: 0; }
+  .tv-row { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 12px; padding: 12px 0; }
+  .tv-row:first-child { padding-top: 2px; }
+  .tv-row:last-child { padding-bottom: 2px; }
+  .tv-row + .tv-row { border-top: 1px solid var(--paper-2); }
+  .tv-lbl { font-size: 12.5px; font-weight: 500; color: var(--ink-2); }
+  .tv-val { display: grid; gap: 8px; min-width: 0; line-height: 1.5; }
+  .tv-val details.x { border-top: 0; }
+  .tv-val details.x > summary { padding: 0; }
+  .tv-val details.x[open] > summary { margin-bottom: 8px; }
+  .edit > .grp { grid-column: 1 / -1; margin-top: 10px; padding-top: 14px; border-top: 1px solid var(--paper-2); font: 600 13px var(--sans); color: var(--ink); }
+  .edit .src-b { font: 12.5px var(--mono); color: var(--ink-3); padding-top: 8px; }
   .tool .copy { width: 28px; height: 28px; margin: 0; }
   .tool .copy.del:hover { color: var(--danger); }
   .edit { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 8px 12px; align-items: start; }
@@ -563,6 +620,21 @@
   @keyframes pulse { 50% { opacity: .25; } }
   @media (prefers-reduced-motion: reduce) { .busy-dot { animation: none; } }
   .small-btn { height: 30px !important; padding: 0 12px !important; font-size: 12.5px !important; }
+  .ti { display: inline-grid; place-items: center; flex: none; color: var(--ink-2); }
+  .ti svg { width: 17px; height: 17px; }
+  .tool-hd .ti { margin-right: -2px; }
+  .icon-row { display: flex; align-items: center; gap: 10px; }
+  .icon-row .ti { width: 36px; height: 36px; border: 1px solid var(--line); border-radius: 8px; background: var(--field); }
+  .icon-row .ti svg { width: 20px; height: 20px; }
+  .icon-row input { flex: 1; min-width: 0; }
+  .icon-row a { flex: none; font-size: 13px; color: var(--primary); }
+  .ctx { display: inline-flex; align-items: center; gap: 6px; cursor: help; }
+  .ctx svg { width: 15px; height: 15px; transform: rotate(-90deg); }
+  .ctx circle { fill: none; stroke: var(--line); stroke-width: 2.5; }
+  .ctx circle.arc { stroke: var(--primary); stroke-linecap: round; }
+  .ctx.high circle.arc { stroke: #d98e04; }
+  .ctx.full circle.arc { stroke: var(--danger); }
+  .edit-actions { display: flex; justify-content: flex-end; gap: 8px; padding-top: 10px; }
   .note-box { padding: 0 0 14px; display: grid; gap: 10px; }
   .opt > summary .sum-ctl { margin-left: auto; display: inline-flex; align-items: center; gap: 10px; cursor: default; }
   .sum-ctl .seg { padding: 2px; } .sum-ctl .seg button { height: 26px; }
@@ -586,6 +658,7 @@
     .ev .meta:empty { display: none; }
     .ev-bd { padding-left: 14px; }
     .edit { grid-template-columns: 1fr; }
+    .tv-row { grid-template-columns: 1fr; gap: 6px; }
     .edit > span { padding-top: 0; }
     .prow { grid-template-columns: 1fr 1fr; }
   }
@@ -618,7 +691,7 @@
     <h1>Tools</h1>
     <select id="chatModel" class="field" aria-label="Chat model" hidden></select>
     <span class="spacer"></span>
-    <button type="button" id="resetAll" class="hdr-btn" title="Clear the chat. The tools stay.">Reset all</button>
+    <button type="button" id="resetAll" class="hdr-btn" title="Clear the chat and set all the settings back to their defaults. Your tools stay.">Reset all</button>
     <span class="seg" id="theme" role="group" aria-label="Theme">
       <button data-theme="light" aria-pressed="false">Light</button>
       <button data-theme="dark" aria-pressed="false">Dark</button>
@@ -630,27 +703,26 @@
       <details class="more"><summary>How it works</summary>
         <p>The model does not call a tool. It only writes a tool call: the intention to use a tool. Two programs do the rest. LM Studio, the inference server, runs the model and parses its output into JSON. The harness (this page and its server) executes the tool and sends the result back.</p>
         <ol class="how">
-          <li><b>Tool creation</b> · <i>Tools tab</i>. You create a tool: a function with a name, a description and parameters. Only the tools that are on go to the model.</li>
-          <li><b>Tool definition</b> · <i>Tool note</i>. The harness defines each tool that is on. LM Studio (structured function calling): a JSON schema. Custom note: text in the system prompt. <i>Sending request</i> sends the definitions in each model call, and <i>Applying chat template</i> puts them into the prompt.</li>
+          <li><b>Tool creation</b> · <i>Tools tab</i>. You create a tool: a function with a name, a description and parameters, and the URL or the Python code that runs it. The harness turns it into the tool definition, a JSON schema. Only the tools that are on go to the model.</li>
+          <li><b>Tool definition</b> · <i>Tool list</i>. The harness defines each tool that is on. LM Studio: a JSON schema in the format of the <a href="https://lmstudio.ai/docs/developer/openai-compat/tools" target="_blank" rel="noopener">OpenAI Function Calling API</a>. Custom note: text in the system prompt. <i>Sending request</i> sends the definitions in each model call, and <i>Applying chat template</i> puts them into the prompt.</li>
           <li><b>Tool selection</b> · <i>Generating tokens</i>. The model thinks, and selects a tool or no tool.</li>
           <li><b>Tool calling</b> · <i>Generating tokens</i>: the model writes the call. <i>Parsing output</i>, <i>Serializing JSON</i>: LM Studio parses it. <i>Parsing tool_calls</i>, <i>Validating tool call</i>: the harness parses and validates it. <i>Executing tool</i>: the server executes it. With Permissions set to Ask every time, the harness asks you first: Allow or Deny.</li>
           <li><b>Output processing</b> · <i>Appending observation</i>: the result goes back to the model as an observation. In the next model call, the model writes the answer.</li>
         </ol>
-        <p>Some models learned special tool tokens in training. LM Studio puts the tools into the chat template of these models. Other models get the tools as a text note, and must follow it.</p>
+        <p>Some models learned special tool tokens in training (native tool use). LM Studio puts the tools into the chat template of these models. Other models get the tools as a text note with the <code>[TOOL_REQUEST]</code> format (default tool use), and must follow it.</p>
       </details></div>
   </section>
 
   <div class="tabbox">
   <div class="tabs" role="tablist" aria-label="Views">
     <button type="button" role="tab" data-tab="chat" aria-selected="true">Chat</button>
-    <button type="button" role="tab" data-tab="tools" aria-selected="false">Tools <span class="cnt" id="toolCount"></span></button>
+    <button type="button" role="tab" data-tab="tools" aria-selected="false">Tools</button>
   </div>
 
   <div class="tabpane" id="pane-chat" role="tabpanel">
   <section class="panel" aria-label="Chat">
-    <div class="panel-head"><h2>Chat</h2>
-      <span class="stats" id="stats"></span>
-      <button type="button" id="newChat" class="btn ghost" title="Start a new chat. The tools stay.">New chat</button></div>
+    <div class="panel-head"><button type="button" id="newChat" class="btn ghost" title="Start a new chat: clear the conversation. The settings and the tools stay.">New chat</button>
+      <span class="stats" id="stats"></span></div>
     <!-- System prompt: the same row as on the Trace page. Sent first, in every model call. -->
     <div class="opts sysrow">
       <details class="opt" id="optSystem">
@@ -663,10 +735,10 @@
         </div>
       </details>
     </div>
-    <!-- Tool note: how the tools reach the model. The switch is in the settings row below. -->
+    <!-- Tool list: how the tools reach the model. The switch is in the settings row below. -->
     <div class="opts sysrow">
       <details class="opt" id="optNote">
-        <summary><span class="chev"></span><span class="opt-title">Tool note</span><span class="opt-state" id="stNote"></span><span class="sum-ctl"><span class="seg" id="noteBy" role="group" aria-label="Tool note"><button data-v="lmstudio" aria-pressed="true" title="LM Studio writes the tool note from the JSON schemas">LM Studio</button><button data-v="page" aria-pressed="false" title="You write the tool note in the system prompt">Custom</button></span><span class="info" tabindex="0" data-tip-title="Tool note" data-tip="The text that tells the model which tools it has and how to call one. LM Studio: the page sends the tools as JSON schemas, and LM Studio writes the note (the chat template of a model trained for tools, else a text note). Custom: you write the note into the system prompt, and the harness reads the reply itself.">i</span></span></summary>
+        <summary><span class="chev"></span><span class="opt-title">Tool list</span><span class="opt-state" id="stNote"></span><span class="sum-ctl"><span class="seg" id="noteBy" role="group" aria-label="Tool list"><button data-v="lmstudio" aria-pressed="true" title="LM Studio writes the tool note from the tool definitions">LM Studio</button><button data-v="page" aria-pressed="false" title="You write the tool note in the system prompt">Custom</button></span><span class="info" tabindex="0" data-tip-title="Tool list" data-tip="The text that tells the model which tools it has and how to call one. LM Studio: the page sends the tool definitions as JSON schemas, in the format of the OpenAI Function Calling API, and LM Studio writes the note (the chat template of a model trained for tools, else a text note). Custom: you write the note into the system prompt, and the harness reads the reply itself.">i</span></span></summary>
         <div class="note-box" id="noteBox"></div>
       </details>
     </div>
@@ -703,6 +775,9 @@
     <div class="cbox">
       <div class="cbox-top"><textarea id="msg" class="cbox-input" rows="1" placeholder="Ask something, or select an example." title="Enter sends the message. Shift + Enter adds a line."></textarea><div class="input-tools"><button type="button" class="copy" id="saveMsg" title="Save as an example: it shows below the message box" aria-label="Save as an example"></button><button type="button" class="copy" id="copyMsg" title="Copy the message" aria-label="Copy the message"></button></div></div>
       <div class="cbox-bar">
+        <div class="perm-wrap plus-wrap"><button type="button" class="perm-btn" id="plusBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="plusMenu" title="Tools" aria-label="Tools"></button>
+          <div class="perm-menu plus-menu" id="plusMenu" role="menu" aria-label="Add" hidden></div>
+          <div class="perm-menu tools-menu" id="toolsMenu" role="menu" aria-label="Tools" hidden></div></div>
         <div class="perm-wrap"><button type="button" class="perm-btn" id="permBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="permMenu"></button>
           <div class="perm-menu" id="permMenu" role="menu" aria-label="Permissions" hidden></div></div>
         <div id="chatPick" class="grow"></div>
@@ -719,7 +794,7 @@
 
   <div class="tabpane" id="pane-tools" role="tabpanel" hidden>
   <section class="panel" aria-label="Tools">
-    <div class="panel-head"><h2>Tools</h2><span class="sub">Tool creation: a tool is a function with a name, a description and parameters</span></div>
+    <div class="panel-head"><h2>Tools</h2><span class="sub">Tool creation: a function with a name, a description and parameters. Tool definition: its JSON schema</span></div>
     <div class="card-tools top">
       <button type="button" class="btn ghost" id="addTool" title="Create a URL tool: the server calls the URL with the arguments in it">Create tool</button>
       <select id="library" class="field" aria-label="Add a tool from the library"></select>
@@ -801,37 +876,59 @@ If needed, you can only use the following tools to assist you in completing task
 
 To use a tool, respond with JSON: {"tool": "name", "kwargs": {"param": "value"}}`;
 
-// ---- Tools: the starter set. Built-in tools run as Python on the server; URL tools are a GET request.
+// ---- Tools: the starter set. URL tools are a GET request to a free API. Built-in tools run as Python on the server:
+// only search_memory, because it searches the facts on this computer (URL tools may not call local addresses).
 const P = (name, type, required, description, extra) => ({ name, type, required, description, ...extra });
+// math.js: format(…, {notation: "fixed"}) writes 191536.71 instead of 1.9153671e+5, so a large result is easy to read.
+// The braces and quotes of the options are URL-encoded, so they are not read as a {parameter}.
+const MATH_URL = expr => `https://api.mathjs.org/v4/?expr=format(${expr},%7Bnotation:%22fixed%22%7D)`;
+const MULTIPLY_DESC = 'Multiply two numbers with math.js. Use it for every multiplication, so the result is exact. Returns the product as text in quotes, for example "90".';
 const STARTER = [
-  { name: "multiply", kind: "builtin", on: true, description: "Multiply two numbers.",
-    params: [P("a", "number", true, "The first number"), P("b", "number", true, "The second number")] },
-  { name: "get_weather", kind: "builtin", on: true, description: "Get the current weather in a city: temperature, wind and conditions. Live data from Open-Meteo.",
-    params: [P("city", "string", true, "The name of the city, for example Toronto")] },
-  { name: "exchange_rate", kind: "url", on: true, url: "https://api.frankfurter.dev/v1/latest?amount={amount}&base={base}&symbols={target}",
-    description: "Convert an amount of money from one currency to another, with today's rate of the European Central Bank (Frankfurter).",
-    params: [P("amount", "number", true, "The amount of money to convert"), P("base", "string", true, "The currency to convert from, as a 3-letter code, for example USD"),
-      P("target", "string", true, "The currency to convert to, as a 3-letter code, for example CAD")] },
-  { name: "top_tech_news", kind: "builtin", on: true, description: "Get the top stories on Hacker News right now: the title, the points and the link of each story.",
-    params: [P("count", "integer", false, "How many stories, from 1 to 10. The default is 3.")] },
-  { name: "search_memory", kind: "builtin", on: true, description: "Search the saved facts of the Memory page (the long-term memory). Returns the facts nearest to the query.",
-    params: [P("query", "string", true, "What to look for, for example: Where does Ilse live?")] },
-  { name: "search_wikipedia", kind: "builtin", on: true, description: "Search English Wikipedia. Returns the title, a short snippet and the link of each page found.",
-    params: [P("query", "string", true, "What to search for, for example: Model Context Protocol"), P("count", "integer", false, "How many pages, from 1 to 10. The default is 3.")] },
+  { name: "multiply", title: "Multiply", icon: "lucide:calculator", kind: "url", on: true, url: MATH_URL("{a}*{b}"), description: MULTIPLY_DESC,
+    params: [P("a", "number", true, "The first number, for example 12"), P("b", "number", true, "The second number, for example 7.5")] },
+  { name: "get_weather", title: "Weather", icon: "wi:day-cloudy", kind: "url", on: true, url: "https://wttr.in/{city}?format=%l:+%C,+%t,+feels+like+%f,+wind+%w,+humidity+%h",
+    description: "Get the current weather in a city from wttr.in: conditions, temperature, feels-like temperature, wind and humidity. Use it when the user asks about the weather now. It gives no forecast. Returns one line of text, for example: Toronto: Sunny, +9°C, feels like +7°C, wind →15km/h, humidity 72%",
+    params: [P("city", "string", true, "The name of the city in English, for example Toronto or New York")] },
+  { name: "exchange_rate", title: "Currency Exchange", icon: "andrsrxn:currency-exchange", kind: "url", on: true, url: "https://api.frankfurter.dev/v1/latest?amount={amount}&base={base}&symbols={target}",
+    description: "Convert an amount of money from one currency to another, with the latest daily rate of the European Central Bank (Frankfurter). Use it for currencies like USD, CAD and EUR. It does not convert cryptocurrencies. Returns JSON: amount and base are the input, date is the date of the rate, and rates holds the converted amount in the target currency.",
+    params: [P("amount", "number", true, "The amount of money to convert, for example 100"), P("base", "string", true, "The currency to convert from, as a 3-letter ISO code, for example USD"),
+      P("target", "string", true, "The currency to convert to, as a 3-letter ISO code, for example CAD")] },
+  { name: "top_tech_news", title: "Hacker News", icon: "la:hacker-news", kind: "url", on: true, url: "https://hn.algolia.com/api/v1/search?tags=front_page&hitsPerPage={count}&attributesToRetrieve=title,url,points",
+    description: "Get the stories on the Hacker News front page now, sorted by points (Algolia). Use it when the user asks for tech news or what is popular on Hacker News. Returns JSON: hits is the list of stories, each with a title, its points and its url.",
+    params: [P("count", "integer", true, "How many stories, from 1 to 10. Use 3 if the user does not say.")] },
+  { name: "search_memory", title: "Memory search", icon: "andrsrxn:database-search", kind: "builtin", on: true, description: "Search the saved facts about the user on the Memory page (the long-term memory). Use it when the question needs a fact about the user, like where they live or what they like. Returns the 3 facts nearest to the query as plain text, one per line, or a note that no facts are saved.",
+    params: [P("query", "string", true, "What to look for, as a short question or phrase, for example: Where does Ilse live?")] },
+  { name: "search_wikipedia", title: "Wikipedia", icon: "tabler:brand-wikipedia", kind: "url", on: true, url: "https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch={query}&srlimit={count}&srprop=snippet&format=json",
+    description: "Search English Wikipedia for pages about a topic. Use it for facts about people, places, events and ideas. Returns JSON: query.search is the list of pages found, each with a title and a snippet, a short extract that contains HTML tags.",
+    params: [P("query", "string", true, "What to search for, for example: Model Context Protocol"), P("count", "integer", true, "How many pages, from 1 to 10. Use 3 if the user does not say.")] },
 ];
+// Each definition says the purpose, when to use it, what the output means, and the format of each parameter
+// (OpenAI function calling guide, "Best practices for defining functions"). crypto_price is long, so it has constants.
+const CRYPTO_DESC = "Get the current spot price of a cryptocurrency from Coinbase. Use it when the user asks for the price of a coin today, like Bitcoin or Ether. It gives no past prices. Returns JSON: data.amount is the price (a string), data.base is the coin and data.currency is the currency of the price.";
+const CRYPTO_PAIR = "The coin and the currency of the price, in the format COIN-CURRENCY with ticker symbols, for example BTC-USD (Bitcoin in US dollars) or ETH-CAD (Ether in Canadian dollars)";
 // More free APIs that need no key (each one tested). URL tools, so you can see and change the URL.
 const LIBRARY = [
-  { name: "search_wikipedia", kind: "builtin", on: true, description: "Search English Wikipedia. Returns the title, a short snippet and the link of each page found.",
-    params: [P("query", "string", true, "What to search for, for example: Model Context Protocol"), P("count", "integer", false, "How many pages, from 1 to 10. The default is 3.")] },
-  { name: "crypto_price", kind: "url", url: "https://api.coinbase.com/v2/prices/{pair}/spot", description: "Get the current price of a crypto currency (Coinbase).",
-    params: [P("pair", "string", true, "The pair, for example BTC-USD or ETH-CAD")] },
-  { name: "wikipedia_summary", kind: "url", url: "https://en.wikipedia.org/api/rest_v1/page/summary/{title}", description: "Get the summary of an English Wikipedia article.",
-    params: [P("title", "string", true, "The title of the article, for example Rayleigh scattering")] },
-  { name: "mastodon_trends", kind: "url", url: "https://mastodon.social/api/v1/trends/tags?limit={limit}", description: "Get the hashtags that are popular on mastodon.social now.",
-    params: [P("limit", "integer", true, "How many hashtags, from 1 to 10")] },
-  { name: "sample_post", kind: "url", url: "https://jsonplaceholder.typicode.com/posts/{id}", description: "Get a sample blog post (fake test data from JSONPlaceholder).",
+  { name: "power", title: "Power", icon: "lucide:superscript", kind: "url", url: MATH_URL("{base}%5E{exponent}"),
+    description: 'Raise a number to a power with math.js. Use it for every power, so the result is exact, for example the growth factor (1 + r)^n of compound growth: 10% a year for 10 years is base 1.1 and exponent 10. Returns the result as text in quotes, for example "2.5937424601".',
+    params: [P("base", "number", true, "The number to raise, for example 1.1"), P("exponent", "number", true, "The power, for example 10")] },
+  // One tool for a calculation that always takes the same steps (OpenAI guide: combine functions that are always called in sequence).
+  // %2B is the + of the formula: a + in a URL query means a space.
+  { name: "future_value", title: "Future value", icon: "lucide:chart-line", kind: "url", url: MATH_URL("{present_value}*(1%2B{rate})%5E{years}"),
+    description: 'Calculate the future value of an amount that grows at a fixed rate each year (compound growth), with math.js: present_value × (1 + rate)^years. Use it when the user asks what an amount or a price will be worth after some years at a yearly return. Returns the future value as text in quotes, for example "191535.03".',
+    params: [P("present_value", "number", true, "The amount or the price today, for example 73845.05"), P("rate", "number", true, "The yearly rate as a decimal, for example 0.1 for 10% or -0.05 for -5%"),
+      P("years", "number", true, "The number of years, for example 10")] },
+  { name: "search_wikipedia", title: "Wikipedia", icon: "tabler:brand-wikipedia", kind: "url", on: true, url: "https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch={query}&srlimit={count}&srprop=snippet&format=json",
+    description: "Search English Wikipedia for pages about a topic. Use it for facts about people, places, events and ideas. Returns JSON: query.search is the list of pages found, each with a title and a snippet, a short extract that contains HTML tags.",
+    params: [P("query", "string", true, "What to search for, for example: Model Context Protocol"), P("count", "integer", true, "How many pages, from 1 to 10. Use 3 if the user does not say.")] },
+  { name: "crypto_price", title: "Cryptocurrency", icon: "ri:btc-line", kind: "url", url: "https://api.coinbase.com/v2/prices/{pair}/spot", description: CRYPTO_DESC,
+    params: [P("pair", "string", true, CRYPTO_PAIR)] },
+  { name: "wikipedia_summary", title: "Wikipedia summary", icon: "lucide:book-open", kind: "url", url: "https://en.wikipedia.org/api/rest_v1/page/summary/{title}", description: "Get the summary of one English Wikipedia article by its exact title. Use it when you know the title, for example after search_wikipedia. Returns JSON: title is the title of the article, description is a short description and extract is the summary.",
+    params: [P("title", "string", true, "The exact title of the article, for example Rayleigh scattering")] },
+  { name: "mastodon_trends", title: "Mastodon trends", icon: "lucide:trending-up", kind: "url", url: "https://mastodon.social/api/v1/trends/tags?limit={limit}", description: "Get the hashtags that are popular on mastodon.social now. Use it when the user asks what people talk about on Mastodon. Returns a JSON list: each item has the name of the hashtag, its url and its history, the uses and the accounts for each of the last 7 days, newest first.",
+    params: [P("limit", "integer", true, "How many hashtags, from 1 to 10. Use 5 if the user does not say.")] },
+  { name: "sample_post", title: "Sample post", icon: "lucide:file-text", kind: "url", url: "https://jsonplaceholder.typicode.com/posts/{id}", description: "Get a sample blog post from JSONPlaceholder: fake test data in Latin-like text. Use it only to test tool calls. Returns JSON: id, userId, title and body.",
     params: [P("id", "integer", true, "The number of the post, from 1 to 100")] },
-  { name: "corporate_buzzword", kind: "url", url: "https://corporatebs-generator.sameerkumar.website/", description: "Get a random phrase of corporate buzzwords (a joke API).", params: [] },
+  { name: "corporate_buzzword", title: "Corporate buzzwords", icon: "lucide:megaphone", kind: "url", url: "https://corporatebs-generator.sameerkumar.website/", description: "Get a random phrase of corporate buzzwords (a joke API). Use it when the user asks for a buzzword or a corporate-speak joke. Returns JSON: phrase is the phrase.", params: [] },
 ];
 const TYPES = ["string", "number", "integer", "boolean"];
 const NAME_RE = /^[A-Za-z_][A-Za-z0-9_]{0,63}$/;
@@ -857,6 +954,63 @@ async function loadTools() {
   try { list = await fetch("/tools").then(r => r.json()); } catch {}
   tools = Array.isArray(list) && list.length ? list.filter(t => t && NAME_RE.test(t.name) && Array.isArray(t.params)) : clone(STARTER);
   if (!tools.length) tools = clone(STARTER);
+  // Tools saved during a short-lived rename (2026-11-09, e.g. Weather): back to the function name; drop the extra key.
+  const UNDO = { Multiply: "multiply", Weather: "get_weather", Tech_News: "top_tech_news", Memory: "search_memory", Wikipedia: "search_wikipedia",
+    Exchange_Rate: "exchange_rate", Crypto_Price: "crypto_price", Wikipedia_Summary: "wikipedia_summary", Mastodon_Trends: "mastodon_trends",
+    Sample_Post: "sample_post", Corporate_Buzzword: "corporate_buzzword" };
+  let moved = false;
+  for (const t of tools) if (UNDO[t.name] && !tools.some(x => x.name === UNDO[t.name])) {
+    t.name = UNDO[t.name]; delete t.builtin; moved = true;
+  }
+  // Tools saved when these were built-in (before 2026-11-09): the URL version, with the same On and display name.
+  for (const [k, t] of tools.entries()) {
+    const d = STARTER.find(x => x.name === t.name && x.kind === "url");
+    if (d && t.kind === "builtin") { tools[k] = { ...clone(d), on: t.on, title: t.title ?? d.title }; moved = true; }
+  }
+  // multiply saved before 2026-11-10: the URL without fixed notation (a large product came back as 1.9e+5).
+  for (const t of tools) if (t.name === "multiply" && t.url === "https://api.mathjs.org/v4/?expr={a}*{b}") {
+    t.url = MATH_URL("{a}*{b}"); moved = true;
+    if (t.description === "Multiply two numbers with math.js. Use it for every multiplication, so the result is exact. Returns the product as plain text, for example 90.") t.description = MULTIPLY_DESC;
+  }
+  // crypto_price saved before 2026-11-10: the coin is Ether (ETH); Ethereum is its network.
+  for (const t of tools) if (t.name === "crypto_price") {
+    if (t.description === CRYPTO_DESC.replace("Bitcoin or Ether.", "Bitcoin or Ethereum.")) { t.description = CRYPTO_DESC; moved = true; }
+    const pp = t.params?.find(x => x.name === "pair");
+    if (pp && pp.description === CRYPTO_PAIR.replace("(Ether in", "(Ethereum in")) { pp.description = CRYPTO_PAIR; moved = true; }
+  }
+  // Tools saved before the Icon field: the default icon of a starter or library tool, else link (URL) or wrench.
+  for (const t of tools) if (t.icon === undefined) {
+    t.icon = [...STARTER, ...LIBRARY].find(x => x.name === t.name)?.icon || (t.kind === "url" ? "lucide:link" : "lucide:wrench"); moved = true;
+  }
+  // Tools saved before display names: the default display name of a starter or library tool.
+  for (const t of tools) if (t.title === undefined) {
+    const d = [...STARTER, ...LIBRARY].find(x => x.name === t.name);
+    if (d?.title) { t.title = d.title; moved = true; }
+  }
+  // Tools saved with the first, short definitions (before 2026-11-10): the detailed definition, for each text you did not change.
+  const OLD_TEXT = {
+    multiply: { d: "Multiply two numbers (math.js).", p: { a: "The first number", b: "The second number" } },
+    get_weather: { d: "Get the current weather in a city: conditions, temperature, wind and humidity. Live data from wttr.in.", p: { city: "The name of the city, for example Toronto" } },
+    exchange_rate: { d: "Convert an amount of money from one currency to another, with today's rate of the European Central Bank (Frankfurter).", p: { amount: "The amount of money to convert", base: "The currency to convert from, as a 3-letter code, for example USD", target: "The currency to convert to, as a 3-letter code, for example CAD" } },
+    top_tech_news: { d: "Get stories on the Hacker News front page now, sorted by points: the title, the points and the link of each story (Algolia)." },
+    search_memory: { d: "Search the saved facts of the Memory page (the long-term memory). Returns the facts nearest to the query.", p: { query: "What to look for, for example: Where does Ilse live?" } },
+    search_wikipedia: { d: "Search English Wikipedia. Returns the title and a short snippet of each page found." },
+    wikipedia_summary: { d: "Get the summary of an English Wikipedia article.", p: { title: "The title of the article, for example Rayleigh scattering" } },
+    mastodon_trends: { d: "Get the hashtags that are popular on mastodon.social now.", p: { limit: "How many hashtags, from 1 to 10" } },
+    sample_post: { d: "Get a sample blog post (fake test data from JSONPlaceholder)." },
+    corporate_buzzword: { d: "Get a random phrase of corporate buzzwords (a joke API)." },
+    crypto_price: { d: "Get the current price of a crypto currency (Coinbase).", p: { pair: "The pair, for example BTC-USD or ETH-CAD" } },
+  };
+  for (const t of tools) {
+    const o = OLD_TEXT[t.name], d = [...STARTER, ...LIBRARY].find(x => x.name === t.name);
+    if (!o || !d) continue;
+    if (t.description === o.d) { t.description = d.description; moved = true; }
+    for (const p of t.params) {
+      const n = d.params.find(x => x.name === p.name);
+      if (n && o.p?.[p.name] === p.description) { p.description = n.description; moved = true; }
+    }
+  }
+  if (moved) saveTools();
 }
 let saveTimer = null;
 function saveTools() {
@@ -866,7 +1020,8 @@ function saveTools() {
 }
 
 // ---- Settings (remembered in this browser)
-const S = { noteBy: "lmstudio", harness: "on", stepMode: "auto", perm: "allow", tab: "chat", temp: 0, maxTokens: 1500, maxCalls: 5 };
+const S_DEFAULT = { noteBy: "lmstudio", harness: "on", stepMode: "auto", perm: "allow", tab: "chat", temp: 0, maxTokens: 1500, maxCalls: 5 };
+const S = { ...S_DEFAULT };
 try { Object.assign(S, JSON.parse(localStorage.getItem("toolsPage2") || "{}")); noteText = localStorage.getItem("toolNote") || NOTE_DEFAULT; if (noteText === NOTE_OLD) noteText = NOTE_DEFAULT; } catch {}
 if (!["manual", "auto"].includes(S.stepMode)) S.stepMode = "auto";
 const keep = () => { try { localStorage.setItem("toolsPage2", JSON.stringify(S)); localStorage.setItem("toolNote", noteText); } catch {} };
@@ -907,9 +1062,10 @@ async function loadModels() {
     let saved = null; try { saved = localStorage.getItem("toolsModel"); } catch {}
     $("chatModel").value = keys.includes(saved) ? saved : keys.find(k => /gemma-4-e4b/i.test(k)) || keys.find(k => k === "google/gemma-4-12b") || keys.find(k => trained(k)) || keys[0];
   } catch (e) { $("error").textContent = `LM Studio unreachable: ${e.message || e}`; }
+  renderChat(true);  // the context meter needs the model list
 }
 const trained = k => modelInfo.find(m => m.key === k)?.capabilities?.trained_for_tool_use;
-$("chatModel").onchange = () => { try { localStorage.setItem("toolsModel", $("chatModel").value); } catch {} };
+$("chatModel").onchange = () => { try { localStorage.setItem("toolsModel", $("chatModel").value); } catch {} renderChat(true); };
 // ---- The message box: the model picker and the Send button come from composer.js, the same on all pages.
 const chatPick = Composer.picker({ select: $("chatModel"), mount: $("chatPick"), label: "Chat model", reasoning: true, isBusy: () => busy, onError: m => { $("error").textContent = m; } });
 Composer.setSend($("sendBtn"), false, { key: "Enter" });
@@ -988,11 +1144,12 @@ function code(t, model) {
   return items.map(x => x.tag ? chip(x.tag, model) : txt(json ? jsonPretty(x.t) : x.t, json ? "json" : false)).join("");
 }
 const tagsLine = (t, model) => t.split(TAG_RE).map((x, i) => !x ? "" : i % 2 ? chip(x, model) : esc(x).replace(/\n/g, '<span class="nl">↵</span>')).join("");
-const LBL_REPLY = { think: "Thinking · not shown to the user" };
+const LBL_REPLY = { think: "Reasoning · reasoning_content" };
 const LBL_MSG = { system: ["sys", "System message"], developer: ["sys", "System message"], user: ["user", "User message"], assistant: ["ans", "Model · text from an earlier reply"], tool: ["resp", "Tool result · from the harness"] };
 // The prompt: each message of the request, found in the exact text, in order. The text between two messages comes
-// from the chat template. If it has the name of a tool, it is the tools (LM Studio writes them from the JSON schema),
-// or an earlier tool call (before a tool result). null: no message is in the text.
+// from the chat template. If it has the name of a tool, it is the tools (LM Studio writes them from the JSON schema,
+// before the first user message), or an earlier tool call. After a user message, it is a tool call, and also the tool
+// result when the template rewrote the result so the page cannot find it as a message. null: no message is in the text.
 function promptView(text, model, body) {
   const msgs = body?.messages || [], names = (body?.tools || []).map(t => t.function?.name).filter(Boolean), parts = [];
   let pos = 0;
@@ -1005,7 +1162,7 @@ function promptView(text, model, body) {
   let out = "", at = 0;
   // The tags at the two ends of a gap (and a short word between them, as a role name) go on their own line.
   const edge = x => x.tag || (/^\s*[A-Za-z_]{0,12}\s*$/.test(x.t) && !names.includes(x.t.trim()));  // a tool name is not an edge
-  const gap = (g, next) => {
+  const gap = (g, next, prev) => {
     if (!g.trim()) return;
     const items = g.split(TAG_RE).map((x, i) => i % 2 ? { tag: x } : { t: x }).filter(x => x.tag || x.t), join = a => a.map(x => x.tag ?? x.t).join("");
     let i = 0, j = items.length;
@@ -1017,32 +1174,36 @@ function promptView(text, model, body) {
     const tool = names.some(n => mid.includes(n));
     if (mid && !tool && (mid.match(/[A-Za-z]/g) || []).length < 3) line(mid);  // only a brace or a mark
     else if (mid) {
+      const later = prev && prev.role !== "system" && prev.role !== "developer";  // after the conversation started
       const lbl = tool && next?.role === "tool" ? ["call", "Tool call · from an earlier reply, as the chat template writes it"]
-        : tool ? ["tool", "Tools · LM Studio writes them from the JSON schema, in the format of the chat template"] : ["sys", "Chat template · text that the template adds"];
+        : tool && later ? ["call", "Tool call and tool result · LM Studio writes them in the format of the chat template"]
+        : tool ? ["tool", "Tools · LM Studio writes them from the tool definitions, in the format of the chat template"] : ["sys", "Chat template · text that the template adds"];
       out += `<div class="pb k-${lbl[0]}"><div class="pb-lbl">${lbl[1]}</div>${code(mid, model)}</div>`;
     }
     line(tail);
   };
+  let prev = null;
   for (const p of parts) {
-    gap(text.slice(at, p.s), p.m);
+    gap(text.slice(at, p.s), p.m, prev);
+    prev = p.m;
     const [k, lbl] = LBL_MSG[p.m.role] || ["sys", p.m.role];
     out += `<div class="pb k-${k}"><div class="pb-lbl">${esc(lbl)}</div>${code(text.slice(p.s, p.e), model)}</div>`;
     at = p.e;
   }
-  gap(text.slice(at), null);
+  gap(text.slice(at), null, prev);
   return `<div class="pv">${out}</div>`;
 }
 // No data to find: the exact text, with tags as chips.
 const plainView = (text, model) => `<div class="pv"><div class="pb k-sys">${code(text || "", model)}</div></div>`;
 // The reply, in parts, for any model: LM Studio already split the tokens into fields (thinking, content,
 // tool_calls). The page finds each field in the raw text, so it needs no list of model tags:
-// Thinking = the thinking field; Text = content; Tool call = from the last tag before the tool name, to the end.
+// Reasoning = the reasoning field; Text = content; Tool call = from the last tag before the tool name, to the end.
 // The tags between the parts stay as they are, on their own line. null: a part is not in the raw text.
 function replyView(raw, msg, model, key) {
   const parts = [], calls = msg.tool_calls || [];
   let pos = 0;
   const find = (t, from) => { t = (t || "").trim(); if (!t) return null; const i = raw.indexOf(t, from); return i < 0 ? null : { s: i, e: i + t.length }; };
-  // Thinking: LM Studio's field, else the start and end text in Settings.
+  // Reasoning: LM Studio's field, else the start and end text in Settings.
   const field = msg.reasoning_content ?? msg.reasoning;
   let th = find(field, 0);
   if (!th) { const sp = thinkSpans(raw, model)[0]; if (sp) th = { s: sp.b, e: sp.e }; }
@@ -1060,7 +1221,7 @@ function replyView(raw, msg, model, key) {
     parts.push({ kind: "call", s: s0, e: raw.length });
   }
   // Draw: the parts in the order that the model wrote them, and the tags between them.
-  const LBL = { ans: "Answer · shown to the user", text: "Text · not shown: the reply has a tool call, so the harness runs the tool", call: "Tool call · LM Studio took it out, as tool_calls" };
+  const LBL = { ans: "Answer · content", text: "Text · not shown: the reply has a tool call, so the harness runs the tool", call: "Tool call · LM Studio took it out, as tool_calls" };
   let out = "", at = 0;
   parts.forEach((p, n) => {
     const gap = raw.slice(at, p.s);
@@ -1068,7 +1229,7 @@ function replyView(raw, msg, model, key) {
     const body = raw.slice(p.s, p.e);
     if (p.kind === "think") {
       const words = body.split(/\s+/).filter(Boolean).length, k2 = `${key}.th${n}`, open = words <= 60 || openKeys.has(k2);
-      out += `<div class="pb k-think"><details class="x th" data-key="${k2}"${open ? " open" : ""}><summary><span class="pb-lbl">${LBL_REPLY.think} · ${words ? `${words} word${words === 1 ? "" : "s"}` : "empty: the model closed it at once"}</span></summary>${txt(body.replace(/^\n/, ""))}</details></div>`;
+      out += `<div class="pb k-think"><details class="x th" data-key="${k2}"${open ? " open" : ""}><summary><span class="pb-lbl">${LBL_REPLY.think} · ${words ? `${words} word${words === 1 ? "" : "s"}` : "empty"}</span></summary>${txt(body.replace(/^\n/, ""))}</details></div>`;
     } else if (p.kind === "call") {
       const html = code(body, model);
       out += `<div class="pb k-call"><div class="pb-lbl">${LBL.call}</div>${html}</div>`;
@@ -1121,10 +1282,10 @@ async function logEntry(kind, since, keepWaiting = () => false) {
 // history = the messages that the harness sends to the model (the conversation memory of the book: the full history).
 let chat = [], history = [], busy = false, ctrl = null, pending = null;
 const openKeys = new Set();  // the open ▸ sections, kept when the chat draws again
-let stats = { calls: 0, tools: 0, tokens: 0 };
+let stats = { calls: 0, tools: 0, tokens: 0, ctx: 0 };
 // New chat: clear the chat, the history and the counts. The tools and the settings stay.
 function newChat() {
-  chat = []; history = []; stats = { calls: 0, tools: 0, tokens: 0 }; openKeys.clear(); rawKeys.clear();
+  chat = []; history = []; stats = { calls: 0, tools: 0, tokens: 0, ctx: 0 }; openKeys.clear(); rawKeys.clear();
 }
 
 // The request of one model call. LM Studio note: the tools parameter. Page note: the tools as text in the system prompt.
@@ -1207,9 +1368,11 @@ async function must(next, approve, force) {
 async function runTurn(text) {
   const model = $("chatModel").value;
   if (!model) throw new Error("Select a chat model.");
-  const turn = { user: text, steps: [], answer: null, done: false };
+  const turn = { user: text, steps: [], answer: null, done: false, t0: Date.now() };
   chat.push(turn);
   const before = history.length;
+  // A new question: the thinking of the earlier turns is removed, as the chat templates of the models do.
+  history.forEach(m => { delete m.reasoning_content; });
   history.push({ role: "user", content: text });
   try {
     let lastResults = 0;
@@ -1225,6 +1388,7 @@ async function runTurn(text) {
       const inpP = logEntry("input", t0, () => reply.wait && !ctrl?.signal.aborted).then(async inp => { req.formatted = inp; await countTags(model, [inp]); req.kind = replyKind(req); renderChat(); return inp; });
       const j = await post("/v1/chat/completions", body, ctrl.signal);
       stats.calls++; stats.tokens += j.usage?.total_tokens || 0;
+      stats.ctx = (j.usage?.prompt_tokens || 0) + (j.usage?.completion_tokens || 0);  // what the context held after this call
       const msg = j.choices?.[0]?.message || {}, finish = j.choices?.[0]?.finish_reason;
       const calls = parseReply(msg);
       const answerText = cleanText(msg.content);
@@ -1242,7 +1406,9 @@ async function runTurn(text) {
       }
       await must({ call, who: "Harness", text: S.noteBy === "page" ? "Parsing content" : "Parsing tool_calls" });
       // The assistant message goes into the history, as the book's TinyAgent adds it to its memory.
-      if (S.noteBy === "lmstudio" && msg.tool_calls?.length) history.push({ role: "assistant", content: answerText, tool_calls: msg.tool_calls });
+      // The thinking goes back with the tool calls until the final answer, so the model keeps its plan between the calls
+      // (Gemma 4: "thoughts must NOT be removed between the function calls"; Qwen3 and gpt-oss work the same way).
+      if (S.noteBy === "lmstudio" && msg.tool_calls?.length) history.push({ role: "assistant", content: answerText, tool_calls: msg.tool_calls, ...(msg.reasoning_content ? { reasoning_content: msg.reasoning_content } : {}) });
       else history.push({ role: "assistant", content: answerText });
       const lost = !calls.length && /\[TOOL_REQUEST\]|<tool_call>|"tool"\s*:|tool_call/i.test(msg.content || "");
       step(turn, { type: "parse", call, calls, noteBy: S.noteBy, lost, kind: req.kind, cut: finish === "length", text: answerText });
@@ -1284,7 +1450,7 @@ async function runTurn(text) {
   } catch (e) {
     history.length = before;  // a stopped or failed turn does not stay in the conversation
     throw e;
-  } finally { turn.done = true; pending = null; renderChat(); }
+  } finally { turn.done = true; turn.t1 = Date.now(); pending = null; renderChat(); }
 }
 
 // What kind of tool note the model got, from the real prompt.
@@ -1303,12 +1469,29 @@ function row(key, who, what, meta, body, cls = "") {
     ? `<details class="ev${cls ? " " + cls : ""}" data-key="${key}"${openKeys.has(key) ? " open" : ""}><summary>${head}<span class="more">Details<span class="chev"></span></span></summary><div class="ev-bd">${body}</div></details>`
     : `<div class="ev${cls ? " " + cls : ""}"><div class="ev-row">${head}<span class="more"></span></div></div>`;
 }
-function msgRows(messages, newFrom = Infinity) {
+function msgRows(messages, newFrom = Infinity, key = "m") {
   return `<div class="msgs">${messages.map((m, i) => {
     let text = m.content ?? "";
     if (m.tool_calls?.length) text = (text ? text + "\n" : "") + m.tool_calls.map(c => `tool_calls: ${c.function.name}(${c.function.arguments})`).join("\n");
-    return `<div class="msg${i >= newFrom ? " new" : ""}"><span class="role">${esc(m.role)}</span><div class="msg-text">${esc(text)}</div></div>`;
+    // The reasoning (the plan) the harness sends back: closed, a short preview; open, the full text.
+    const rc = m.reasoning_content
+      ? det(`${key}rc${i}`, `<span class="rc-lbl">reasoning_content <span class="rc-n">(${m.reasoning_content.length.toLocaleString()} characters)</span><span class="rc-pv">: ${esc(short(m.reasoning_content, 100))}</span></span>`, `<div class="rc-full">${esc(m.reasoning_content.trim())}</div>`)
+      : "";
+    return `<div class="msg${i >= newFrom ? " new" : ""}"><span class="role">${esc(m.role)}</span><div class="msg-text">${rc}${esc(text)}</div></div>`;
   }).join("")}</div>`;
+}
+// LM Studio splits the output tokens into the fields of the response: reasoning, content and tool_calls.
+function parsedRow(key, m) {
+  const think = String(m.reasoning_content ?? m.reasoning ?? "").trim(), text = cleanText(m.content || ""), calls = m.tool_calls || [];
+  const found = [think ? "reasoning" : "", text ? (calls.length ? "text" : "answer") : "", calls.length ? plural(calls.length, "tool call") : ""].filter(Boolean);
+  const line = (field, val) => `<div class="msg"><span class="role">${field}</span><div class="msg-text">${esc(val)}</div></div>`;
+  const body = `<div class="msgs found">`
+    + (think ? line("reasoning_content", `${short(think, 100)} (${think.length.toLocaleString()} characters)`) : "")
+    + (text ? line("content", short(text, 140)) : "")
+    + calls.map(c => line("tool_calls", `${c.function?.name}(${c.function?.arguments})`)).join("")
+    + (calls.length ? "" : line("tool_calls", "none"))
+    + `</div>`;
+  return row(key, "LM Studio", tipped("Parsing output", "Splits the output tokens into reasoning, text and tool calls."), found.length ? `Found: ${found.join(", ")}` : "Found: nothing", body);
 }
 const argText = a => Object.entries(a || {}).map(([k, v]) => `${k}: ${JSON.stringify(v)}`).join(", ");
 const plural = (k, one, many = one + "s") => `${k} ${k === 1 ? one : many}`;
@@ -1316,8 +1499,8 @@ const short = (t, max = 90) => { t = String(t ?? "").replace(/\s+/g, " ").trim()
 const tipped = (label, text) => tipSpan(label, label, text);
 const tipSpan = (label, title, tip) => `<span tabindex="0" data-tip-title="${esc(title)}" data-tip="${esc(tip)}">${esc(label)}</span>`;
 const KIND = {
-  native: ["Native format", "The model learned tools in training. LM Studio puts the tools into its chat template, with the special tool tokens of the model. Click Details to see what the model gets."],
-  lmnote: ["LM Studio text note", "The model did not learn tools in training. LM Studio adds a text note with the tools and the [TOOL_REQUEST] format. The model must follow it as plain text."],
+  native: ["Native format", "Native tool use: the model learned tools in training. LM Studio puts the tools into its chat template, with the special tool tokens of the model. Click Details to see what the model gets."],
+  lmnote: ["Default format", "Default tool use: the model did not learn tools in training. LM Studio adds a text note with the tools and the [TOOL_REQUEST] format. The model must follow it as plain text."],
   page: ["Custom note", "Your tool note is in the system prompt, as plain text. The model must follow it."],
   none: ["", ""], unknown: ["", ""],
 };
@@ -1333,8 +1516,8 @@ function rowHtml(s, k) {
   if (s.type === "request") {
     const b = s.body, nt = b.tools?.length || 0;
     const sentence = tipped("Sending request", nt ? "The harness sends the messages and the tool definitions to LM Studio (POST /v1/chat/completions). It sends them again in each model call." : "The harness sends the messages to LM Studio (POST /v1/chat/completions). No tools are on.");
-    const body = det(k + "m", "Messages", msgRows(b.messages, b.messages.length - 1), `${b.messages.length}`)
-      + (nt ? det(k + "t", "Tools (JSON schema)", `<pre class="pre">${esc(JSON.stringify(b.tools, null, 2))}</pre>`, plural(nt, "tool")) : "")
+    const body = det(k + "m", "Messages", msgRows(b.messages, b.messages.length - 1, k + "m"), `${b.messages.length}`)
+      + (nt ? det(k + "t", "Tool list", `<pre class="pre">${esc(JSON.stringify(b.tools, null, 2))}</pre>`, plural(nt, "tool")) : "")
       + (() => { const { messages, tools, ...rest } = b; return det(k + "p", "Parameters", `<pre class="pre">${esc(JSON.stringify(rest, null, 2))}</pre>`, `${Object.keys(rest).length}`); })();
     return row(k, "Harness", sentence, "", body);
   }
@@ -1353,7 +1536,7 @@ function rowHtml(s, k) {
     return row(k, "Model", tipped("Generating tokens", "The model generates the reply, one token at a time."), meta, bodyOf(s, k), cut ? "bad" : "");
   }
   if (s.type === "json") {
-    return row(k + "p", "LM Studio", tipped("Parsing output", "Looks for the thinking, the text and the tool calls."), "", "")
+    return parsedRow(k + "p", s.msg || {})
       + row(k, "LM Studio", tipped("Serializing JSON", "Writes the chat completion response in the format of the OpenAI Chat Completions API, a de facto standard. LM Studio, llama.cpp, Ollama and vLLM use it."), tipSpan(`finish_reason: ${esc(s.finish || "?")}`, "finish_reason", "Why the model stops: tool_calls (it writes a tool call), stop (it is finished) or length (Max tokens)."), jsonOf(s));
   }
   if (s.type === "nothing") return row(k, "Harness", tipped("Off", "The harness is off. Nothing reads the tool call, so no tool runs."), "", "", "bad");
@@ -1386,7 +1569,7 @@ function rowHtml(s, k) {
     const tool = s.added[0]?.role === "tool";
     const what = tipped("Appending observation", tool ? "The harness adds the result of the tool to the messages: a message with the role tool and the id of the call. The model reads it in the next model call."
       : "The harness adds the result of the tool to the messages: a user message that starts with OBSERVATION, as the custom note asks. The model reads it in the next model call.");
-    return row(k, "Harness", what, "", msgRows(s.added, 0));
+    return row(k, "Harness", what, "", msgRows(s.added, 0, k + "a"));
   }
   if (s.type === "stop") return row(k, "Harness", tipped("Stopping", `The limit is ${S.maxCalls} model calls: Max model calls.`), "", "", "bad");
   return "";
@@ -1398,6 +1581,14 @@ function pendingRow(p) {
 }
 const callCard = (call, rows) => `<section class="callcard"><div class="callcard-hd">Model call ${call}</div>${rows}</section>`;
 const fmt = t => esc(t).replace(/\*\*(.+?)\*\*/g, "$1").replace(/^(\s*)[*-]\s+/gm, "$1• ");
+// Time and tokens under a message, in the style of a coding agent: 5.5 s · ↓ 1.4k tokens.
+const fmtSecs = x => `${x < 10 ? x.toFixed(1) : Math.round(x)} s`;
+const fmtTok = n => n >= 1000 ? `${(n / 1000).toFixed(1).replace(/\.0$/, "")}k` : String(n);
+function liveText(t) {
+  const made = t.steps.filter(s => s.type === "reply" && s.usage).reduce((a, s) => a + (s.usage.completion_tokens || 0), 0);
+  return `Running… (${fmtSecs((Date.now() - t.t0) / 1000)} · ↓ ${fmtTok(made)} tokens)`;
+}
+setInterval(() => { const el = document.getElementById("liveMeta"), t = chat.at(-1); if (el && t && !t.done) el.textContent = liveText(t); }, 200);
 function renderChat(hold) {
   showStarters();
   $("replay").disabled = busy || !chat.some(t => t.user);
@@ -1416,10 +1607,23 @@ function renderChat(hold) {
     const cards = [...groups].map(([c, rows]) => callCard(c, rows)).join("");
     const ans = t.answer != null ? `<div class="bubble assistant">${t.answer ? fmt(t.answer) : '<span class="ph">No answer.</span>'}</div>`
       : t.done && t.stopped ? `<div class="bubble assistant"><span class="ph">Stopped.</span></div>` : "";
-    return `<div class="bubble user">${esc(t.user)}</div>${cards}${ans}`;
+    // Like a coding agent: ↑ under your message, the tokens sent in the first model call (system prompt, tool
+    // definitions, history, your message). Under the answer, the time and ↓ the tokens the model generated for this
+    // message, in all its model calls (tool calls and answer). While it runs, the same line counts up.
+    // Exact, from LM Studio (usage).
+    const used = t.steps.filter(s => s.type === "reply" && s.usage).map(s => s.usage);
+    const sent = used[0]?.prompt_tokens, made = used.reduce((a, u) => a + (u.completion_tokens || 0), 0);
+    const live = !t.done && ti === last;
+    let out = `<div class="bubble user">${esc(t.user)}</div>`;
+    if (sent) out += `<div class="tok-meta user"><span tabindex="0" data-tip-title="Tokens sent" data-tip="What the harness sent in the first model call for this message: the system prompt, the tool definitions, the earlier messages and your message.">↑ ${fmtTok(sent)} tokens</span></div>`;
+    out += cards + ans;
+    if (live) out += `<div class="tok-meta assistant" id="liveMeta">${liveText(t)}</div>`;
+    else if (t.answer != null && t.t1) out += `<div class="tok-meta assistant"><span tabindex="0" data-tip-title="Time" data-tip="From Send to the answer: all the model calls and tool calls of this message. In Step mode, or with Permissions set to Ask every time, it also counts the time the page waited for you.">${fmtSecs((t.t1 - t.t0) / 1000)}</span> · <span tabindex="0" data-tip-title="Tokens generated" data-tip="What the model wrote for this message, in all its model calls: ${used.length > 1 ? "the tool calls and the answer" : "the answer"}.${used.length > 1 ? ` The answer alone is ${(used.at(-1)?.completion_tokens || 0).toLocaleString()} tokens.` : ""}">↓ ${fmtTok(made)} tokens</span></div>`;
+    return out;
   }).join("");
   log.scrollTop = atEnd ? log.scrollHeight : top;
-  $("stats").innerHTML = `<span title="The tools that are on: the harness sends their definitions in each model call">Tools on <b>${active().length}</b></span><span>Model calls <b>${stats.calls}</b></span><span>Tool calls <b>${stats.tools}</b></span><span>Tokens <b>${stats.tokens.toLocaleString()}</b></span>`;
+  $("stats").innerHTML = `<span title="The tools that are on: the harness sends their definitions in each model call">Tools on <b>${active().length}</b></span><span>Model calls <b>${stats.calls}</b></span><span>Tool calls <b>${stats.tools}</b></span>${ctxHtml()}`;
+  estimateCtx();
 }
 document.addEventListener("toggle", e => { const d = e.target; if (d.matches?.("details.x, details.ev")) d.open ? openKeys.add(d.dataset.key) : openKeys.delete(d.dataset.key); }, true);
 document.addEventListener("click", e => {
@@ -1430,9 +1634,10 @@ document.addEventListener("click", e => {
 
 // ---- Tools tab
 let editing = null;  // the index of the tool in edit mode
+let editSnap = null;  // the tool as it was when the editor opened (null: a new tool), for Cancel
 // The note box is in a closed row at first: fit its height when the row opens.
 document.addEventListener("toggle", e => { if (e.target.id === "optNote" && e.target.open && $("noteText")) fit($("noteText"), 400); }, true);
-// The parts of the Tool note row start open. What you close stays closed.
+// The parts of the Tool list row start open. What you close stays closed.
 const noteClosed = new Set();
 const noteDet = (key, title, body) => `<details class="x nd" data-nkey="${key}"${noteClosed.has(key) ? "" : " open"}><summary><span class="chev"></span>${title}</summary>${body}</details>`;
 document.addEventListener("toggle", e => { const k = e.target.dataset?.nkey; if (k) e.target.open ? noteClosed.delete(k) : noteClosed.add(k); }, true);
@@ -1440,54 +1645,63 @@ document.addEventListener("toggle", e => { const k = e.target.dataset?.nkey; if 
 document.querySelector("#optNote > summary").addEventListener("click", e => { if (e.target.closest(".sum-ctl")) e.preventDefault(); });
 function renderNote() {
   const page = S.noteBy === "page";
-  $("stNote").textContent = page ? "Custom: your note in the system prompt" : `LM Studio: ${active().length} JSON schemas`;
+  const nOn = active().length, nTools = `${nOn} tool${nOn === 1 ? "" : "s"}`;
+  $("stNote").textContent = nTools;
   $("stNote").classList.toggle("on", page);
   $("noteBox").innerHTML = page
     ? `<div class="note">Tool definition with a custom note: the request has no tools parameter. The harness adds this note to the system prompt, after the System prompt. <code>{tools}</code> becomes one line per tool that is on. The model must answer in the JSON format of the note; the harness reads it.</div>
        <textarea id="noteText" class="input" spellcheck="false" aria-label="Tool note">${esc(noteText)}</textarea>
        <div class="send-tools"><button type="button" class="btn ghost" id="noteReset" title="Use the first note again">Reset note</button></div>
        ${noteDet("note-prev", "System prompt that the model gets", `<pre class="pre">${esc(systemText())}</pre>`)}`
-    : `<div class="note">Tool definition with structured function calling: the harness sends each tool that is on as a JSON schema in the <code>tools</code> parameter of the request, and the system message is only your System prompt. LM Studio writes the note: for a model trained for tools, it puts the schemas into the chat template with its special tool tokens; for other models, it adds a text note with the <code>[TOOL_REQUEST]</code> format. After you send a message, see the exact prompt: Applying chat template → Details. To write the note yourself, select <button type="button" class="linkbtn" id="toPage">Custom</button>.</div>
-       ${noteDet("note-json", `Tools parameter (JSON schema) · ${active().length} tool${active().length === 1 ? "" : "s"}`, `<pre class="pre json">${esc(JSON.stringify(active().map(schemaOf), null, 2) || "[]")}</pre>`)}
-       ${noteDet("note-prev", "System prompt that the model gets", `<pre class="pre">${esc(systemText() || "(none: the request has no system message)")}</pre>`)}`;
+    : `<div class="note">The harness sends the tool list in the <code>tools</code> parameter of the request, in the format of the <a href="https://lmstudio.ai/docs/developer/openai-compat/tools" target="_blank" rel="noopener">OpenAI Function Calling API</a>. LM Studio injects it into the system prompt: with the tool tokens of the model (native tool use), or as a text note with the <code>[TOOL_REQUEST]</code> format (default tool use). To write the note yourself, select <button type="button" class="linkbtn" id="toPage">Custom</button>.</div>
+       ${nOn ? noteDet("note-json", "JSON schema", `<div class="hint-s inj">Injected into the system prompt</div><pre class="pre json gen" title="Auto-generated from the tools that are on. You cannot edit it.">${esc(JSON.stringify(active().map(schemaOf), null, 2))}</pre>`)
+             : `<div class="hint-s inj">No tools are on. Turn one on in the Tools tab, or with the <button type="button" class="linkbtn" id="toPlus">+ button</button> in the message box.</div>`}`;
   if (page) {
     $("noteText").oninput = e => { noteText = e.target.value; keep(); const pv = document.querySelector('[data-nkey="note-prev"] .pre'); if (pv) pv.textContent = systemText(); };
     $("noteReset").onclick = () => { noteText = NOTE_DEFAULT; keep(); renderNote(); };
     fit($("noteText"), 400);
   } else $("toPage").onclick = () => { if (busy) return; document.querySelector('#noteBy [data-v="page"]').click(); };
+  if ($("toPlus")) $("toPlus").onclick = e => { e.stopPropagation(); $("plusBtn").scrollIntoView({ block: "center", behavior: "smooth" }); if ($("plusMenu").hidden) $("plusBtn").click(); };
 }
 function renderTools() {
-  $("toolCount").textContent = `· ${active().length} on`;
   $("toolList").innerHTML = tools.map((t, i) => {
     const builtin = t.kind === "builtin";
-    const head = `<div class="tool-hd"><label class="on" title="On: the model gets this tool"><input type="checkbox" data-on="${i}"${t.on ? " checked" : ""}>On</label><span class="nm">${esc(t.name)}</span>
+    const head = `<div class="tool-hd"><label class="on" title="${t.on ? "On: the model gets this tool" : "Off: the model does not get this tool"}"><input type="checkbox" role="switch" data-on="${i}"${t.on ? " checked" : ""} aria-label="${esc(t.title || t.name)}"><span class="sw"></span></label>${iconHtml(t.icon, i)}<span class="nm" title="Function name: ${esc(t.name)}">${esc(t.title || t.name)}</span>
       <span class="badge${builtin ? "" : " blue"}" tabindex="0" data-tip-title="${builtin ? "Built-in tool" : "URL tool"}" data-tip="${builtin ? "Python code in server.py. You can change the description, not the parameters." : "The server sends a GET request to the URL. Each {name} in the URL becomes the argument of that name."}">${builtin ? "Built-in" : "URL"}</span>
       <span class="right"><button type="button" class="copy" data-edit="${i}" title="${editing === i ? "Done" : "Edit this tool"}" aria-label="Edit ${esc(t.name)}">${ICON_EDIT}</button><button type="button" class="copy del" data-del="${i}" title="Delete this tool" aria-label="Delete ${esc(t.name)}">${ICON_DEL}</button></span></div>`;
-    if (editing !== i) return `<div class="tool${t.on ? "" : " off"}">${head}<div class="tool-bd"><span class="sig">${esc(signature(t))}</span><span>${esc(t.description)}</span>${t.kind === "url" ? `<span class="src">GET ${esc(t.url)}</span>` : ""}
-      ${det("schema" + i, "JSON schema", `<pre class="pre">${esc(JSON.stringify(schemaOf(t), null, 2))}</pre>`, "what LM Studio gets")}</div></div>`;
+    if (editing !== i) return `<div class="tool${t.on ? "" : " off"}">${head}<div class="tool-bd tv"><div class="tv-row"><span class="tv-lbl">Function</span><div class="tv-val"><span class="sig">${esc(signature(t))}</span><span>${esc(t.description)}</span><span class="src">${builtin ? "Python code in server.py" : `GET ${esc(t.url)}`}</span></div></div>
+      <div class="tv-row"><span class="tv-lbl">Definition</span><div class="tv-val">${det("schema" + i, "JSON schema", `<pre class="pre gen" title="Auto-generated from the tool creation fields. You cannot edit it.">${esc(JSON.stringify(schemaOf(t), null, 2))}</pre>`)}</div></div></div></div>`;
     const prow = (p, j) => `<div class="prow"><input class="field mono" data-p="${i}.${j}.name" value="${esc(p.name)}" aria-label="Parameter name"${builtin ? " disabled" : ""}>
       <select class="field" data-p="${i}.${j}.type" aria-label="Type"${builtin ? " disabled" : ""}>${TYPES.map(y => `<option${y === p.type ? " selected" : ""}>${y}</option>`).join("")}</select>
       <label><input type="checkbox" data-p="${i}.${j}.required"${p.required ? " checked" : ""}${builtin ? " disabled" : ""}>required</label>
-      <input class="field" data-p="${i}.${j}.description" value="${esc(p.description || "")}" placeholder="What the model must give" aria-label="Description">
+      <input class="field" data-p="${i}.${j}.description" value="${esc(p.description || "")}" placeholder="What the model must give, its format and an example" aria-label="Description">
       ${builtin ? "<span></span>" : `<button type="button" class="copy del" data-pdel="${i}.${j}" title="Delete this parameter" aria-label="Delete parameter">${ICON_DEL}</button>`}</div>`;
     return `<div class="tool">${head}<div class="tool-bd"><div class="edit">
-      <span>Name</span><input class="field mono" data-f="${i}.name" value="${esc(t.name)}"${builtin ? " disabled" : ""} aria-label="Tool name">
-      <span>Description</span><textarea class="field" data-f="${i}.description" aria-label="Description">${esc(t.description)}</textarea>
-      ${t.kind === "url" ? `<span>URL</span><input class="field mono" data-f="${i}.url" value="${esc(t.url || "")}" placeholder="https://api.example.com/x?city={city}" aria-label="URL">` : ""}
+      <span>Display name</span><input class="field" data-f="${i}.title" value="${esc(t.title || "")}" placeholder="${esc(t.name)}" aria-label="Display name" title="The name in the + Tools menu. The model never sees it.">
+      <span>Icon</span><div class="icon-row">${iconHtml(t.icon, i)}<input class="field mono" data-f="${i}.icon" value="${esc(t.icon || "")}" placeholder="lucide:wrench" aria-label="Icon" title="An Iconify icon name, prefix:name. The model never sees it."><a href="https://icon-sets.iconify.design/lucide/" target="_blank" rel="noopener">Browse icons</a></div>
+      <div class="grp">Tool creation</div>
+      ${t.kind === "url" ? `<span>URL</span><input class="field mono" data-f="${i}.url" value="${esc(t.url || "")}" placeholder="https://api.example.com/x?city={city}" aria-label="URL">` : `<span>Code</span><span class="src-b">Python code in server.py</span>`}
+      <span>Function name</span><input class="field mono" data-f="${i}.name" value="${esc(t.name)}"${builtin ? " disabled" : ""} aria-label="Function name" title="The name the model gets, and writes in its tool call">
+      <span>Description</span><textarea class="field" data-f="${i}.description" placeholder="What the tool does, when to use it (and when not), and what it returns. The model reads this to decide when to use the tool." aria-label="Description">${esc(t.description)}</textarea>
       <span>Parameters</span><div class="ptab"><div class="prow hd"><span>Name</span><span>Type</span><span></span><span>Description</span><span></span></div>${t.params.map(prow).join("")}
         ${builtin ? "" : `<div><button type="button" class="btn ghost small-btn" data-padd="${i}">Add parameter</button></div>`}</div>
-      </div><div class="error" id="terr${i}"></div></div></div>`;
+      <div class="grp">Tool definition</div>
+      <span>JSON schema</span><pre class="pre gen" id="tdef${i}" title="Auto-generated from the tool creation fields. You cannot edit it.">${esc(JSON.stringify(schemaOf(t), null, 2))}</pre>
+      </div><div class="error" id="terr${i}"></div>
+      <div class="edit-actions"><button type="button" class="btn ghost small-btn" data-cancel="${i}" title="Undo the changes since you opened the editor (Esc)">Cancel</button><button type="button" class="btn small-btn" data-done="${i}">Done</button></div></div></div>`;
   }).join("") || `<div class="hint-s">No tools. Click Create tool, or Reset tools.</div>`;
   $("library").replaceChildren(new Option("Add from the library…", ""), ...LIBRARY.filter(l => !tools.some(t => t.name === l.name)).map(l => new Option(`${l.name} · ${l.description.split(" (")[0]}`, l.name)));
   renderNote();
+  if (!$("toolsMenu").hidden) renderToolsMenu();
 }
 function toolError(i) {
   const t = tools[i], names = t.params.map(p => p.name);
-  if (!NAME_RE.test(t.name)) return "The name must be letters, digits or _ (no spaces), for example get_time.";
+  if (!NAME_RE.test(t.name)) return "The function name must be letters, digits or _ (no spaces), for example get_time. Put spaces in the display name.";
   if (tools.some((x, j) => j !== i && x.name === t.name)) return "Two tools have the same name.";
   if (names.some(n => !NAME_RE.test(n))) return "A parameter name must be letters, digits or _ (no spaces).";
   if (new Set(names).size !== names.length) return "Two parameters have the same name.";
   if (t.kind === "url" && !/^https?:\/\//.test(t.url || "")) return "The URL must start with https:// or http://.";
+  if (!(t.description || "").trim()) return "Write a description. The model reads it to decide when to use the tool.";
   return "";
 }
 document.addEventListener("input", e => {
@@ -1497,7 +1711,14 @@ document.addEventListener("input", e => {
   else { const [i, j, k] = p.split("."); tools[+i].params[+j][k] = e.target.type === "checkbox" ? e.target.checked : e.target.value; }
   const i = +(f || p).split(".")[0], err = toolError(i);
   $("terr" + i).textContent = err;
+  const def = $("tdef" + i); if (def) def.textContent = JSON.stringify(schemaOf(tools[i]), null, 2);
   if (!err) saveTools();
+  if (f?.endsWith(".icon")) document.querySelectorAll(`[data-ticon="${i}"]`).forEach(el => { el.dataset.icon = tools[i].icon; el.innerHTML = iconSvg(tools[i].icon); });
+  if (f?.endsWith(".title")) {  // the card header shows the display name: update it as you type
+    const nm = document.querySelector(`[data-on="${i}"]`)?.closest(".tool-hd")?.querySelector(".nm");
+    if (nm) nm.textContent = tools[i].title || tools[i].name;
+    if (!$("toolsMenu").hidden) renderToolsMenu();
+  }
 });
 document.addEventListener("change", e => {
   if (e.target.dataset?.on !== undefined) { tools[+e.target.dataset.on].on = e.target.checked; saveTools(); renderTools(); renderChat(); }
@@ -1505,16 +1726,30 @@ document.addEventListener("change", e => {
 });
 document.addEventListener("click", e => {
   const ed = e.target.closest("[data-edit]"), del = e.target.closest("[data-del]"), padd = e.target.closest("[data-padd]"), pdel = e.target.closest("[data-pdel]");
-  if (ed) { const i = +ed.dataset.edit; if (editing === i && toolError(i)) return; editing = editing === i ? null : i; renderTools(); }
-  else if (del) { const i = +del.dataset.del; tools.splice(i, 1); editing = null; saveTools(); renderTools(); renderChat(); }
+  const cancel = e.target.closest("[data-cancel]"), done = e.target.closest("[data-done]");
+  if (ed) { const i = +ed.dataset.edit; if (editing === i && toolError(i)) return; openEditor(editing === i ? null : i); }
+  else if (cancel) cancelEdit();
+  else if (done) { const i = +done.dataset.done, err = toolError(i); if (err) { $("terr" + i).textContent = err; return; } saveTools(); openEditor(null); renderChat(); }
+  else if (del) { const i = +del.dataset.del; tools.splice(i, 1); editing = null; editSnap = null; saveTools(); renderTools(); renderChat(); }
   else if (padd) { tools[+padd.dataset.padd].params.push(P(`param${tools[+padd.dataset.padd].params.length + 1}`, "string", true, "")); renderTools(); }
   else if (pdel) { const [i, j] = pdel.dataset.pdel.split(".").map(Number); tools[i].params.splice(j, 1); if (!toolError(i)) saveTools(); renderTools(); }
 });
 $("addTool").onclick = () => {
   let n = 1; while (tools.some(t => t.name === `my_tool_${n}`)) n++;
-  tools.push({ name: `my_tool_${n}`, kind: "url", on: true, url: "https://", description: "What the tool does. The model reads this to decide when to use the tool.", params: [P("city", "string", true, "")] });
-  editing = tools.length - 1; renderTools();
+  tools.push({ name: `my_tool_${n}`, title: "", icon: "lucide:link", kind: "url", on: true, url: "https://", description: "", params: [P("city", "string", true, "")] });
+  openEditor(tools.length - 1, true);
 };
+// The editor saves as you type. Cancel puts the tool back as it was when the editor opened; a new tool is removed.
+function openEditor(i, isNew = false) {
+  editing = i; editSnap = i == null ? null : { i, tool: isNew ? null : clone(tools[i]) }; renderTools();
+}
+function cancelEdit() {
+  if (!editSnap) return;
+  const { i, tool } = editSnap;
+  if (tool) tools[i] = tool; else tools.splice(i, 1);
+  saveTools(); openEditor(null); renderChat();
+}
+document.addEventListener("keydown", e => { if (e.key === "Escape" && editing != null && e.target.closest?.(".tool")) cancelEdit(); });
 $("library").onchange = e => {
   const l = LIBRARY.find(x => x.name === e.target.value);
   if (!l) return;
@@ -1596,10 +1831,49 @@ $("msg").addEventListener("input", syncSave);
 renderStarters();
 syncSave();
 fetch("/tool-prompts").then(r => r.json()).then(list => { if (Array.isArray(list)) { savedMsgs = list.filter(p => p && typeof p.text === "string" && typeof p.name === "string"); renderStarters(); syncSave(); } }).catch(() => {});
-// The chips show only while the chat is empty. New chat shows them again.
+// The chips always show, so you can select a new example at any time.
 function showStarters() {
-  const hide = chat.length > 0;
-  if ($("starters").hidden !== hide) { $("starters").hidden = hide; sizeChat(); }
+  if ($("starters").hidden) { $("starters").hidden = false; sizeChat(); }
+}
+
+// ---- Context window: how much of the loaded context length the conversation uses.
+// After a model call: exact, from LM Studio (prompt tokens + output tokens of the last call). Before the first call: an
+// estimate, the token count of the system prompt and the JSON schemas of the tools that are on. The chat template writes
+// the tools shorter than JSON, so the estimate is a little high.
+let ctxEst = { key: "", n: 0 }, ctxTimer = null;
+function ctxSize() {
+  const m = Composer.info($("chatModel").value);
+  return m?.loaded_instances?.[0]?.config?.context_length || m?.max_context_length || 0;
+}
+// The size: the context length that LM Studio loaded the model with, and the maximum of the model (LM Studio's fields).
+function ctxSizeTip(size) {
+  const m = Composer.info($("chatModel").value), max = m?.max_context_length, loaded = m?.loaded_instances?.[0]?.config?.context_length;
+  if (!loaded) return ` ${size.toLocaleString()} tokens: the maximum of the model. LM Studio sets the size when it loads the model.`;
+  return ` ${size.toLocaleString()} tokens: the context length that LM Studio loaded the model with.`
+    + (max > loaded ? ` The model supports up to ${max.toLocaleString()}. A larger context needs more memory. Change it in LM Studio: the Context Length load setting, then load the model again.` : "");
+}
+function ctxHtml() {
+  const size = ctxSize(), exact = stats.ctx > 0, used = exact ? stats.ctx : ctxEst.n;
+  // While the model list or the estimate loads: the same meter with dashes, so the bar does not jump.
+  if (!size || !used) return `<span class="ctx" tabindex="0" data-tip-title="Context window" data-tip="Loading the context length of the model and the size of the tool definitions…"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6"/></svg>Context <b>–</b> / ${size ? size.toLocaleString() : "–"}</span>`;
+  const pct = Math.min(1, used / size), lvl = pct > .9 ? " full" : pct > .75 ? " high" : "", C = 2 * Math.PI * 6;
+  const tip = exact ? `The last model call used ${used.toLocaleString()} of ${size.toLocaleString()} tokens of the context window (${(pct * 100).toFixed(1)}%): the prompt, with the tool definitions and the history, plus the reply. The next call adds your new message.`
+    : `Estimate before the first call: the system prompt and the definitions of the ${active().length} ${active().length === 1 ? "tool that is" : "tools that are"} on take about ${used.toLocaleString()} tokens of ${size.toLocaleString()}. The real number shows after the model call.`;
+  return `<span class="ctx${lvl}" tabindex="0" data-tip-title="Context window" data-tip="${esc(tip + ctxSizeTip(size))}"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6"/><circle cx="8" cy="8" r="6" class="arc" stroke-dasharray="${(pct * C).toFixed(2)} ${C.toFixed(2)}"/></svg>Context <b>${exact ? "" : "≈ "}${used.toLocaleString()}</b> / ${size.toLocaleString()}</span>`;
+}
+function estimateCtx() {
+  if (stats.ctx) return;
+  const model = $("chatModel").value, list = S.noteBy === "lmstudio" ? active().map(schemaOf) : [];
+  const text = [systemText(), list.length ? JSON.stringify(list) : ""].filter(Boolean).join("\n");
+  const key = model + "\u0000" + text;
+  if (!model || key === ctxEst.key) return;
+  clearTimeout(ctxTimer);
+  ctxTimer = setTimeout(async () => {
+    try {
+      const r = await fetch("/tokenize", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model, texts: [text], count: true }) }).then(r => r.json());
+      if (Array.isArray(r.counts)) { ctxEst = { key, n: r.counts[0] }; if (!stats.ctx) renderChat(true); }
+    } catch {}
+  }, 400);
 }
 
 // ---- System prompt: an Examples menu (your saved prompts, the examples, the guardrails), save, delete and copy.
@@ -1689,9 +1963,17 @@ async function send(text) {
   catch (e) {
     const t = chat.filter(x => x.user).at(-1);
     if (t) t.stopped = true;
-    if (e.name !== "AbortError") $("error").textContent = String(e.message || e); else setStatus("Stopped.");
+    if (e.name === "AbortError") setStatus("Stopped.");
+    else $("error").textContent = contextError(String(e.message || e));
     return false;
   } finally { busy = false; ctrl = null; setBusy(); renderChat(); }
+}
+// LM Studio refuses a prompt that is longer than the loaded context length. Say it in plain words, then LM Studio's text.
+function contextError(msg) {
+  if (!/context length|context window|context size/i.test(msg)) return msg;
+  const size = ctxSize();
+  return `The conversation no longer fits in the ${size ? size.toLocaleString() + "-token " : ""}context of the model. `
+    + `Click New chat, or load the model with a larger context length in LM Studio. LM Studio says: ${msg}`;
 }
 function stop() { ctrl?.abort(); if (pending) { const p = pending; pending = null; p.resolve(null); } }
 function setBusy() {
@@ -1712,19 +1994,37 @@ $("sendBtn").onclick = () => {
 };
 $("msg").addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); $("sendBtn").click(); } });
 $("msg").addEventListener("input", () => fit($("msg")));
-$("newChat").onclick = () => { if (busy) return; newChat(); renderChat(); setStatus("New chat. The tools stay."); };
+$("newChat").onclick = () => { if (busy) return; newChat(); renderChat(); setStatus(""); };
 const waitIdle = () => new Promise(r => { const f = () => busy ? setTimeout(f, 50) : r(); f(); });
-$("resetAll").onclick = async () => { stop(); await waitIdle(); chat = []; history = []; stats = { calls: 0, tools: 0, tokens: 0 }; openKeys.clear(); rawKeys.clear(); setStatus(""); $("error").textContent = ""; renderChat(); };
+// Reset all: the chat and all the settings (System prompt, Tool list, sliders, Harness, Mode, Permissions) back to their
+// defaults, as on the Trace page. The tools stay: Reset tools on the Tools tab is for them.
+$("resetAll").onclick = async () => {
+  stop(); await waitIdle();
+  newChat(); setStatus(""); $("error").textContent = "";
+  Object.assign(S, { ...S_DEFAULT, tab: S.tab }); noteText = NOTE_DEFAULT; keep();
+  ["noteBy", "harness", "stepMode"].forEach(id => setSeg(id, S[id]));
+  $("system").value = SYSTEM; $("system").dispatchEvent(new Event("input"));
+  renderSampling(); renderPerm(); renderAll();
+};
 
 // The chat fills the window above the message box: the box stays in view, and the chat scrolls.
+// tools.html?capture: the chat has no scroll of its own and grows with its content, so a full-page screenshot
+// (DevTools "Capture full size screenshot", or a capture extension) shows the whole chat.
+var CAPTURE = new URLSearchParams(location.search).has("capture");  // var: sizeChat may run before this line
+if (CAPTURE) document.documentElement.classList.add("capture");
 function sizeChat() {
   const log = $("log"), bar = document.querySelector(".sendbar");
   if (!log.offsetParent) return;
+  if (CAPTURE) { log.style.height = "auto"; return; }
   const top = log.getBoundingClientRect().top + scrollY;
   log.style.height = Math.max(320, innerHeight - top - bar.offsetHeight - 52) + "px";
 }
 addEventListener("resize", sizeChat);
-new ResizeObserver(sizeChat).observe(document.querySelector(".composer"));
+// Refit the chat log when anything above it changes height: the settings card, and the rows of the Chat panel
+// (System prompt, Tool list) as they open, close or grow.
+const fitObs = new ResizeObserver(sizeChat);
+fitObs.observe(document.querySelector(".composer"));
+document.querySelectorAll("#pane-chat details.opt").forEach(d => fitObs.observe(d));
 
 // ---- Tabs
 function setTab(v) {
@@ -1780,13 +2080,78 @@ function renderPerm() {
   $("permBtn").setAttribute("aria-label", `Permissions: ${cur.label}`);
   $("permMenu").innerHTML = `<div class="hd">Choose how the harness gets tool approvals</div>` + PERMS.map(p => `<button type="button" role="menuitemradio" aria-checked="${p.v === S.perm}" data-perm="${p.v}">${p.icon}<span>${p.label}</span>${p.v === S.perm ? '<span class="ck">✓</span>' : "<span></span>"}<span class="d">${p.desc}</span></button>`).join("");
 }
+// + menu: Tools ›, then each tool with an On/Off switch: the same switch as on the Tools tab.
+// Each row shows the display name (the title field), else the function name, and the icon of the Icon field.
+// Icons: Lucide (ISC license), from the Iconify API.
+const LUCIDE = {"calculator":"<rect width=\"16\" height=\"20\" x=\"4\" y=\"2\" rx=\"2\"/><path d=\"M8 6h8m0 8v4m0-8h.01M12 10h.01M8 10h.01M12 14h.01M8 14h.01M12 18h.01M8 18h.01\"/>","cloud-sun":"<path fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M12 2v2m-7.07.93l1.41 1.41M20 12h2m-2.93-7.07l-1.41 1.41m-1.713 6.31a4 4 0 0 0-5.925-4.128M13 22H7a5 5 0 1 1 4.9-6H13a3 3 0 0 1 0 6\"/>","arrow-left-right":"<path fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M8 3L4 7l4 4M4 7h16m-4 14l4-4l-4-4m4 4H4\"/>","newspaper":"<path d=\"M15 18h-5m8-4h-8m-6 8h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-4 0v-9a2 2 0 0 1 2-2h2\"/><rect width=\"8\" height=\"4\" x=\"10\" y=\"6\" rx=\"1\"/>","brain":"<path d=\"M12 18V5m3 8a4.17 4.17 0 0 1-3-4a4.17 4.17 0 0 1-3 4m8.707-6.706A3 3 0 1 0 12 5a3 3 0 1 0-5.707 1.294\"/><path d=\"M17.996 5.125a4 4 0 0 1 2.526 5.77\"/><path d=\"M18 18a4 4 0 0 0 2-7.465\"/><path d=\"M19.967 17.482a4 4 0 1 1-7.967.517a4 4 0 1 1-7.967-.517\"/><path d=\"M6 18a4 4 0 0 1-2-7.465\"/><path d=\"M6.004 5.125a4 4 0 0 0-2.526 5.77\"/>","globe":"<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"M12 2a14.5 14.5 0 0 0 0 20a14.5 14.5 0 0 0 0-20M2 12h20\"/>","bitcoin":"<path fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M11.767 19.089c4.924.868 6.14-6.025 1.216-6.894m-1.216 6.894L5.86 18.047m5.908 1.042l-.347 1.97m1.563-8.864c4.924.869 6.14-6.025 1.215-6.893m-1.215 6.893l-3.94-.694m5.155-6.2L8.29 4.26m5.908 1.042l.348-1.97M7.48 20.364l3.126-17.727\"/>","book-open":"<path fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M12 5v16m8.001-2A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2a5 5 0 0 1 4-2z\"/>","trending-up":"<path d=\"M16 7h6v6\"/><path d=\"m22 7l-8.5 8.5l-5-5L2 17\"/>","file-text":"<path d=\"M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z\"/><path d=\"M14 2v5a1 1 0 0 0 1 1h5M10 9H8m8 4H8m8 4H8\"/>","megaphone":"<path d=\"M11 6a13 13 0 0 0 8.4-2.8A1 1 0 0 1 21 4v12a1 1 0 0 1-1.6.8A13 13 0 0 0 11 14H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z\"/><path d=\"M6 14a12 12 0 0 0 2.4 7.2a2 2 0 0 0 3.2-2.4A8 8 0 0 1 10 14M8 6v8\"/>","link":"<path d=\"M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71\"/><path d=\"M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71\"/>","wrench":"<path fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.106-3.105c.32-.322.863-.22.983.218a6 6 0 0 1-8.259 7.057l-7.91 7.91a1 1 0 0 1-2.999-3l7.91-7.91a6 6 0 0 1 7.057-8.259c.438.12.54.662.219.984z\"/>","plus":"<path fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M5 12h14m-7-7v14\"/>","settings-2":"<path d=\"M14 17H5M19 7h-9\"/><circle cx=\"17\" cy=\"17\" r=\"3\"/><circle cx=\"7\" cy=\"7\" r=\"3\"/>","blocks":"<path d=\"M10 22V7a1 1 0 0 0-1-1H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5a1 1 0 0 0-1-1H2\"/><rect width=\"8\" height=\"8\" x=\"14\" y=\"2\" rx=\"1\"/>"};
+const LI = k => SVG(LUCIDE[k]);
+// The icon of a tool comes from its Icon field: an Iconify name, prefix:name (lucide:cloud-sun). Lucide icons are drawn
+// in the line style of the page; the ones above need no network. Other icons come from the Iconify API, once each.
+const ICON_RE = /^([a-z0-9]+(?:-[a-z0-9]+)*):([a-z0-9]+(?:[-_][a-z0-9]+)*)$/;
+// "prefix:name" → { body, w, h, lucide } or "missing". The default icons from other sets are built in (from Iconify).
+const ICON_CACHE = {"andrsrxn:currency-exchange":{"body":"<g fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"1.5\"><path d=\"M15.12 9.11c-.27-.85-1.5-1.51-2.95-1.51s-3.04.57-3.04 2.3c0 3.37 5.81.74 6.07 4.06c.13 1.59-1.55 2.44-3.03 2.44s-2.56-.66-3.04-1.54m3.04-7.26V6.52m0 10.96V16.4\"/><path d=\"M21.38 8.17c-2.02-3.67-4.98-5.93-9.2-5.93s-8.21 2.18-9.5 5.58m.37 7.8c1.68 3.19 4.88 6.12 9.1 6.12c4.2 0 8-2 9.54-5.75\"/><path d=\"m22.83 5.86l-.08.51c-.22 1.4-.33 2.1-.83 2.46c-.5.37-1.2.26-2.6.04l-.51-.08M1.72 18.12l.06-.61c.12-1.41.18-2.12.66-2.52s1.18-.33 2.6-.2l.6.05\"/></g>","w":24,"h":24},"andrsrxn:database-search":{"body":"<g fill=\"none\"><ellipse cx=\"12\" cy=\"5.23\" fill=\"currentColor\" opacity=\".2\" rx=\"8.88\" ry=\"3.44\" transform=\"rotate(-180 12 5.23)\"/><path fill=\"currentColor\" d=\"M3.25 16.75c0-1.31 0-1.97.4-2.27s1.06-.11 2.37.27c1.8.51 4.16 1.05 6.02.97c1.4-.05 2.01-.07 3.5-.56l-.27 1.14l-.68 2.71l2.1 2.54c-1.53.37-3.23.68-4.65.68c-2.46 0-5.76-1.05-7.54-1.69c-.59-.2-.88-.32-1.06-.57c-.19-.26-.19-.59-.19-1.24z\" opacity=\".2\"/><ellipse cx=\"12\" cy=\"5.23\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"1.5\" rx=\"8.88\" ry=\"3.44\" transform=\"rotate(-180 12 5.23)\"/><path stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"1.5\" d=\"M6.06 11.3c.4.26 1.15.59 2.2.8c1.17.22 1.74.25 2.67.25m-4.87 5.31c.4.25 1.15.58 2.2.79c1.17.23 1.74.26 2.67.26m-7.81.12c0 1.87 3.98 3.38 8.88 3.38M3.12 12.17c0 1.87 3.98 3.38 8.88 3.38M3.12 5.74V18.6M20.88 5.23v7.37m-.38 8.02l1.87 1.87m-.97-4.36a3.2 3.2 0 0 1-3.2 3.2a3.2 3.2 0 1 1 3.2-3.2\"/></g>","w":24,"h":24},"la:hacker-news":{"body":"<path fill=\"currentColor\" d=\"M5 5v22h22V5zm2 2h18v18H7zm4.5 4l3.5 6v5h2v-5l3.5-6h-2L16 15.281L13.5 11z\"/>","w":32,"h":32},"tabler:brand-wikipedia":{"body":"<g fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\"><path d=\"M3 4.984h2m3 0h2.5m4 0H17m5 0h-2m-16 0L9.455 19.5L16 4.984\"/><path d=\"M9 4.984L15 19.5l6-14.516\"/></g>","w":24,"h":24},"wi:day-cloudy":{"body":"<path fill=\"currentColor\" d=\"M1.56 16.9q0 1.35.66 2.49c.66 1.14 1.04 1.36 1.8 1.8s1.58.66 2.47.66h10.83c.89 0 1.72-.22 2.48-.66s1.37-1.04 1.81-1.8s.67-1.59.67-2.49c0-.66-.14-1.33-.42-2c.76-.92 1.14-2.03 1.14-3.3c0-.71-.14-1.39-.41-2.04s-.65-1.2-1.12-1.67s-1.02-.85-1.67-1.12c-.65-.28-1.33-.41-2.04-.41c-1.48 0-2.77.58-3.88 1.74q-1.155-.66-2.7-.66c-1.41 0-2.65.44-3.73 1.31a5.8 5.8 0 0 0-2.08 3.35c-1.12.26-2.03.83-2.74 1.73s-1.07 1.92-1.07 3.07m1.71 0c0-.84.28-1.56.84-2.17s1.26-.96 2.1-1.06l.5-.03c.12 0 .19-.06.19-.18l.07-.54c.14-1.08.61-1.99 1.41-2.71c.8-.73 1.74-1.09 2.81-1.09c1.1 0 2.06.37 2.87 1.1a4 4 0 0 1 1.37 2.71l.07.58c.02.11.09.17.21.17h1.61q1.32 0 2.28.96c.64.64.96 1.39.96 2.27c0 .91-.32 1.68-.95 2.32s-1.4.96-2.28.96H6.49c-.88 0-1.63-.32-2.27-.97c-.63-.65-.95-1.42-.95-2.32m6.7-12.27q0 .36.24.63l.66.64c.25.19.46.27.64.25c.21 0 .39-.09.55-.26s.24-.38.24-.62s-.09-.44-.26-.59l-.59-.66a.9.9 0 0 0-.61-.24c-.24 0-.45.08-.62.25c-.17.16-.25.36-.25.6m5.34 4.43c.69-.67 1.51-1 2.45-1c.99 0 1.83.34 2.52 1.03s1.04 1.52 1.04 2.51c0 .62-.17 1.24-.51 1.84c-.97-.96-2.13-1.44-3.49-1.44H17c-.25-1.09-.81-2.07-1.69-2.94m1.63-5.28c0 .26.08.46.23.62s.35.23.59.23c.26 0 .46-.08.62-.23c.16-.16.23-.36.23-.62V1.73c0-.24-.08-.43-.24-.59s-.36-.23-.61-.23c-.24 0-.43.08-.59.23s-.23.35-.23.59zm5.52 2.29c0 .26.07.46.22.62c.21.16.42.24.62.24c.18 0 .38-.08.59-.24l1.43-1.43c.16-.18.24-.39.24-.64q0-.36-.24-.6a.8.8 0 0 0-.59-.24c-.24 0-.43.08-.58.24l-1.47 1.43c-.15.19-.22.39-.22.62m.79 11.84c0 .24.08.45.25.63l.65.63c.15.16.34.24.58.24s.44-.08.6-.25a.86.86 0 0 0 .24-.62c0-.22-.08-.42-.24-.58l-.65-.65a.78.78 0 0 0-.57-.24q-.36 0-.6.24c-.17.16-.26.36-.26.6m1.47-6.31c0 .23.09.42.26.58c.16.16.37.24.61.24h2.04c.23 0 .42-.08.58-.23s.23-.35.23-.59s-.08-.44-.23-.6s-.35-.25-.58-.25h-2.04c-.24 0-.44.08-.61.25a.8.8 0 0 0-.26.6\"/>","w":30,"h":30},"ri:btc-line":{"body":"<path fill=\"currentColor\" d=\"M20 12a8 8 0 1 0-16 0a8 8 0 0 0 16 0m2 0c0 5.523-4.477 10-10 10S2 17.523 2 12S6.477 2 12 2s10 4.477 10 10m-5.294-1.436c-.174 1.053-.725 1.567-1.471 1.749c.992.555 1.47 1.398.959 2.877c-.635 1.854-2.057 2.022-3.94 1.663l-.486 1.957l-1.094-.271l.485-1.957c-.298-.08-.602-.138-.899-.223l-.485 1.957l-1.092-.27l.485-1.958l-2.176-.592l.54-1.384s.822.226.81.212c.304.074.453-.14.514-.288l.776-3.137l.566-2.23c.024-.241-.052-.557-.497-.677c.03-.017-.8-.198-.8-.198l.323-1.312l2.243.556l.475-1.917l1.13.28l-.475 1.917c.291.064.574.14.866.215l.474-1.917l1.1.272l-.488 1.967c1.387.51 2.386 1.263 2.157 2.709m-5.1.39c.657.198 2.605.783 2.933-.52c.306-1.24-1.382-1.618-2.166-1.794q-.14-.03-.235-.055l-.587 2.353zm-1.014 3.82l.095.029c.81.24 3.106.923 3.418-.37c.32-1.246-1.744-1.731-2.669-1.949q-.153-.035-.258-.062z\"/>","w":24,"h":24}};
+function iconSvg(name) {
+  const m = ICON_RE.exec(name || "");
+  if (!m) return LI("wrench");
+  if (m[1] === "lucide" && LUCIDE[m[2]]) return LI(m[2]);
+  const c = ICON_CACHE[name];
+  if (c === "missing") return LI("wrench");
+  if (c) return c.lucide ? SVG(c.body) : `<svg viewBox="0 0 ${c.w} ${c.h}" aria-hidden="true">${c.body}</svg>`;
+  fetchIcon(name, m[1], m[2]);
+  return '<svg viewBox="0 0 24 24" aria-hidden="true"></svg>';
+}
+const iconHtml = (name, i) => `<span class="ti" data-icon="${esc(name || "")}"${i == null ? "" : ` data-ticon="${i}"`}>${iconSvg(name)}</span>`;
+const iconWaiting = new Set();
+function fetchIcon(name, prefix, id) {
+  if (iconWaiting.has(name)) return;
+  iconWaiting.add(name);
+  fetch(`https://api.iconify.design/${prefix}.json?icons=${id}`).then(r => r.json()).then(j => {
+    const ic = j.icons?.[id];
+    ICON_CACHE[name] = !ic ? "missing" : prefix === "lucide"
+      ? { lucide: true, body: ic.body.replace(/^<g[^>]*>|<\/g>$/g, "") }
+      : { body: ic.body, w: ic.width || j.width || 24, h: ic.height || j.height || 24 };
+  }).catch(() => { ICON_CACHE[name] = "missing"; }).finally(() => {
+    iconWaiting.delete(name);
+    document.querySelectorAll(".ti").forEach(el => { if (el.dataset.icon === name) el.innerHTML = iconSvg(name); });
+  });
+}
+const toolIcon = t => iconHtml(t.icon);
+const ICON_PLUS = LI("plus"), ICON_CHEV = SVG('<path d="M9 6l6 6-6 6"/>');
+function renderPlus() {
+  $("plusBtn").innerHTML = ICON_PLUS;
+  $("plusMenu").innerHTML = `<button type="button" role="menuitem" class="sub" id="plusTools" aria-haspopup="menu" aria-expanded="${!$("toolsMenu").hidden}">${LI("blocks")}<span>Tools</span>${ICON_CHEV}</button>`;
+}
+function renderToolsMenu() {
+  $("toolsMenu").innerHTML = `<button type="button" role="menuitem" data-act="create">${ICON_PLUS}<span>Create tool</span><span></span></button>`
+    + `<button type="button" role="menuitem" data-act="manage">${LI("settings-2")}<span>Manage tools</span><span></span></button><div class="sep"></div>`
+    + (tools.map((t, i) => `<button type="button" role="menuitemcheckbox" class="tl" aria-checked="${!!t.on}" data-tool="${i}" title="${esc(t.name)}: ${esc(t.description)}">${toolIcon(t)}<span class="nm">${esc(t.title || t.name)}</span><span class="sw" aria-hidden="true"></span></button>`).join("")
+      || `<div class="none">No tools. Create one, or reset the tools on the Tools tab.</div>`);
+}
+function openPlus(open) {
+  $("plusMenu").hidden = !open; $("plusBtn").setAttribute("aria-expanded", open);
+  if (!open) $("toolsMenu").hidden = true;
+  renderPlus();
+}
+function openToolsMenu(open) { if (open) renderToolsMenu(); $("toolsMenu").hidden = !open; renderPlus(); }
+$("plusBtn").onclick = () => { if (!busy) openPlus($("plusMenu").hidden); };
+$("plusMenu").onclick = e => { if (e.target.closest("#plusTools")) openToolsMenu($("toolsMenu").hidden); };
+$("plusMenu").onmouseover = e => { if (e.target.closest("#plusTools") && $("toolsMenu").hidden) openToolsMenu(true); };
+$("toolsMenu").onclick = e => {
+  const t = e.target.closest("[data-tool]"), a = e.target.closest("[data-act]");
+  if (t && !busy) { const tool = tools[+t.dataset.tool]; tool.on = !tool.on; saveTools(); renderTools(); renderChat(); renderToolsMenu(); }
+  else if (a) { openPlus(false); setTab("tools"); if (a.dataset.act === "create") $("addTool").click(); }
+};
+// composedPath: the path at the time of the click, also when the clicked row was redrawn since.
+document.addEventListener("click", e => { if (!e.composedPath().some(n => n.classList?.contains("plus-wrap"))) openPlus(false); });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("plusMenu").hidden) { openPlus(false); $("plusBtn").focus(); } });
+renderPlus();
 function openPerm(open) {
   $("permMenu").hidden = !open; $("permBtn").setAttribute("aria-expanded", open);
   if (open) $("permMenu").querySelector('[aria-checked="true"]')?.focus();
 }
 $("permBtn").onclick = () => openPerm($("permMenu").hidden);
 $("permMenu").onclick = e => { const b = e.target.closest("[data-perm]"); if (!b) return; S.perm = b.dataset.perm; keep(); renderPerm(); openPerm(false); $("permBtn").focus(); };
-document.addEventListener("click", e => { if (!e.target.closest(".perm-wrap")) openPerm(false); });
+document.addEventListener("click", e => { if (!e.target.closest(".perm-wrap:not(.plus-wrap)")) openPerm(false); });
 $("permMenu").addEventListener("keydown", e => {
   const items = [...$("permMenu").querySelectorAll("[data-perm]")], i = items.indexOf(document.activeElement);
   if (e.key === "Escape") { openPerm(false); $("permBtn").focus(); }

@@ -265,6 +265,33 @@ The 3 new facts are in both stores: the page writes the file and embeds the fact
 
 ![Example 5: the new facts in the stores](docs/memory-5-stores.png)
 
+## Tools
+
+Open **Tools** in the sidebar. The page is a playground for tool usage. You trace every step of how an LLM uses a tool, from your question to the final answer. The tools go into the prompt (in-context learning), the model writes a tool call, and the harness runs the tool and sends the result back.
+
+The page is built on the [tool use API of LM Studio](https://lmstudio.ai/docs/developer/openai-compat/tools), which follows the format of the OpenAI Function Calling API. The harness sends the tool list in the `tools` parameter of the request: the tool definition (a JSON schema) of each tool that is on. LM Studio puts the tool definitions into the prompt with the chat template of the model, and converts the tool call of the model into `tool_calls` in the response.
+
+The page has two tabs:
+
+- **Tools:** your tools. Each tool shows its **Tool creation** (the function name, the description, the parameters, and the URL or the Python code that runs) and its **Tool definition** (the JSON schema that the harness makes from them). The **+** menu in the message box shows the display name of each tool. The model gets the function name. Click **Create tool** to write your own (a GET request to a URL), or **Add from the library…** to add a ready tool, like **crypto_price**. Only the tools that are **On** go to the model.
+- **Chat:** ask a question and follow the rows. Each row shows who does the work: the **Harness**, **LM Studio**, the **Model** or the **Tool**. Click **Details** to see what passed through that step.
+
+### What you can do
+
+- **Follow a tool call from start to finish.** Ask "What is the price of Bitcoin today?" and follow the five steps of tool usage: tool creation, tool definition, tool selection, tool calling and output processing. The model writes the call, LM Studio converts it to JSON, the harness validates it and calls Coinbase, and the model writes the answer from the result.
+- **Inspect the prompt and the tokens.** Open **Applying chat template** to see where your tools go in the prompt, and **Generating tokens** to see the tool call as the model wrote it.
+- **Compare tools for the same question.** Turn on **exchange_rate** and ask for the price of Bitcoin in CAD in two ways. Each tool uses different data.
+- **Write guardrails.** Put a rule in the **System prompt**, or select one from the **Examples** menu, and see how it changes tool selection. **Permissions** (Deny all, Ask every time, Allow all) control which tools run.
+- **Compare models.** Load a small model, like Gemma 3 1B, and ask the same questions. **Validating tool call** shows the calls that do not match the schema.
+- **Create your own tools.** Give a name, a description, a URL and parameters, and see how well each model uses them.
+- **Chain tool calls.** The library has **power** and **future_value** (math.js), for example to get the price of Bitcoin and then calculate its value in 10 years at 10% a year. **multiply** returns large numbers in fixed notation, not like `1.9e+5`.
+
+**Reasoning between tool calls.** A reasoning model like Gemma 4 plans before it calls a tool. The harness sends that reasoning back with the tool result (`reasoning_content` in the assistant message), so the model keeps its plan during one turn. When you send a new question, the harness removes the old reasoning. This follows the [Gemma 4 thinking guide](https://ai.google.dev/gemma/docs/capabilities/thinking). In **Messages**, click `reasoning_content` to see the full text. **Parsing output** shows what LM Studio found in the output: `reasoning_content`, `content` and `tool_calls`.
+
+![Tools: one tool call for the price of Bitcoin, with Gemma 4 12B](docs/t-price-of-bitcoin.png)
+
+Your tools are in `tools.json`. Git ignores this file.
+
 ## Limitations
 
 These limitations come from LM Studio:
@@ -286,3 +313,4 @@ Thank you to the authors of these works. They are the basis of the ideas and exa
 - Kojima et al. (2022). [Large Language Models are Zero-Shot Reasoners](https://arxiv.org/abs/2205.11916).
 - Renze & Guven (2024). [The Benefits of a Concise Chain of Thought on Problem-Solving in Large Language Models](https://arxiv.org/abs/2401.05618).
 - Jay Alammar and Maarten Grootendorst. [An Illustrated Guide to AI Agents](https://learning.oreilly.com/library/view/an-illustrated-guide/9798341662681/). O'Reilly. The book explains how language models reason, from chain-of-thought prompting to reasoning models trained with reinforcement learning. The penguin and flamingo examples in LM Trace come from this book. The examples on the Memory page come from chapter 4 ([code](https://github.com/HandsOnLLM/An-Illustrated-Guide-To-AI-Agents/tree/main/chapter04)).
+- LM Studio. [Tool Use](https://lmstudio.ai/docs/developer/openai-compat/tools). The OpenAI-compatible tool use API that the Tools page is built on.

@@ -109,10 +109,15 @@
       const k = select.value, m = info(k), r = reasoning ? m?.capabilities?.reasoning : null;
       btn.innerHTML = k ? `${icon}<span class="nm">${esc(k)}</span>${isLoaded(k) ? '<span class="ld">loaded</span>' : ""}${r ? `<span class="ld">Reasoning ${esc(reasonOf(k))}</span>` : ""}${ICON.updown}`
         : `<span class="nm">No ${esc(label.toLowerCase())}</span>${ICON.updown}`;
-      const reasonRow = !r ? "" : r.allowed_options.length > 1
-        ? `<div class="frow"><span tabindex="0" data-tip-title="Reasoning" data-tip="The model thinks before it answers. LM Studio says which settings this model allows. Off sends reasoning_effort: none in the request.">Reasoning</span><span class="seg" role="group" aria-label="Reasoning">${r.allowed_options.map(o => `<button type="button" data-reason="${esc(o)}" aria-pressed="${reasonOf(k) === o}">${o === "on" ? "On" : o === "off" ? "Off" : esc(o)}</button>`).join("")}</span></div>`
-        : `<div class="frow"><span tabindex="0" data-tip-title="Reasoning" data-tip="This model always thinks before it answers. LM Studio allows no other setting.">Reasoning</span><span class="v">${esc(r.allowed_options[0] === "on" ? "On" : r.allowed_options[0])}</span></div>`;
-      // As LM Studio: the loaded models first, each with Eject; then all the models.
+      // Reasoning: always in the menu for a chat model, so it does not come and go as you pick a model.
+      // A model with one setting (or none) shows it greyed out: Off for a model without reasoning.
+      const seg = (opts, cur, dis) => `<span class="seg${dis ? " dis" : ""}" role="group" aria-label="Reasoning">${opts.map(o => `<button type="button"${dis ? " disabled" : ` data-reason="${esc(o)}"`} aria-pressed="${cur === o}">${o === "on" ? "On" : o === "off" ? "Off" : esc(o)}</button>`).join("")}</span>`;
+      const rTip = (tip) => `<span tabindex="0" data-tip-title="Reasoning" data-tip="${tip}">Reasoning</span>`;
+      const reasonRow = !reasoning || kind !== "llm" || !k ? ""
+        : !r ? `<div class="frow">${rTip("This model does not think before it answers. LM Studio has no reasoning setting for it, so Reasoning is Off.")}${seg(["off", "on"], "off", true)}</div>`
+        : r.allowed_options.length > 1 ? `<div class="frow">${rTip("The model thinks before it answers. LM Studio says which settings this model allows. Off sends reasoning_effort: none in the request.")}${seg(r.allowed_options, reasonOf(k), false)}</div>`
+        : `<div class="frow">${rTip("This model always thinks before it answers. LM Studio allows no other setting.")}${seg(r.allowed_options[0] === "on" ? ["off", "on"] : r.allowed_options, r.allowed_options[0], true)}</div>`;
+      // As LM Studio: the loaded models first, each with Eject; then the models that are not loaded.
       // A row: a chat model (data-model) or an embedding model (data-emb). Each list has its own selection.
       const all = keys(), eAll = embed ? [...embed.options].map(o => o.value) : [], ek = embed?.value;
       const isEmb = x => eAll.includes(x) && !all.includes(x);
@@ -120,10 +125,12 @@
         return `<button type="button" role="menuitemradio" aria-checked="${on}" ${e ? "data-emb" : "data-model"}="${esc(x)}">${e ? ICON.vec : icon}<span class="nmc">${esc(x)}</span><span></span><span class="caps">${capIcons(info(x))}</span></button>`; };
       const lrow = x => `<div class="lrow${(isEmb(x) ? x === ek : x === k) ? " sel" : ""}">${row(x)}<button type="button" class="eject" data-eject="${esc(info(x).loaded_instances[0].id)}" title="Unload this model from memory. LM Studio loads it again at the next ${esc(loadWord)}."${isBusy() ? " disabled" : ""}>${ICON.eject}<span>Eject</span></button></div>`;
       const loadedNow = [...all, ...eAll.filter(isEmb)].filter(isLoaded);
+      const rest = all.filter(x => !isLoaded(x)), eRest = eAll.filter(x => !isLoaded(x));
       menu.innerHTML = `<div class="sec">Currently loaded <span class="n">(${loadedNow.length})</span></div>`
         + (loadedNow.length ? loadedNow.map(lrow).join("") : `<div class="none-l">No model is loaded. LM Studio loads the model at the next ${esc(loadWord)}.</div>`)
-        + `<div class="sec">Your models</div><div class="list">` + all.map(row).join("") + `</div>`
-        + (embed ? `<div class="sec"><span tabindex="0" data-tip-title="Embedding model" data-tip="A second, small model. It turns text into vectors (lists of numbers), so the search can find the text with the nearest meaning. It writes no text.">Embedding model</span></div><div class="list emb">` + eAll.map(row).join("") + `</div>` : "")
+        // A loaded model shows once: under Currently loaded. It comes back to its list when you eject it.
+        + (rest.length ? `<div class="sec">Your models</div><div class="list">` + rest.map(row).join("") + `</div>` : "")
+        + (embed && eRest.length ? `<div class="sec"><span tabindex="0" data-tip-title="Embedding model" data-tip="A second, small model. It turns text into vectors (lists of numbers), so the search can find the text with the nearest meaning. It writes no text.">Embedding model</span></div><div class="list emb">` + eRest.map(row).join("") + `</div>` : "")
         + (reasonRow ? `<div class="foot">${reasonRow}</div>` : "");
     };
     p.renderCard = () => { card.innerHTML = cardHtml(select.value); };
@@ -167,10 +174,11 @@
         return;
       }
       const eb = e.target.closest("[data-emb]");
-      if (eb && embed) { embed.value = eb.dataset.emb; embed.dispatchEvent(new Event("change", { bubbles: true })); open(false); btn.focus(); return; }
+      // Picking a model keeps the menu open, so you can set its Reasoning at once. Click outside or Esc closes it.
+      if (eb && embed) { embed.value = eb.dataset.emb; embed.dispatchEvent(new Event("change", { bubbles: true })); place(menu); menu.querySelector(`[data-emb="${CSS.escape(eb.dataset.emb)}"]`)?.focus(); return; }
       const b = e.target.closest("[data-model]"); if (!b) return;
       select.value = b.dataset.model; select.dispatchEvent(new Event("change", { bubbles: true }));
-      open(false); btn.focus();
+      place(menu); menu.querySelector(`[data-model="${CSS.escape(b.dataset.model)}"]`)?.focus();
     };
     menu.addEventListener("keydown", e => {
       const items = [...menu.querySelectorAll("button")], i = items.indexOf(document.activeElement);
