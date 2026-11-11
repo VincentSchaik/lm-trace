@@ -437,6 +437,8 @@
   .msg-text details.x > summary .rc-lbl { flex: 1 1 auto; min-width: 0; }
   .msg-text details.x > summary .rc-n { color: var(--ink-3); }
   .msg-text details.x[open] .rc-pv { display: none; }
+  .found .msg { grid-template-columns: 136px minmax(0, 1fr); }
+  .found .role { font: 12px/1.55 var(--mono); letter-spacing: 0; text-transform: none; padding-top: 0; }
   .rc-full { margin: 4px 0 6px 18px; padding-left: 10px; border-left: 2px solid var(--paper-2); color: var(--ink-2); }
   .pre { margin: 0; padding: 8px 10px; border: 1px solid var(--paper-2); border-radius: 6px; font: 12px/1.55 var(--mono); white-space: pre-wrap; word-break: break-word; color: var(--ink-2); background: var(--input-bg); }
   .note { padding: 8px 12px; border-radius: 6px; background: rgba(var(--shadow-rgb), .025); color: var(--ink-3); font-size: 12.5px; line-height: 1.5; }
@@ -902,8 +904,8 @@ const STARTER = [
 ];
 // Each definition says the purpose, when to use it, what the output means, and the format of each parameter
 // (OpenAI function calling guide, "Best practices for defining functions"). crypto_price is long, so it has constants.
-const CRYPTO_DESC = "Get the current spot price of a cryptocurrency from Coinbase. Use it when the user asks for the price of a coin today, like Bitcoin or Ethereum. It gives no past prices. Returns JSON: data.amount is the price (a string), data.base is the coin and data.currency is the currency of the price.";
-const CRYPTO_PAIR = "The coin and the currency of the price, in the format COIN-CURRENCY with ticker symbols, for example BTC-USD (Bitcoin in US dollars) or ETH-CAD (Ethereum in Canadian dollars)";
+const CRYPTO_DESC = "Get the current spot price of a cryptocurrency from Coinbase. Use it when the user asks for the price of a coin today, like Bitcoin or Ether. It gives no past prices. Returns JSON: data.amount is the price (a string), data.base is the coin and data.currency is the currency of the price.";
+const CRYPTO_PAIR = "The coin and the currency of the price, in the format COIN-CURRENCY with ticker symbols, for example BTC-USD (Bitcoin in US dollars) or ETH-CAD (Ether in Canadian dollars)";
 // More free APIs that need no key (each one tested). URL tools, so you can see and change the URL.
 const LIBRARY = [
   { name: "power", title: "Power", icon: "lucide:superscript", kind: "url", url: MATH_URL("{base}%5E{exponent}"),
@@ -969,6 +971,12 @@ async function loadTools() {
   for (const t of tools) if (t.name === "multiply" && t.url === "https://api.mathjs.org/v4/?expr={a}*{b}") {
     t.url = MATH_URL("{a}*{b}"); moved = true;
     if (t.description === "Multiply two numbers with math.js. Use it for every multiplication, so the result is exact. Returns the product as plain text, for example 90.") t.description = MULTIPLY_DESC;
+  }
+  // crypto_price saved before 2026-11-10: the coin is Ether (ETH); Ethereum is its network.
+  for (const t of tools) if (t.name === "crypto_price") {
+    if (t.description === CRYPTO_DESC.replace("Bitcoin or Ether.", "Bitcoin or Ethereum.")) { t.description = CRYPTO_DESC; moved = true; }
+    const pp = t.params?.find(x => x.name === "pair");
+    if (pp && pp.description === CRYPTO_PAIR.replace("(Ether in", "(Ethereum in")) { pp.description = CRYPTO_PAIR; moved = true; }
   }
   // Tools saved before the Icon field: the default icon of a starter or library tool, else link (URL) or wrench.
   for (const t of tools) if (t.icon === undefined) {
@@ -1472,6 +1480,19 @@ function msgRows(messages, newFrom = Infinity, key = "m") {
     return `<div class="msg${i >= newFrom ? " new" : ""}"><span class="role">${esc(m.role)}</span><div class="msg-text">${rc}${esc(text)}</div></div>`;
   }).join("")}</div>`;
 }
+// LM Studio splits the output tokens into the fields of the response: reasoning, content and tool_calls.
+function parsedRow(key, m) {
+  const think = String(m.reasoning_content ?? m.reasoning ?? "").trim(), text = cleanText(m.content || ""), calls = m.tool_calls || [];
+  const found = [think ? "reasoning" : "", text ? (calls.length ? "text" : "answer") : "", calls.length ? plural(calls.length, "tool call") : ""].filter(Boolean);
+  const line = (field, val) => `<div class="msg"><span class="role">${field}</span><div class="msg-text">${esc(val)}</div></div>`;
+  const body = `<div class="msgs found">`
+    + (think ? line("reasoning_content", `${short(think, 100)} (${think.length.toLocaleString()} characters)`) : "")
+    + (text ? line("content", short(text, 140)) : "")
+    + calls.map(c => line("tool_calls", `${c.function?.name}(${c.function?.arguments})`)).join("")
+    + (calls.length ? "" : line("tool_calls", "none"))
+    + `</div>`;
+  return row(key, "LM Studio", tipped("Parsing output", "Splits the output tokens into reasoning, text and tool calls."), found.length ? `Found: ${found.join(", ")}` : "Found: nothing", body);
+}
 const argText = a => Object.entries(a || {}).map(([k, v]) => `${k}: ${JSON.stringify(v)}`).join(", ");
 const plural = (k, one, many = one + "s") => `${k} ${k === 1 ? one : many}`;
 const short = (t, max = 90) => { t = String(t ?? "").replace(/\s+/g, " ").trim(); return t.length > max ? t.slice(0, max - 1) + "…" : t; };
@@ -1515,7 +1536,7 @@ function rowHtml(s, k) {
     return row(k, "Model", tipped("Generating tokens", "The model generates the reply, one token at a time."), meta, bodyOf(s, k), cut ? "bad" : "");
   }
   if (s.type === "json") {
-    return row(k + "p", "LM Studio", tipped("Parsing output", "Looks for the thinking, the text and the tool calls."), "", "")
+    return parsedRow(k + "p", s.msg || {})
       + row(k, "LM Studio", tipped("Serializing JSON", "Writes the chat completion response in the format of the OpenAI Chat Completions API, a de facto standard. LM Studio, llama.cpp, Ollama and vLLM use it."), tipSpan(`finish_reason: ${esc(s.finish || "?")}`, "finish_reason", "Why the model stops: tool_calls (it writes a tool call), stop (it is finished) or length (Max tokens)."), jsonOf(s));
   }
   if (s.type === "nothing") return row(k, "Harness", tipped("Off", "The harness is off. Nothing reads the tool call, so no tool runs."), "", "", "bad");
