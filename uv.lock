@@ -1275,6 +1275,9 @@ source = { virtual = "." }
 [package.optional-dependencies]
 embeddings = [
     { name = "lmstudio" },
+    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.11.*'" },
+    { name = "numpy", version = "2.5.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
 ]
 memory = [
     { name = "chromadb" },
@@ -1284,6 +1287,7 @@ memory = [
 requires-dist = [
     { name = "chromadb", marker = "extra == 'memory'", specifier = ">=1.5.9" },
     { name = "lmstudio", marker = "extra == 'embeddings'", specifier = ">=1.5" },
+    { name = "numpy", marker = "extra == 'embeddings'", specifier = ">=2" },
 ]
 provides-extras = ["embeddings", "memory"]
 

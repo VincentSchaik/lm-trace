@@ -289,6 +289,31 @@
 
   /* The selected token: its whole vector as a grid */
   .detail-grid { display: grid; grid-template-columns: 448px minmax(0, 1fr); gap: 20px; align-items: start; }
+  /* The nearest tokens: a ranked list and a map */
+  #nearCard .card-head .right { margin-left: auto; color: var(--ink-3); font-size: 12.5px; }
+  .near-grid { display: grid; grid-template-columns: 340px minmax(0, 1fr); align-items: start; }
+  .nlist { border-right: 1px solid var(--paper-2); padding: 6px 0; align-self: stretch; }
+  .nlist .hint { padding: 8px 14px; }
+  .nlist-head { padding: 6px 14px 8px; font-size: 12.5px; color: var(--ink-3); }
+  .nlist-head code { font: 600 13px var(--mono); color: var(--ink); }
+  .nrow { display: grid; grid-template-columns: 20px minmax(0, 1fr) 72px 46px; gap: 10px; align-items: center; padding: 5px 14px; }
+  .nrow .rank { font: 12px var(--mono); color: var(--ink-3); text-align: right; }
+  .ntok { font: 13px var(--mono); color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .track { position: relative; height: 8px; border-radius: 4px; background: var(--paper-2); overflow: hidden; }
+  .track i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; background: var(--red); }
+  .score { font: 500 12.5px var(--mono); text-align: right; color: var(--ink-2); }
+  .note { padding: 9px 14px; border-top: 1px solid var(--paper-2); background: rgba(var(--shadow-rgb), .025); color: var(--ink-3); font-size: 12.5px; line-height: 1.5; }
+  .nmap { display: block; width: 100%; height: auto; }
+  .nmap-box { padding: 10px 14px; }
+  .nmap .link { stroke: rgb(var(--red-rgb)); stroke-opacity: .35; stroke-dasharray: 3 3; }
+  .nmap circle { stroke: var(--field); stroke-width: 1.5; }
+  .nmap .tp { fill: var(--ink); }
+  .nmap .np { fill: rgb(var(--red-rgb)); }
+  .nmap text { pointer-events: none; paint-order: stroke; stroke: var(--field); stroke-width: 3px; stroke-linejoin: round; }
+  .nmap .tlab { font: 600 13px var(--mono); fill: var(--ink); }
+  .nmap .nlab { font: 12px var(--mono); fill: var(--ink-2); }
+  .nmap .nlab .rk { fill: var(--ink-3); }
+  .nmap .lead { stroke: var(--stone-2); stroke-width: 1; }
   .grid { display: block; width: 100%; image-rendering: pixelated; border-radius: 4px; border: 1px solid var(--paper-2); }  /* 7 px per number */
   .facts { margin: 0; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; font-size: 13px; }
   .facts div { display: grid; grid-template-columns: 150px 1fr; gap: 12px; padding: 8px 12px; }
@@ -316,7 +341,8 @@
     .output { min-height: 40vh; }
     select.field, #model { min-width: 0; width: 100%; }
     .top { flex-wrap: wrap; height: auto; padding: 12px 0; }
-    .prompt-grid, .detail-grid { grid-template-columns: 1fr; }
+    .prompt-grid, .detail-grid, .near-grid { grid-template-columns: 1fr; }
+    .nlist { border-right: 0; border-bottom: 1px solid var(--paper-2); }
     .facts div { grid-template-columns: 110px 1fr; }
     .vec-head { display: none; }
     .vec-row { grid-template-columns: 1fr; gap: 6px; }
@@ -395,7 +421,8 @@
           <div class="sec-body">
             <p class="explain">The embedding table has one row for each token in the vocabulary. The model takes the row of each token ID: a list of numbers, the embedding.
               The same token always gets the same row, in any sentence. The layers of the model add the context later.
-              Blue = positive, grey = negative. These are the real numbers from the model file.</p>
+              Blue = positive, grey = negative. These are the real numbers from the model file.
+              Below, the nearest tokens show which rows the model learned to keep close: tokens that it treats in a similar way.</p>
             <div id="vecBody"><span class="empty">Click Send to see the embeddings.</span></div>
           </div>
         </details>
@@ -413,9 +440,11 @@ const fit = t => { t.style.height = "auto"; t.style.height = Math.min(t.scrollHe
 const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 
 // Result of the last run: tokens = [{ id, text, special, name }], emb = server answer with rows (or { error })
-let tokens = [], emb = null, sel = -1, busy = false;
+// near: the nearest tokens of the table and the map (null, { pending }, { error } or the server answer)
+let tokens = [], emb = null, near = null, sel = -1, busy = false;
 
-// ---- Models: language models. The tokenizer works for all; the embeddings need safetensors (MLX) files.
+// ---- Models: language models only. The embeddings on this page are the input of the chat model: the rows of its
+// embedding table, not the vectors of an embedding model. The tokenizer works for all; the embeddings need safetensors (MLX) files.
 async function loadModels() {
   try {
     let keys = [];
@@ -452,7 +481,14 @@ async function run() {
     emb = await post("/embed-rows", { model, ids: tokens.map(p => p.id) }).catch(e => ({ error: e.message }));
     tokens.forEach((p, i) => p.name = emb.names?.[i] || "");
     sel = tokens.findIndex(p => !p.special);
+    near = emb.rows ? { pending: true } : null;
     render();
+    // Then the nearest tokens: a search of the whole table on the server (some seconds). One search per different text token.
+    if (emb.rows) {
+      const ids = [...new Set(tokens.filter(p => !p.special).map(p => p.id))].slice(0, 64);
+      near = ids.length ? await post("/nearest", { model, ids }).catch(e => ({ error: e.message })) : { error: "The text has no text tokens." };
+      renderNear();
+    }
   } catch (e) {
     $("error").textContent = String(e.message || e);
   } finally {
@@ -460,7 +496,7 @@ async function run() {
   }
 }
 $("run").onclick = run;
-// The message box (composer.js): the model picker and the Send button. The tokenizer generates no text: no Reasoning row.
+// The message box (composer.js): the model picker and the Send button. The embedding models show greyed out: this page uses none.
 const chatPick = Composer.picker({ select: $("model"), mount: $("chatPick"), label: "Chat model", isBusy: () => busy, onError: m => { $("error").textContent = m; } });
 Composer.setSend($("run"), false, { send: "Send the text to the tokenizer", key: "⌘ + Enter" });
 $("text").addEventListener("keydown", e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); run(); } });
@@ -513,9 +549,11 @@ function renderVectors() {
     <div class="vec-head vec-row" style="cursor:default"><span>Token · ID</span><span>First 16 numbers</span><span>All ${emb.hidden.toLocaleString()} numbers</span></div>
     ${tokens.map((p, i) => `<div class="vec-row${i === sel ? " sel" : ""}" data-i="${i}">
       <span class="vec-tok">${tokLabel(p)}<small>ID ${p.id}</small></span>${barsSvg(emb.rows[i], barMax)}<canvas class="strip" data-v="${i}"></canvas></div>`).join("")}</div>
-    <div class="card" id="detail"></div>`;
+    <div class="card" id="detail"></div>
+    <div class="card" id="nearCard"></div>`;
   drawStrips();
   renderDetail();
+  renderNear();
 }
 let scale = 1;
 const tint = x => `rgba(${cssVar(x >= 0 ? "--red-rgb" : "--neg-rgb")}, ${Math.min(1, Math.abs(x) / scale).toFixed(3)})`;
@@ -568,13 +606,68 @@ function renderDetail() {
   v.forEach((x, j) => { g.fillStyle = tint(x); g.fillRect(j % cols, Math.floor(j / cols), 1, 1); });
 }
 
+// ---- The nearest tokens of the selected token, and a map of all text tokens with their nearest tokens.
+// A vocabulary entry as text: "▁" (SentencePiece) and "Ġ" (BPE) are a space, shown as "·" as in the tokens.
+const vocabText = s => s ? s.replace(/[▁Ġ ]/g, "·").replace(/Ċ|\n/g, "↵") : "∅";
+function renderNear() {
+  const box = $("nearCard"), p = tokens[sel];
+  if (!box || !p) return;
+  const list = near?.neighbors?.[p.id], map = near?.maps?.[p.id];
+  const head = `<div class="card-head"><h3>Nearest tokens in the embedding table</h3>
+    <span class="right">${map ? `map: ${Math.round(map.share * 100)}% of the variation shown` : ""}</span></div>`;
+  const hint = t => `<div class="card-body hint">${t}</div>`;
+  if (!near || near.pending) { box.innerHTML = head + hint(`Searching all ${emb.vocab.toLocaleString()} rows of the table…`); return; }
+  if (near.error) { box.innerHTML = head + hint(esc(near.error)); return; }
+  if (p.special) { box.innerHTML = head + hint("A special token: a control sign, not in the search. Click a text token."); return; }
+  if (!list) { box.innerHTML = head + hint("Not in the search: the search takes the first 64 different tokens of the text."); return; }
+  box.innerHTML = head + `<div class="near-grid"><div class="nlist"><div class="nlist-head">Nearest to <code>${tokLabel(p)}</code></div>` + list.map((n, r) => `<div class="nrow">
+        <span class="rank">${r + 1}</span><code class="ntok" title="ID ${n.id}">${esc(vocabText(n.name))}</code>
+        <span class="track"><i style="width:${(Math.max(0, n.s) * 100).toFixed(1)}%"></i></span><span class="score">${n.s.toFixed(3)}</span></div>`).join("")
+    + `</div><div class="nmap-box">${nearMapSvg(p, list, map.xy)}</div></div>
+    <div class="note">The list compares the row of the token with each of the ${emb.vocab.toLocaleString()} rows of the table (cosine similarity: 1 = the same direction).
+      The map shows the token (dark point) and its 10 nearest rows (blue points, numbered as in the list). ${emb.hidden.toLocaleString()} numbers cannot be drawn: PCA finds
+      the two directions in which these 11 rows are most different, and puts each row on them. Near on the map usually means near in the table, but the map loses much information: the list is the exact measure.</div>`;
+}
+// The map of one token: the token first in xy, then its nearest rows in the order of the list.
+function nearMapSvg(p, list, xy) {
+  const W = 640, H = 330, pad = 24;
+  const xs = xy.map(q => q[0]), ys = xy.map(q => q[1]);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+  const s = Math.min((W - 2 * pad - 120) / (x1 - x0 || 1), (H - 2 * pad - 30) / (y1 - y0 || 1));  // one scale for both axes; room for the labels
+  const ox = (W - (x1 - x0) * s) / 2, oy = (H - (y1 - y0) * s) / 2;
+  const pts = xy.map(([x, y]) => [ox + (x - x0) * s, H - (oy + (y - y0) * s)]);
+  const f = n => n.toFixed(1), [cx, cy] = pts[0];
+  const links = pts.slice(1).map(([x, y]) => `<line class="link" x1="${f(cx)}" y1="${f(cy)}" x2="${f(x)}" y2="${f(y)}"/>`).join("");
+  const dots = pts.map(([x, y], k) => k
+    ? `<circle class="np" cx="${f(x)}" cy="${f(y)}" r="5" data-tip-title="${k}. ${esc(vocabText(list[k - 1].name))}" data-tip="${esc(`similarity ${list[k - 1].s.toFixed(3)} · ID ${list[k - 1].id}`)}"/>`
+    : `<circle class="tp" cx="${f(x)}" cy="${f(y)}" r="7" data-tip-title="${esc(vocabText(p.name || p.text))}" data-tip="${esc(`The token · ID ${p.id}`)}"/>`).join("");
+  // Labels: each takes the nearest free place around its point (no label on a label or on a point);
+  // a label away from its point gets a thin line to it.
+  const boxes = pts.map(([x, y], k) => { const r = k ? 6 : 8; return [x - r, y - r, x + r, y + r]; });
+  const hit = (b, c) => b[0] < c[2] && c[0] < b[2] && b[1] < c[3] && c[1] < b[3];
+  const labels = pts.map(([x, y], k) => {
+    const txt = k ? `${k} ${vocabText(list[k - 1].name)}` : vocabText(p.name || p.text), size = k ? 12 : 13, w = [...txt].length * size * 0.6 + 2, h = size + 4;
+    for (const d of [11, 22, 34, 48, 64]) for (let a8 = 0; a8 < 8; a8++) {
+      const a = a8 * Math.PI / 4, px = x + Math.cos(a) * d, py = y - Math.sin(a) * d;
+      const lx = Math.cos(a) > 0.3 ? px : Math.cos(a) < -0.3 ? px - w : px - w / 2;
+      const b = [lx, py - h / 2, lx + w, py + h / 2];
+      if (b[0] < 2 || b[2] > W - 2 || b[1] < 2 || b[3] > H - 2 || boxes.some(c => hit(b, c))) continue;
+      boxes.push(b);
+      const lead = d > 11 ? `<line class="lead" x1="${f(x)}" y1="${f(y)}" x2="${f(Math.min(Math.max(x, b[0]), b[2]))}" y2="${f(Math.min(Math.max(y, b[1]), b[3]))}"/>` : "";
+      return `${lead}<text class="${k ? "nlab" : "tlab"}" x="${f(lx)}" y="${f(py + size * 0.36)}">${k ? `<tspan class="rk">${k}</tspan> ` : ""}${esc(k ? vocabText(list[k - 1].name) : txt)}</text>`;
+    }
+    return "";
+  }).join("");
+  return `<svg class="nmap" viewBox="0 0 ${W} ${H}" role="img" aria-label="Map of the token and its 10 nearest tokens in the embedding table">${links}${dots}${labels}</svg>`;
+}
+
 // Select a token: click a chip or a row.
 function select(i) {
   if (!tokens[i] || i === sel) return;
   sel = i;
   document.querySelectorAll(".chip.sel, .vec-row.sel").forEach(el => el.classList.remove("sel"));
   document.querySelectorAll(`.chip[data-i="${i}"], .vec-row[data-i="${i}"]`).forEach(el => el.classList.add("sel"));
-  if (emb?.rows) renderDetail();
+  if (emb?.rows) { renderDetail(); renderNear(); }
 }
 document.querySelector(".main").addEventListener("click", e => {
   const el = e.target.closest("[data-i]");

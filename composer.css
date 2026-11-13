@@ -47,8 +47,10 @@
 .mp-menu .sec .n { font-weight: 400; color: var(--ink-3); }
 .mp-menu .lrow { display: flex; align-items: center; gap: 6px; border-radius: 7px; }
 .mp-menu .lrow.sel { background: rgba(var(--red-rgb), .08); }
-.mp-menu .lrow > button[data-model] { flex: 1; min-width: 0; }
-.mp-menu .lrow.sel > button[data-model], .mp-menu .lrow > button[data-model]:hover { background: transparent; }
+.mp-menu .lrow > button[data-model], .mp-menu .lrow > button[data-emb] { flex: 1; min-width: 0; }
+.mp-menu .lrow.sel > button[data-model], .mp-menu .lrow > button[data-model]:hover, .mp-menu .lrow.sel > button[data-emb], .mp-menu .lrow > button[data-emb]:hover { background: transparent; }
+.perm-menu.mp-menu button.noemb { cursor: default; color: var(--ink-3); }
+.perm-menu.mp-menu button.noemb:hover { background: transparent; }
 .perm-menu.mp-menu button.eject { display: inline-flex; align-items: center; gap: 6px; width: auto; flex: none; height: 30px; margin-right: 6px; padding: 0 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--field); color: var(--ink-2); font: 500 13px var(--sans); }
 .perm-menu.mp-menu button.eject:hover { color: var(--ink); border-color: var(--stone-2); background: var(--field); }
 .perm-menu.mp-menu button.eject:disabled { opacity: .5; cursor: default; }

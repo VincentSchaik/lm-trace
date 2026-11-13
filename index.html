@@ -580,7 +580,7 @@ async function loadModels() {
 // Reasoning: set in the model menu of the message box (composer.js). Off = reasoning_effort "none":
 // LM Studio then pre-fills an empty thought block, so the model answers directly.
 const thinkingOff = () => Composer.reasonOf($("model").value) === "off";
-const chatPick = Composer.picker({ select: $("model"), mount: $("chatPick"), label: "Chat model", reasoning: true, isBusy: () => busy, onError: m => { $("error").textContent = m; } });
+const chatPick = Composer.picker({ select: $("model"), mount: $("chatPick"), label: "Chat model", isBusy: () => busy, onError: m => { $("error").textContent = m; } });
 Composer.setSend($("run"), false, { key: "⌘ + Enter" });
 
 // The stop token's name differs per model (<end_of_turn>, <|im_end|>, <|eot_id|>…). Learn it from candidates.

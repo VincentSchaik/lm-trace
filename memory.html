@@ -1130,7 +1130,7 @@ $("play").onclick = async () => {
 };
 
 // ---- Send box: your own message goes to both sides. The model pickers and the Send button come from composer.js.
-const chatPick = Composer.picker({ select: $("chatModel"), mount: $("chatPick"), label: "Chat model", embed: $("embModel"), reasoning: true, isBusy: () => busy, onError: m => { $("error").textContent = m; } });
+const chatPick = Composer.picker({ select: $("chatModel"), mount: $("chatPick"), label: "Chat model", embed: $("embModel"), isBusy: () => busy, onError: m => { $("error").textContent = m; } });
 Composer.setSend($("sendBtn"), false, { send: "Send the message to both chats", key: "Enter" });
 $("sendBtn").onclick = () => {
   if (busy) { ctrl?.abort(); return; }

@@ -1078,7 +1078,7 @@ async function loadModels() {
 const trained = k => modelInfo.find(m => m.key === k)?.capabilities?.trained_for_tool_use;
 $("chatModel").onchange = () => { try { localStorage.setItem("toolsModel", $("chatModel").value); } catch {} renderChat(true); };
 // ---- The message box: the model picker and the Send button come from composer.js, the same on all pages.
-const chatPick = Composer.picker({ select: $("chatModel"), mount: $("chatPick"), label: "Chat model", reasoning: true, isBusy: () => busy, onError: m => { $("error").textContent = m; } });
+const chatPick = Composer.picker({ select: $("chatModel"), mount: $("chatPick"), label: "Chat model", isBusy: () => busy, onError: m => { $("error").textContent = m; } });
 Composer.setSend($("sendBtn"), false, { key: "Enter" });
 
 // ---- Special tokens: the page asks the tokenizer of the model if a tag is ONE token (a control token)

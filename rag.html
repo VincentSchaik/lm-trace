@@ -780,7 +780,7 @@ function setBusy(on) {
   chatPick.setDisabled(on);
 }
 // The message box (composer.js): one model menu, with the chat model (answer) and the embedding model (documents and question).
-const chatPick = Composer.picker({ select: $("chatModel"), mount: $("chatPick"), label: "Chat model", embed: $("embModel"), reasoning: true, isBusy: () => busy, onError: m => { $("error").textContent = m; } });
+const chatPick = Composer.picker({ select: $("chatModel"), mount: $("chatPick"), label: "Chat model", embed: $("embModel"), isBusy: () => busy, onError: m => { $("error").textContent = m; } });
 Composer.setSend($("run"), false, { send: "Search the documents and answer", key: "⌘ + Enter" });
 $("run").onclick = run;
 ["docs", "question"].forEach(id => $(id).addEventListener("keydown", e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); run(); } }));
