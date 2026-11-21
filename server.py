@@ -18,29 +18,55 @@ MEMORY.md index (as Claude Code does it), and, with the optional `chromadb` pack
 facts as vectors in a Chroma collection on disk. The page sends the vectors (from LM Studio).
 """
 import atexit, glob, http.server, json, math, os, re, shutil, signal, struct, subprocess, sys, threading, time, urllib.parse, urllib.request, urllib.error
+import mcp_lab  # the MCP page: mcp.json, the Inspect client, and the MCP server of LM Trace
 
 LMS = os.environ.get("LMS_URL", "http://localhost:1234")
-TOKEN = os.environ.get("LM_API_TOKEN")
-PORT = int(os.environ.get("PORT", "8765"))
 ROOT = os.path.dirname(os.path.abspath(__file__))
+# The API token of LM Studio (Developer > Server Settings > Require Authentication). From LM_API_TOKEN, else from the
+# file lmstudio-token (gitignored), which the Settings page writes. Only this server uses it: the pages never get it.
+TOKEN_FILE = os.path.join(ROOT, "lmstudio-token")
+TOKEN_ENV = os.environ.get("LM_API_TOKEN")
+
+
+def read_token():
+    if TOKEN_ENV:
+        return TOKEN_ENV
+    try:
+        with open(TOKEN_FILE) as f:
+            return f.read().strip() or None
+    except OSError:
+        return None
+
+
+TOKEN = read_token()
+
+
+def lms_headers():
+    return {"Content-Type": "application/json", **({"Authorization": f"Bearer {TOKEN}"} if TOKEN else {})}
+PORT = int(os.environ.get("PORT", "8765"))
 # Saved lists: user prompts and system prompts, one JSON file each.
 LISTS = {k: os.path.join(ROOT, k.strip("/") + ".json") for k in ("/prompts", "/system-prompts", "/few-shot", "/schemas", "/presets",
-                                                                   "/embed-texts", "/rag-docs", "/rag-questions", "/tools", "/model-formats", "/embed-prefixes", "/tool-prompts")}
+                                                                   "/embed-texts", "/rag-docs", "/rag-questions", "/tools", "/model-formats", "/embed-prefixes", "/tool-prompts", "/mcp-meta")}
 # Saved chats of the Tools page: one JSON file each, view only. The id is the file name.
 CHATS = os.path.join(ROOT, "chats")
+# Saved chats of the MCP page: the same format, in their own folder.
+CHAT_STORES = {"/chats/": CHATS, "/mcp-chats/": os.path.join(ROOT, "mcp-chats")}
 CHAT_ID = re.compile(r"^[0-9a-z-]{1,40}$")
 
 
 def chat_path(path):
-    """/chats/<id> → the file of the chat, or None for a bad id."""
-    cid = path[len("/chats/"):]
-    return os.path.join(CHATS, cid + ".json") if path.startswith("/chats/") and CHAT_ID.match(cid) else None
+    """/chats/<id> or /mcp-chats/<id> → the file of the chat, or None for a bad id."""
+    for prefix, folder in CHAT_STORES.items():
+        if path.startswith(prefix):
+            cid = path[len(prefix):]
+            return os.path.join(folder, cid + ".json") if CHAT_ID.match(cid) else None
+    return None
 
 
-def chat_list():
+def chat_list(folder=CHATS):
     """The saved chats, newest first: id, title, time and model. Not the turns."""
     out = []
-    for f in glob.glob(os.path.join(CHATS, "*.json")):
+    for f in glob.glob(os.path.join(folder, "*.json")):
         try:
             with open(f) as h:
                 c = json.load(h)
@@ -76,7 +102,7 @@ def embed_prefixes(model):
     row = next((r for r in rows if r.get("name", "").lower() == m), None) \
         or next((r for r in rows if r.get("name") and r["name"].lower() in m), None)
     return (row.get("query", ""), row.get("doc", "")) if row else ("", "")
-PAGES = ("/index.html", "/embeddings.html", "/rag.html", "/memory.html", "/tools.html", "/settings.html", "/composer.js", "/composer.css")
+PAGES = ("/index.html", "/embeddings.html", "/rag.html", "/memory.html", "/tools.html", "/mcp.html", "/settings.html", "/composer.js", "/composer.css")
 MEM_DIR = os.path.join(ROOT, "agent-memory")  # long-term memory of the Memory page
 LMS_CLI = shutil.which("lms") or os.path.expanduser("~/.lmstudio/bin/lms")
 # Only local names: a different Host means DNS rebinding; a different Origin means another website.
@@ -372,6 +398,18 @@ def nearest(key, ids, k=10):
     return 200, {"model": key, "neighbors": neighbors, "maps": maps}
 
 
+def sdk_auth(lmstudio):
+    """With Require Authentication on, the SDK must send the API token. SDK 1.5 has no option for it, but its
+    websocket login has two fields: tested on LM Studio 0.4.26, a token sk-lm-<id>:<key> logs in as
+    clientIdentifier <id> and clientPasskey <key>. Without a token: the SDK's own random identifier."""
+    from lmstudio import json_api
+    base = json_api.ClientBase
+    if not hasattr(base, "_lmt_format"):
+        base._lmt_format = base._format_auth_message
+    m = re.fullmatch(r"sk-lm-([^:]+):(.+)", TOKEN or "")
+    base._create_auth_message = (lambda self: base._lmt_format(m.group(1), m.group(2))) if m else (lambda self: base._lmt_format())
+
+
 def tokenize(key, texts, count=False):
     global sdk_client
     try:
@@ -382,6 +420,7 @@ def tokenize(key, texts, count=False):
         for attempt in (1, 2):  # the websocket closes when LM Studio restarts; connect again one time
             try:
                 if sdk_client is None:
+                    sdk_auth(lmstudio)
                     sdk_client = lmstudio.Client(urllib.parse.urlparse(LMS).netloc)
                 kind = lms_models().get(key, {}).get("type")
                 model = (sdk_client.embedding if kind == "embedding" else sdk_client.llm).model(key)
@@ -689,7 +728,7 @@ def lms_embed(model, texts):
     """Vectors from the embedding model in LM Studio, in the order of the texts."""
     body = json.dumps({"model": model, "input": texts}).encode()
     r = json.loads(urllib.request.urlopen(urllib.request.Request(LMS + "/v1/embeddings", data=body,
-                                                                 headers={"Content-Type": "application/json"}), timeout=60).read())
+                                                                 headers=lms_headers()), timeout=60).read())
     return [x["embedding"] for x in sorted(r["data"], key=lambda x: x["index"])]
 
 
@@ -702,7 +741,7 @@ def t_search_memory(query=None, k=3, **_):
     files = [f for f in mem_files() if f["description"]]
     if not files:
         return "No facts are saved. Save facts on the Memory page first."
-    models = json.loads(urllib.request.urlopen(LMS + "/v1/models", timeout=10).read())["data"]
+    models = json.loads(urllib.request.urlopen(urllib.request.Request(LMS + "/v1/models", headers=lms_headers()), timeout=10).read())["data"]
     emb = [m["id"] for m in models if "embed" in m["id"].lower()]
     model = next((m for m in emb if "embeddinggemma" in m.lower()), emb[0] if emb else None)
     if not model:
@@ -762,6 +801,54 @@ def tool_run(tool, args):
     return {"ok": True, "result": result, "request": request, "ms": int((time.time() - t0) * 1000)}
 
 
+# ---- MCP page
+def mcp_tools():
+    """The tools of the Tools page (tools.json) that are on: the same switches as on the Tools page and in Tools ›."""
+    try:
+        with open(LISTS["/tools"]) as f:
+            tools = json.load(f)
+    except (OSError, ValueError):
+        return []
+    return [t for t in tools if isinstance(t, dict) and t.get("on") and isinstance(t.get("name"), str) and isinstance(t.get("params", []), list)]
+
+
+def mcp_resources():
+    """The resources of the LM Trace server: data that the host can read and put into the context. The model cannot."""
+    def memory():
+        st = mem_state()
+        return st["index"] or "# Memory index\n\n(no facts are saved: save facts on the Memory page)\n"
+    def tool_list():
+        return json.dumps([mcp_lab.mcp_tool(t) for t in mcp_tools()], indent=2, ensure_ascii=False)
+    return [{"uri": "lmtrace://memory/MEMORY.md", "name": "MEMORY.md", "title": "Memory index",
+             "description": "The facts about the user that the Memory page saved, one line per fact.", "mimeType": "text/markdown", "read": memory},
+            {"uri": "lmtrace://tools.json", "name": "tools.json", "title": "Tool definitions",
+             "description": "The tools of the Tools page, as MCP tool definitions (JSON).", "mimeType": "application/json", "read": tool_list}]
+
+
+def lms_check(name):
+    """Can the LM Studio API use the mcp.json server `name`? A request with a model name that does not exist:
+    LM Studio checks the plugin permission before the model, so no model loads."""
+    body = json.dumps({"model": "lm-trace-permission-check", "input": "x", "integrations": [f"mcp/{name}"]}).encode()
+    try:
+        urllib.request.urlopen(urllib.request.Request(LMS + "/api/v1/chat", data=body, headers=lms_headers()), timeout=15)
+        return {"state": "ok"}
+    except urllib.error.HTTPError as e:
+        try:
+            err = json.loads(e.read()).get("error") or {}
+        except ValueError:
+            err = {}
+        msg = err.get("message", "") if isinstance(err, dict) else str(err)
+        if e.code == 401:
+            return {"state": "token", "message": msg or "LM Studio asks for an API token"}
+        if err.get("code") == "model_not_found" if isinstance(err, dict) else False:
+            return {"state": "ok"}
+        if "ermission" in msg:
+            return {"state": "denied", "message": msg}
+        return {"state": "other", "message": msg or f"HTTP {e.code}"}
+    except Exception as e:
+        return {"state": "offline", "message": str(e)}
+
+
 class Handler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *a, **kw):
         super().__init__(*a, directory=ROOT, **kw)
@@ -774,9 +861,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         body = None
         if method == "POST":
             body = self.rfile.read(int(self.headers.get("Content-Length", 0)))
-        headers = {"Content-Type": "application/json"}
-        if TOKEN:
-            headers["Authorization"] = f"Bearer {TOKEN}"
+        headers = lms_headers()
         req = urllib.request.Request(LMS + self.path, data=body, headers=headers, method=method)
         try:
             r = urllib.request.urlopen(req, timeout=600)
@@ -832,9 +917,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     return self._json(200, json.load(f))
             except FileNotFoundError:
                 return self._json(200, LIST_START.get(self.path, []))
-        if self.path == "/chats":
-            return self._json(200, chat_list())
-        if self.path.startswith("/chats/"):
+        if self.path in ("/chats", "/mcp-chats"):
+            return self._json(200, chat_list(CHAT_STORES[self.path + "/"]))
+        if self.path.startswith(("/chats/", "/mcp-chats/")):
             f = chat_path(self.path)
             try:
                 with open(f) as h:
@@ -852,6 +937,25 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return self._json(200, {"available": log_ok, "entry": hit})
         if self.path == "/lmstudio-settings":
             return self._json(200, lmstudio_settings())
+        if self.path == "/lmstudio-token":  # only whether a token is set, never the token
+            return self._json(200, {"set": bool(TOKEN), "source": "env" if TOKEN_ENV else "file" if TOKEN else None})
+        if self.path == "/mcp-config":  # plus what the suggested servers need: the sample folder, npx, this server's URL
+            return self._json(200, {**mcp_lab.config_view(), "sampleDir": os.path.join(ROOT, "mcp-files"),
+                                    "npx": shutil.which("npx"), "lmTraceUrl": f"http://localhost:{PORT}/mcp"})
+        if self.path.startswith("/mcp-log"):
+            q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            return self._json(200, {"entries": mcp_lab.log_since(int(q.get("since", ["0"])[0] or 0)), "last": mcp_lab.seq[0]})
+        if self.path.startswith("/mcp-registry"):
+            q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            try:
+                return self._json(200, mcp_lab.registry(q.get("search", [""])[0], q.get("cursor", [None])[0]))
+            except Exception as e:
+                return self._json(502, {"error": {"message": f"The registry did not answer: {e}"}})
+        if self.path == "/mcp":  # no stream from the server to the client: each answer comes in the POST response
+            self.send_response(405)
+            self.send_header("Allow", "POST")
+            self.end_headers()
+            return
         if self.path.startswith("/model-card?"):
             q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
             return self._json(*model_card(q.get("key", [""])[0]))
@@ -875,7 +979,28 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     def do_PUT(self):
         if self._blocked(write=True):
             return
-        if self.path.startswith("/chats/"):
+        if self.path == "/lmstudio-token":
+            global TOKEN
+            try:
+                tok = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0)))).get("token")
+                if not isinstance(tok, str) or len(tok) > 500 or re.search(r"\s", tok.strip()):
+                    raise ValueError
+            except (ValueError, AttributeError):
+                return self._json(400, {"error": {"message": "expected {\"token\": str}"}})
+            if TOKEN_ENV:
+                return self._json(400, {"error": {"message": "The token comes from the LM_API_TOKEN variable. Change it there."}})
+            tok = tok.strip()
+            if tok:
+                fd = os.open(TOKEN_FILE, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+                with os.fdopen(fd, "w") as f:
+                    f.write(tok)
+            elif os.path.exists(TOKEN_FILE):
+                os.remove(TOKEN_FILE)
+            TOKEN = read_token()
+            global sdk_client
+            sdk_client = None  # the Tokenizer logs in again with the new token
+            return self._json(200, {"set": bool(TOKEN), "source": "file" if TOKEN else None})
+        if self.path.startswith(("/chats/", "/mcp-chats/")):
             f = chat_path(self.path)
             if not f:
                 return self._json(400, {"error": "bad chat id"})
@@ -885,7 +1010,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     raise ValueError
             except ValueError:
                 return self._json(400, {"error": "expected a chat object"})
-            os.makedirs(CHATS, exist_ok=True)
+            os.makedirs(os.path.dirname(f), exist_ok=True)
             with open(f + ".tmp", "w") as h:
                 json.dump(c, h, ensure_ascii=False)
             os.replace(f + ".tmp", f)
@@ -921,8 +1046,12 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     def do_POST(self):
         if self._blocked(write=True):
             return
-        if self.path.startswith("/v1/") or self.path == "/api/v1/models/unload":  # unload: the Eject button of the Tools page
+        if self.path.startswith("/v1/") or self.path in ("/api/v1/models/unload", "/api/v1/chat"):  # unload: Eject; chat: the MCP page
             return self._proxy("POST")
+        if self.path == "/mcp":
+            return self._mcp_server()
+        if self.path.startswith("/mcp-"):
+            return self._mcp_page(self.path[len("/mcp-"):])
         if self.path == "/tokenize":
             try:
                 req = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))))
@@ -971,6 +1100,52 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 return self._json(400, {"error": {"message": "expected {\"tool\": {...}, \"args\": {...}}"}})
             return self._json(200, tool_run(tool, args))
         self.send_error(404)
+
+    def _mcp_server(self):
+        """The MCP server of LM Trace (Streamable HTTP): one JSON-RPC message in, one JSON answer out."""
+        ua = self.headers.get("User-Agent", "")
+        try:
+            msg = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))))
+        except ValueError:
+            return self._json(400, {"jsonrpc": "2.0", "id": None, "error": {"code": -32700, "message": "Parse error"}})
+        batch = msg if isinstance(msg, list) else [msg]
+        answers = []
+        tools = mcp_tools()
+        for m in batch:
+            mcp_lab.log_msg("in", m, ua)
+            a = mcp_lab.handle(m, tools, tool_run, mcp_resources())
+            if a is not None:
+                mcp_lab.log_msg("out", a, ua)
+                answers.append(a)
+        if not answers:
+            self.send_response(202)  # a notification: accepted, no body
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+            return
+        return self._json(200, answers if isinstance(msg, list) else answers[0])
+
+    def _mcp_page(self, action):
+        """The MCP page: save or delete a server of mcp.json, inspect a server, check the LM Studio settings."""
+        try:
+            req = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
+            if not isinstance(req, dict):
+                raise ValueError
+        except ValueError:
+            return self._json(400, {"error": {"message": "expected a JSON object"}})
+        name = req.get("name")
+        try:
+            if action == "config":
+                return self._json(200, mcp_lab.save_server(req))
+            if action == "config/delete" and isinstance(name, str):
+                return self._json(200, mcp_lab.delete_server(name))
+            if action == "inspect" and isinstance(name, str):
+                op = req.get("op") if isinstance(req.get("op"), dict) else None
+                return self._json(200, mcp_lab.inspect(name, op))
+            if action == "check" and isinstance(name, str) and mcp_lab.NAME_RE.match(name):
+                return self._json(200, lms_check(name))
+        except ValueError as e:
+            return self._json(400, {"error": {"message": str(e)}})
+        return self._json(404, {"error": {"message": f"MCP: no action {action}"}})
 
     def _memory(self, action):
         """Long-term memory: add, delete, clear (files and vectors); vectors/add and vectors/query (Chroma)."""

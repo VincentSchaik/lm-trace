@@ -16,8 +16,13 @@ tools.json
 model-formats.json
 embed-prefixes.json
 tool-prompts.json
+mcp-meta.json
 agent-memory/
 chats/
 
 # Private files: the book and article drafts. Never push.
 private/
+
+# The API token of LM Studio (Settings page). Never push.
+lmstudio-token
+mcp-chats/
