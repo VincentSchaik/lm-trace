@@ -60,14 +60,14 @@
   }
   * { font-variant-ligatures: none !important; font-feature-settings: "calt" 0, "liga" 0 !important; }
   * { box-sizing: border-box; }
-  html, body { margin: 0; height: 100%; }
+  html, body { margin: 0; min-height: 100%; }
   body {
     background: var(--paper); color: var(--ink);
     font: 14px/1.5 var(--sans); -webkit-font-smoothing: antialiased;
   }
   .app {
-    height: 100vh; max-width: 1280px; margin: 0 auto; padding: 0 24px 20px;
-    display: grid; grid-template-rows: auto auto 1fr; grid-template-columns: minmax(0, 1fr); gap: 16px;
+    min-height: 100vh; max-width: 1280px; margin: 0 auto; padding: 0 24px 20px;
+    display: grid; grid-template-rows: auto auto 1fr; align-content: start; grid-template-columns: minmax(0, 1fr); gap: 16px;
   }
 
   /* Sidebar, as in LM Studio: one row per page. The toggle folds it to a rail of icons. Same block in index.html. */
@@ -222,7 +222,7 @@
   }
   .stats b { color: var(--ink); font-weight: 600; font-family: var(--mono); }
   .stats > span + span { margin-left: 12px; }
-  .output { flex: 1; overflow-y: auto; position: relative; }  /* relative: offsetTop of a step is measured from here */
+  .output { flex: 1; }  /* full height: the page scrolls, not the panel */
   .sec { border-bottom: 1px solid var(--paper-2); }
   .sec > summary {
     position: sticky; top: 0; z-index: 2; list-style: none; cursor: pointer; user-select: none;
@@ -378,7 +378,6 @@
   }
   @media (max-width: 860px) {
     .app { height: auto; min-height: 100vh; padding: 0 16px 16px; }
-    .output { min-height: 40vh; }
     select.field, #embModel, #chatModel { min-width: 0; width: 100%; }
     .top { flex-wrap: wrap; height: auto; padding: 12px 0; }
     .hdr-lbl { margin-left: 0; }
@@ -1015,7 +1014,7 @@ addEventListener("resize", drawStrips);
 document.querySelectorAll(".steps button").forEach(b => b.onclick = () => {
   const sec = $(b.dataset.go);
   sec.open = true;
-  $("output").scrollTo({ top: sec.offsetTop, behavior: "smooth" });
+  sec.scrollIntoView({ behavior: "smooth", block: "start" });
 });
 
 // ---- Settings
