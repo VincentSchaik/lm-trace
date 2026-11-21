@@ -8,8 +8,8 @@ requires-python = ">=3.10"
 dependencies = []
 
 [project.optional-dependencies]
-# Tokens on the Embeddings page
-embeddings = ["lmstudio>=1.5"]
+# Tokens on the Tokenizer page; numpy: the nearest tokens and the map of the embedding table
+embeddings = ["lmstudio>=1.5", "numpy>=2"]
 # Chroma vector database on the Memory page
 memory = ["chromadb>=1.5.9"]
 

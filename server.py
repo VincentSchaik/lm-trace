@@ -26,6 +26,30 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 # Saved lists: user prompts and system prompts, one JSON file each.
 LISTS = {k: os.path.join(ROOT, k.strip("/") + ".json") for k in ("/prompts", "/system-prompts", "/few-shot", "/schemas", "/presets",
                                                                    "/embed-texts", "/rag-docs", "/rag-questions", "/tools", "/model-formats", "/embed-prefixes", "/tool-prompts")}
+# Saved chats of the Tools page: one JSON file each, view only. The id is the file name.
+CHATS = os.path.join(ROOT, "chats")
+CHAT_ID = re.compile(r"^[0-9a-z-]{1,40}$")
+
+
+def chat_path(path):
+    """/chats/<id> → the file of the chat, or None for a bad id."""
+    cid = path[len("/chats/"):]
+    return os.path.join(CHATS, cid + ".json") if path.startswith("/chats/") and CHAT_ID.match(cid) else None
+
+
+def chat_list():
+    """The saved chats, newest first: id, title, time and model. Not the turns."""
+    out = []
+    for f in glob.glob(os.path.join(CHATS, "*.json")):
+        try:
+            with open(f) as h:
+                c = json.load(h)
+            out.append({k: c.get(k) for k in ("id", "title", "created", "updated", "model", "turns")})
+        except (OSError, ValueError):
+            continue
+    return sorted(out, key=lambda c: c.get("created") or 0, reverse=True)
+
+
 # Starting values of a list, until you save it. Model formats: where the thinking starts and ends in the raw text
 # of the model, as each model wrote it in a real run. You can edit them in Settings.
 LIST_START = {"/model-formats": [
@@ -250,20 +274,49 @@ class EmbedTable:
         per, mask, group = 32 // self.bits, (1 << self.bits) - 1, self.hidden // groups
         return [((w[j // per] >> (self.bits * (j % per))) & mask) * sc[j // group] + bi[j // group] for j in range(self.hidden)]
 
+    def matrix(self, np, lo, hi):
+        """Rows lo..hi as one float32 numpy array: the same numbers as row(), for many rows at once."""
+        def part(tensor, dtype):
+            path, base, meta = tensor
+            m = np.memmap(path, dtype=dtype, mode="r", offset=base + meta["data_offsets"][0], shape=tuple(meta["shape"]))
+            return np.asarray(m[lo:hi])
+        def floats(tensor):
+            dt = tensor[2]["dtype"]
+            if dt == "BF16":  # the top half of an F32
+                return (part(tensor, np.uint16).astype(np.uint32) << 16).view(np.float32)
+            return part(tensor, {"F16": np.float16, "F32": np.float32}[dt]).astype(np.float32)
+        if not self.scales:
+            return floats(self.weight)
+        w, per = part(self.weight, np.uint32), 32 // self.bits
+        q = ((w[:, :, None] >> (self.bits * np.arange(per, dtype=np.uint32))) & ((1 << self.bits) - 1)).reshape(len(w), -1).astype(np.float32)
+        sc, bi = floats(self.scales), floats(self.biases)
+        group = self.hidden // sc.shape[1]
+        return q * np.repeat(sc, group, 1) + np.repeat(bi, group, 1)
+
 
 tables = {}  # model key -> EmbedTable
+
+
+def get_table(key):
+    """The embedding table of a model, read one time. Call with sdk_lock held. None: no safetensors files."""
+    if key not in tables:
+        d = model_dir(key)
+        if not d:
+            return None
+        tables[key] = EmbedTable(d)
+    return tables[key]
+
+
+NO_TABLE = ("no safetensors files found for {}. "
+            "The page reads MLX (safetensors) models; GGUF models are not supported yet.")
 
 
 def embed_rows(key, ids):
     with sdk_lock:
         try:
-            if key not in tables:
-                d = model_dir(key)
-                if not d:
-                    return 404, {"error": {"message": f"Embeddings: no safetensors files found for {key}. "
-                                                      "The page reads MLX (safetensors) models; GGUF models are not supported yet."}}
-                tables[key] = EmbedTable(d)
-            t = tables[key]
+            t = get_table(key)
+            if t is None:
+                return 404, {"error": {"message": "Embeddings: " + NO_TABLE.format(key)}}
             if any(not 0 <= i < t.vocab for i in ids):
                 return 400, {"error": {"message": "Embeddings: a token ID is outside the table"}}
             rows = [[round(x, 5) for x in t.row(i)] for i in ids]
@@ -275,6 +328,48 @@ def embed_rows(key, ids):
                  "vocab": t.vocab, "hidden": t.hidden, "layers": t.layers, "bits": t.bits if t.scales else None,
                  "multiplier": round(math.sqrt(t.hidden), 2) if gemma else None,
                  "names": [t.names.get(i, "") for i in ids], "rows": rows}
+
+
+def nearest(key, ids, k=10):
+    """For each token ID: the k rows of the whole embedding table with the highest cosine similarity,
+    and a 2D map (PCA) of the token with these rows. Needs numpy (the embeddings extra)."""
+    try:
+        import numpy as np
+    except ImportError:
+        return 501, {"error": {"message": "Nearest tokens: install numpy with: uv sync --extra embeddings"}}
+    with sdk_lock:
+        try:
+            t = get_table(key)
+        except (OSError, ValueError, KeyError, struct.error) as e:
+            return 502, {"error": {"message": f"Nearest tokens: {e}"}}
+    if t is None:
+        return 404, {"error": {"message": "Nearest tokens: " + NO_TABLE.format(key)}}
+    if any(not 0 <= i < t.vocab for i in ids):
+        return 400, {"error": {"message": "Nearest tokens: a token ID is outside the table"}}
+    unit = lambda m: m / (np.linalg.norm(m, axis=1, keepdims=True) + 1e-12)
+    try:
+        q = unit(np.stack([t.matrix(np, i, i + 1)[0] for i in ids]))
+        sims = np.empty((len(ids), t.vocab), np.float32)
+        step = 16384  # about 250 MB of numbers at a time for a 3,840-number row
+        for lo in range(0, t.vocab, step):
+            r = unit(t.matrix(np, lo, min(lo + step, t.vocab)))
+            sims[:, lo:lo + len(r)] = q @ r.T
+        sims[np.arange(len(ids)), ids] = -np.inf  # not the token itself
+        name = lambda i: t.names.get(i, "")
+        neighbors, maps = {}, {}
+        for n, i in enumerate(ids):
+            top = np.argpartition(-sims[n], k)[:k]
+            top = [int(j) for j in top[np.argsort(-sims[n][top])]]
+            neighbors[str(i)] = [{"id": j, "name": name(j), "s": round(float(sims[n][j]), 4)} for j in top]
+            # The map: PCA of the unit rows of the token and its k nearest rows. Near on the map = similar by cosine.
+            x = unit(np.stack([t.matrix(np, j, j + 1)[0] for j in [i] + top]))
+            x -= x.mean(axis=0)
+            u, sv, _ = np.linalg.svd(x, full_matrices=False)
+            maps[str(i)] = {"xy": [[round(a, 5), round(b, 5)] for a, b in (u[:, :2] * sv[:2]).tolist()],
+                            "share": round(float((sv[:2] ** 2).sum() / ((sv ** 2).sum() or 1)), 4)}
+    except (OSError, ValueError, KeyError, struct.error) as e:
+        return 502, {"error": {"message": f"Nearest tokens: {e}"}}
+    return 200, {"model": key, "neighbors": neighbors, "maps": maps}
 
 
 def tokenize(key, texts, count=False):
@@ -737,6 +832,15 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     return self._json(200, json.load(f))
             except FileNotFoundError:
                 return self._json(200, LIST_START.get(self.path, []))
+        if self.path == "/chats":
+            return self._json(200, chat_list())
+        if self.path.startswith("/chats/"):
+            f = chat_path(self.path)
+            try:
+                with open(f) as h:
+                    return self._json(200, json.load(h))
+            except (TypeError, FileNotFoundError):
+                return self._json(404, {"error": "no such chat"})
         if self.path.startswith(("/model-input", "/model-output")):
             # Newest formatted input (or raw output) received at or after `since` (ms epoch), if any.
             q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
@@ -771,6 +875,21 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     def do_PUT(self):
         if self._blocked(write=True):
             return
+        if self.path.startswith("/chats/"):
+            f = chat_path(self.path)
+            if not f:
+                return self._json(400, {"error": "bad chat id"})
+            try:
+                c = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))))
+                if not isinstance(c, dict) or not isinstance(c.get("chat"), list):
+                    raise ValueError
+            except ValueError:
+                return self._json(400, {"error": "expected a chat object"})
+            os.makedirs(CHATS, exist_ok=True)
+            with open(f + ".tmp", "w") as h:
+                json.dump(c, h, ensure_ascii=False)
+            os.replace(f + ".tmp", f)
+            return self._json(200, {"ok": True})
         # Saved lists: the page sends the whole list as [{"name": ..., <data>}, ...].
         if self.path not in LISTS:
             return self.send_error(404)
@@ -786,6 +905,18 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             json.dump(items, f, indent=2, ensure_ascii=False)
         os.replace(tmp, path)  # atomic: never a half-written file
         return self._json(200, items)
+
+    def do_DELETE(self):
+        if self._blocked(write=True):
+            return
+        f = chat_path(self.path)
+        if not f:
+            return self.send_error(404)
+        try:
+            os.remove(f)
+        except FileNotFoundError:
+            pass
+        return self._json(200, {"ok": True})
 
     def do_POST(self):
         if self._blocked(write=True):
@@ -817,6 +948,17 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             if len(ids) > 512:
                 return self._json(400, {"error": {"message": "Embeddings: at most 512 tokens"}})
             return self._json(*embed_rows(key, ids))
+        if self.path == "/nearest":
+            try:
+                req = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))))
+                key, ids = req["model"], req["ids"]
+                if not isinstance(key, str) or not isinstance(ids, list) or not all(type(i) is int for i in ids):
+                    raise ValueError
+            except (ValueError, KeyError, TypeError):
+                return self._json(400, {"error": {"message": "expected {\"model\": str, \"ids\": [int, ...]}"}})
+            if not 0 < len(ids) <= 64 or len(set(ids)) != len(ids):
+                return self._json(400, {"error": {"message": "Nearest tokens: 1 to 64 different token IDs"}})
+            return self._json(*nearest(key, ids))
         if self.path.startswith("/agent-memory/"):
             return self._memory(self.path[len("/agent-memory/"):])
         if self.path == "/tool-run":

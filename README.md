@@ -26,16 +26,18 @@ Tell your coding agent (for example Claude Code or Codex): "Set up and start htt
    To download, run `lms get <model> -y`.
 3. Run `lms server start`. Then run `lms server status` and make sure that the server is on port 1234.
 4. Run `lms load <model> -y`.
-5. Clone the repo and start the server in the background:
+5. Clone the repo, install the optional packages, and start the server in the background:
 
    ```sh
    git clone https://github.com/VincentSchaik/lm-trace.git
    cd lm-trace
-   nohup python3 server.py > lm-trace.log 2>&1 &
+   uv sync --extra embeddings --extra memory
+   nohup uv run server.py > lm-trace.log 2>&1 &
    ```
 
+   If `uv` is not installed, use `nohup python3 server.py > lm-trace.log 2>&1 &`. Then the Tokenizer page shows no tokens and the Memory page has no Chroma.
 6. Make sure that http://localhost:8765 responds. Then open it in the browser of the user.
-7. Tell the user to stop the server with `kill <pid>` when they are done.
+7. Tell the user how to stop the server: `kill $(lsof -tiTCP:8765 -sTCP:LISTEN)`.
 
 ## How an LLM generates text
 
@@ -127,26 +129,43 @@ The **Reasoning** section shows how the model decided between the instruction an
 
 You do not have to enable CORS. The LM Trace server sends the requests to LM Studio.
 
-## Start LM Trace
+## Start and stop LM Trace
+
+Get the code and install the optional packages with uv. The extras are in `pyproject.toml`:
 
 ```sh
 git clone https://github.com/VincentSchaik/lm-trace.git
 cd lm-trace
-python3 server.py
+uv sync --extra embeddings --extra memory   # LM Studio SDK and Chroma
+```
+
+**Start** the server in the terminal (`Ctrl+C` stops it):
+
+```sh
+uv run server.py
+```
+
+Or start it in the background, with the output in `lm-trace.log`:
+
+```sh
+nohup uv run server.py > lm-trace.log 2>&1 &
 ```
 
 Open http://localhost:8765 in your browser.
 
-To install the optional packages, use uv. The extras are in `pyproject.toml`:
+**Stop** a server that runs in the background:
 
 ```sh
-uv sync --extra embeddings --extra memory   # LM Studio SDK and Chroma
-uv run server.py
+kill $(lsof -tiTCP:8765 -sTCP:LISTEN)
 ```
+
+**Restart:** stop the server, then start it again. Do this after you change `server.py`.
+
+Use `uv run`, not `python3 server.py`. `python3` does not use the packages in the project's `.venv`. Without them, the Tokenizer page shows "Tokenizer not available" and the Memory page has no Chroma.
 
 | Extra | Package | Used by |
 |---|---|---|
-| `embeddings` | `lmstudio` | Tokens on the Tokenizer page |
+| `embeddings` | `lmstudio`, `numpy` | Tokens and nearest tokens on the Tokenizer page |
 | `memory` | `chromadb` | Vector database on the Memory page |
 
 To change the defaults, set these environment variables before you start the server:
@@ -210,6 +229,8 @@ Open **Tokenizer** in the sidebar. The page shows the input of the model in two 
 2. **Embeddings:** the model takes the row of each ID from its embedding table: a list of numbers. For Gemma 3 12B, the table has 262,208 rows of 3,840 numbers. These lists are the input of the first layer.
 
 Click a token to see its whole vector. The same token always gets the same row, in any sentence: the layers of the model add the context later.
+
+**Nearest tokens in the embedding table:** for the selected token, the 10 rows of the whole table with the highest cosine similarity. The map shows each text token with its 5 nearest rows, in 2D (PCA). The rows that the model keeps close are often the same word in other forms and languages: for ` Paris`, the nearest rows are `Paris`, ` PARIS`, ` paris`, ` París`, ` Parisian`, ` Париж` and 巴黎. Small words group together too: ` of` is near ` in`, ` to` and ` for`. The search needs numpy (the `embeddings` extra) and takes about 3 seconds for Gemma 3 12B.
 
 The page reads the embedding table directly from the model files, because LM Studio does not return it. This works for models in safetensors (MLX) format, plain or quantized. It does not work for GGUF models yet.
 
@@ -284,13 +305,14 @@ The page has two tabs:
 - **Write guardrails.** Put a rule in the **System prompt**, or select one from the **Examples** menu, and see how it changes tool selection. **Permissions** (Deny all, Ask every time, Allow all) control which tools run.
 - **Compare models.** Load a small model, like Gemma 3 1B, and ask the same questions. **Validating tool call** shows the calls that do not match the schema.
 - **Create your own tools.** Give a name, a description, a URL and parameters, and see how well each model uses them.
+- **Revisit a demonstration.** Each chat is archived when a message finishes. Click **Archived** to open an archived chat again, with all its steps and the settings of the run. An archived chat is read only: click **New** to start a new chat.
 - **Chain tool calls.** The library has **power** and **future_value** (math.js), for example to get the price of Bitcoin and then calculate its value in 10 years at 10% a year. **multiply** returns large numbers in fixed notation, not like `1.9e+5`.
 
 **Reasoning between tool calls.** A reasoning model like Gemma 4 plans before it calls a tool. The harness sends that reasoning back with the tool result (`reasoning_content` in the assistant message), so the model keeps its plan during one turn. When you send a new question, the harness removes the old reasoning. This follows the [Gemma 4 thinking guide](https://ai.google.dev/gemma/docs/capabilities/thinking). In **Messages**, click `reasoning_content` to see the full text. **Parsing output** shows what LM Studio found in the output: `reasoning_content`, `content` and `tool_calls`.
 
 ![Tools: one tool call for the price of Bitcoin, with Gemma 4 12B](docs/t-price-of-bitcoin.png)
 
-Your tools are in `tools.json`. Git ignores this file.
+Your tools are in `tools.json`, and your archived chats are in `chats/`. Git ignores them.
 
 ## Limitations
 

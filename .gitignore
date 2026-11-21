@@ -17,6 +17,7 @@ model-formats.json
 embed-prefixes.json
 tool-prompts.json
 agent-memory/
+chats/
 
 # Private files: the book and article drafts. Never push.
 private/

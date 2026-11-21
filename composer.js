@@ -27,6 +27,7 @@
   let models = [];
   const info = k => models.find(m => m.key === k);
   const isLoaded = k => !!info(k)?.loaded_instances?.length;
+  const typeEmb = k => info(k)?.type === "embedding";
   async function load() {
     try { const r = await fetch("/api/v1/models"); if (r.ok) models = (await r.json()).models || []; } catch {}
     return models;
@@ -89,12 +90,15 @@
 
   // ---- A picker.
   // opts: select (the hidden <select>), mount (an empty element: the picker goes in it), label ("Chat model"),
-  //       kind ("llm" | "embedding"), reasoning (show the Reasoning row), isBusy (() => bool), onError (msg => …),
+  //       kind ("llm" | "embedding"), isBusy (() => bool), onError (msg => …),
   //       align ("right" | "left": the side the menu opens on), loadWord (the word of the page's run button),
-  //       embed (optional: the hidden <select> of an embedding model; the menu then has an "Embedding model" section).
+  //       embed (optional: the hidden <select> of a second, embedding model, as on the RAG page).
+  // The menu is the same on all pages: Currently loaded, Your models, Embedding model, Reasoning.
+  // An embedding model in the page's own <select> is picked as the model of the page (no page does this now).
+  // On a page that uses no embedding model, the embedding models show (and eject), but you cannot pick them.
   const pickers = [];
   function picker(opts) {
-    const { select, mount, label = "Model", kind = "llm", reasoning = false, isBusy = () => false, onError = () => {}, align = "right", loadWord = "Send", embed = null } = opts;
+    const { select, mount, label = "Model", kind = "llm", isBusy = () => false, onError = () => {}, align = "right", loadWord = "Send", embed = null } = opts;
     const id = "mp" + pickers.length;
     mount.classList.add("mp-wrap"); if (align === "left") mount.classList.add("left");
     mount.innerHTML = `<button type="button" class="mp-btn" id="${id}Btn" aria-haspopup="menu" aria-expanded="false" aria-controls="${id}Menu" aria-label="${esc(label)}"></button>
@@ -106,31 +110,36 @@
     const p = { select, btn, menu, card, kind };
 
     p.render = () => {
-      const k = select.value, m = info(k), r = reasoning ? m?.capabilities?.reasoning : null;
-      btn.innerHTML = k ? `${icon}<span class="nm">${esc(k)}</span>${isLoaded(k) ? '<span class="ld">loaded</span>' : ""}${r ? `<span class="ld">Reasoning ${esc(reasonOf(k))}</span>` : ""}${ICON.updown}`
+      const k = select.value, m = info(k), r = m?.capabilities?.reasoning;
+      btn.innerHTML = k ? `${typeEmb(k) ? ICON.vec : icon}<span class="nm">${esc(k)}</span>${isLoaded(k) ? '<span class="ld">loaded</span>' : ""}${r ? `<span class="ld">Reasoning ${esc(reasonOf(k))}</span>` : ""}${ICON.updown}`
         : `<span class="nm">No ${esc(label.toLowerCase())}</span>${ICON.updown}`;
       // Reasoning: always in the menu for a chat model, so it does not come and go as you pick a model.
       // A model with one setting (or none) shows it greyed out: Off for a model without reasoning.
       const seg = (opts, cur, dis) => `<span class="seg${dis ? " dis" : ""}" role="group" aria-label="Reasoning">${opts.map(o => `<button type="button"${dis ? " disabled" : ` data-reason="${esc(o)}"`} aria-pressed="${cur === o}">${o === "on" ? "On" : o === "off" ? "Off" : esc(o)}</button>`).join("")}</span>`;
       const rTip = (tip) => `<span tabindex="0" data-tip-title="Reasoning" data-tip="${tip}">Reasoning</span>`;
-      const reasonRow = !reasoning || kind !== "llm" || !k ? ""
+      const reasonRow = kind !== "llm" || !k ? ""
         : !r ? `<div class="frow">${rTip("This model does not think before it answers. LM Studio has no reasoning setting for it, so Reasoning is Off.")}${seg(["off", "on"], "off", true)}</div>`
         : r.allowed_options.length > 1 ? `<div class="frow">${rTip("The model thinks before it answers. LM Studio says which settings this model allows. Off sends reasoning_effort: none in the request.")}${seg(r.allowed_options, reasonOf(k), false)}</div>`
         : `<div class="frow">${rTip("This model always thinks before it answers. LM Studio allows no other setting.")}${seg(r.allowed_options[0] === "on" ? ["off", "on"] : r.allowed_options, r.allowed_options[0], true)}</div>`;
       // As LM Studio: the loaded models first, each with Eject; then the models that are not loaded.
       // A row: a chat model (data-model) or an embedding model (data-emb). Each list has its own selection.
-      const all = keys(), eAll = embed ? [...embed.options].map(o => o.value) : [], ek = embed?.value;
-      const isEmb = x => eAll.includes(x) && !all.includes(x);
-      const row = x => { const e = isEmb(x), on = e ? x === ek : x === k;
-        return `<button type="button" role="menuitemradio" aria-checked="${on}" ${e ? "data-emb" : "data-model"}="${esc(x)}">${e ? ICON.vec : icon}<span class="nmc">${esc(x)}</span><span></span><span class="caps">${capIcons(info(x))}</span></button>`; };
-      const lrow = x => `<div class="lrow${(isEmb(x) ? x === ek : x === k) ? " sel" : ""}">${row(x)}<button type="button" class="eject" data-eject="${esc(info(x).loaded_instances[0].id)}" title="Unload this model from memory. LM Studio loads it again at the next ${esc(loadWord)}."${isBusy() ? " disabled" : ""}>${ICON.eject}<span>Eject</span></button></div>`;
-      const loadedNow = [...all, ...eAll.filter(isEmb)].filter(isLoaded);
-      const rest = all.filter(x => !isLoaded(x)), eRest = eAll.filter(x => !isLoaded(x));
+      // all: the models of the page's <select>. eAll: the embedding models (of the second <select>, or all of them).
+      const all = keys(), ek = embed?.value;
+      const eAll = embed ? [...embed.options].map(o => o.value) : models.filter(x => x.type === "embedding").map(x => x.key);
+      eAll.push(...all.filter(x => typeEmb(x) && !eAll.includes(x)));
+      const isEmb = x => typeEmb(x) || (eAll.includes(x) && !all.includes(x));
+      const isOn = x => all.includes(x) ? x === k : x === ek;
+      const row = x => { const e = isEmb(x), main = all.includes(x);
+        const off = e && !main && !embed ? ` aria-disabled="true" class="noemb" data-tip-title="Embedding model" data-tip="This page does not use an embedding model. The RAG and Memory pages use one to store and find text by meaning."` : "";
+        return `<button type="button" role="menuitemradio" aria-checked="${isOn(x)}"${off} ${main ? "data-model" : "data-emb"}="${esc(x)}">${e ? ICON.vec : icon}<span class="nmc">${esc(x)}</span><span></span><span class="caps">${capIcons(info(x))}</span></button>`; };
+      const lrow = x => `<div class="lrow${isOn(x) ? " sel" : ""}">${row(x)}<button type="button" class="eject" data-eject="${esc(info(x).loaded_instances[0].id)}" title="Unload this model from memory. LM Studio loads it again at the next ${esc(loadWord)}."${isBusy() ? " disabled" : ""}>${ICON.eject}<span>Eject</span></button></div>`;
+      const loadedNow = [...all.filter(x => !isEmb(x)), ...eAll].filter(isLoaded);
+      const rest = all.filter(x => !isLoaded(x) && !isEmb(x)), eRest = eAll.filter(x => !isLoaded(x));
       menu.innerHTML = `<div class="sec">Currently loaded <span class="n">(${loadedNow.length})</span></div>`
         + (loadedNow.length ? loadedNow.map(lrow).join("") : `<div class="none-l">No model is loaded. LM Studio loads the model at the next ${esc(loadWord)}.</div>`)
         // A loaded model shows once: under Currently loaded. It comes back to its list when you eject it.
         + (rest.length ? `<div class="sec">Your models</div><div class="list">` + rest.map(row).join("") + `</div>` : "")
-        + (embed && eRest.length ? `<div class="sec"><span tabindex="0" data-tip-title="Embedding model" data-tip="A second, small model. It turns text into vectors (lists of numbers), so the search can find the text with the nearest meaning. It writes no text.">Embedding model</span></div><div class="list emb">` + eRest.map(row).join("") + `</div>` : "")
+        + (eRest.length ? `<div class="sec"><span tabindex="0" data-tip-title="Embedding model" data-tip="A second, small model. It turns text into vectors (lists of numbers), so the search can find the text with the nearest meaning. It writes no text.">Embedding model</span></div><div class="list emb">` + eRest.map(row).join("") + `</div>` : "")
         + (reasonRow ? `<div class="foot">${reasonRow}</div>` : "");
     };
     p.renderCard = () => { card.innerHTML = cardHtml(select.value); };
