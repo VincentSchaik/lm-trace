@@ -1,0 +1,2164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LM Trace · MCP</title>
+<style>
+  :root {
+    color-scheme: light;
+    --paper: #f5f5f7;
+    --field: #ffffff;
+    --paper-2: #eeeef1;
+    --line: #e1e1e6;
+    --stone-2: #c7c7cc;
+    --ink: #1d1d1f;
+    --ink-2: #4b4b52;
+    --ink-3: #8e8e93;
+    --red: #1f6ff2;
+    --red-rgb: 31, 111, 242;
+    --neg-rgb: 71, 85, 105;
+    --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, monospace;
+    --input-bg: #ffffff;
+    --shadow-rgb: 0, 0, 0;
+    --primary: #1f6ff2;
+    --primary-hover: #185ed6;
+    --on-primary: #ffffff;
+    --danger: #d93025;
+    --tip-bg: #1d1d1f;
+    --tip-fg: #f5f5f7;
+    --tip-sub: #c7c7cc;
+    --tip-code: #8ab4ff;
+    --r: 10px;
+    --lift: 0 1px 2px rgba(0, 0, 0, .04), 0 2px 8px -4px rgba(0, 0, 0, .08);
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --paper: #161618;
+    --field: #1f1f22;
+    --paper-2: #2a2a2e;
+    --line: #333338;
+    --stone-2: #4a4a50;
+    --ink: #ececf0;
+    --ink-2: #b9b9c0;
+    --ink-3: #85858c;
+    --red: #4c8dff;
+    --red-rgb: 76, 141, 255;
+    --neg-rgb: 148, 163, 184;
+    --input-bg: #18181a;
+    --primary: #3b7cf5;
+    --primary-hover: #5a90f7;
+    --danger: #ff6b5e;
+    --tip-bg: #f0f0f3;
+    --tip-fg: #1d1d1f;
+    --tip-sub: #4b4b52;
+    --tip-code: #185ed6;
+    --lift: 0 1px 2px rgba(0, 0, 0, .3), 0 2px 10px -4px rgba(0, 0, 0, .5);
+  }
+  * { font-variant-ligatures: none !important; font-feature-settings: "calt" 0, "liga" 0 !important; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--paper); color: var(--ink);
+    font: 14px/1.5 var(--sans); -webkit-font-smoothing: antialiased;
+  }
+  .app {
+    height: 100vh; max-width: 1280px; margin: 0 auto; padding: 0 24px 20px;
+    display: grid; grid-template-rows: auto auto 1fr; grid-template-columns: minmax(0, 1fr); gap: 16px;
+  }
+
+  /* Sidebar, as in LM Studio: one row per page. The toggle folds it to a rail of icons. Same block in index.html. */
+  body { display: flex; }
+  .app { flex: 1; min-width: 0; }
+  .side {
+    position: sticky; top: 0; flex: none; width: 200px; height: 100vh; display: flex; flex-direction: column; gap: 2px;
+    padding: 0 10px 12px; background: var(--paper-2); border-right: 1px solid var(--line); overflow: hidden; transition: width .15s;
+  }
+  .side-top { display: flex; align-items: center; height: 64px; }
+  .side a, .side-toggle {
+    display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 9px; border-radius: 8px; flex: none;
+    color: var(--ink); text-decoration: none; font: 500 14px var(--sans); white-space: nowrap;
+  }
+  .side-toggle { width: 36px; justify-content: center; padding: 0; border: 0; background: transparent; color: var(--ink-2); cursor: pointer; }
+  .side a:hover, .side-toggle:hover { background: rgba(var(--shadow-rgb), .06); }
+  .side a[aria-current="page"] { background: rgba(var(--red-rgb), .14); }
+  .side svg { width: 18px; height: 18px; flex: none; color: var(--ink-2); }
+  .side a[aria-current="page"] svg { color: var(--red); }
+  :root[data-side="closed"] .side { width: 57px; }
+  :root[data-side="closed"] .side a span { display: none; }
+  .side a.side-foot { margin-top: auto; }  /* Settings: at the bottom of the sidebar */
+
+  /* Top bar */
+  .top { display: flex; align-items: center; gap: 12px; height: 64px; border-bottom: 1px solid var(--line); }
+  h1 { font-size: 17px; font-weight: 600; margin: 0; display: flex; align-items: center; gap: 10px; white-space: nowrap; }
+  h1::before { content: ""; width: 14px; height: 14px; background: var(--red); }
+  .top .spacer { flex: 1; }
+  .hdr-lbl { font-size: 15px; font-weight: 600; margin-left: 12px; white-space: nowrap; }
+  .hdr-btn {
+    height: 32px; padding: 0 14px; white-space: nowrap; flex: none; border-radius: 8px; cursor: pointer; margin-right: 4px;
+    border: 1px solid var(--line); background: var(--field); color: var(--ink-2); font: 500 13px var(--sans);
+  }
+  .hdr-btn:hover { color: var(--ink); border-color: var(--stone-2); }
+
+  .field {
+    font: 15px var(--sans); color: var(--ink);
+    background: var(--field); border: 1px solid var(--line); border-radius: 8px;
+    height: 40px; padding: 0 12px; outline: none;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .field:hover { border-color: var(--stone-2); }
+  .field:focus { border-color: var(--ink); box-shadow: 0 0 0 3px rgba(var(--red-rgb), .18); }
+  select.field {
+    appearance: none; cursor: pointer; padding-right: 34px; min-width: 240px; font-weight: 500;
+    background: var(--field) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%232a2927' stroke-width='1.6'/%3E%3C/svg%3E") no-repeat right 12px center;
+  }
+  :root[data-theme="dark"] select.field { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23b9b9c0' stroke-width='1.6'/%3E%3C/svg%3E"); }
+  select.field.ex { height: 48px; min-width: 0; width: 100%; font-weight: 400; }
+  #embModel { min-width: 400px; }  /* the select measures its options at weight 400, so a long name at 500 was cut */
+  #chatModel { min-width: 220px; }
+
+  /* Composer */
+  .composer { background: var(--field); border: 1px solid var(--line); border-radius: var(--r); padding: 16px 18px; box-shadow: var(--lift); }
+  .prompt-grid { display: grid; grid-template-columns: 260px 1fr auto; gap: 8px 12px; align-items: start; }
+  .prompt-grid.grp { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--paper-2); }
+  .settings.in { margin-top: 2px; padding-top: 0; border-top: 0; }  /* the settings sit under the input that they change */
+  .lbl { font-size: 14px; font-weight: 600; color: var(--ink); }
+  .lbl-s { font-size: 12px; color: var(--ink-3); }
+  .opts { margin-top: 12px; border-top: 1px solid var(--paper-2); }
+  .opt > summary {
+    list-style: none; cursor: pointer; user-select: none; display: flex; align-items: center; gap: 8px;
+    height: 40px; padding: 0; font-size: 14px;
+  }
+  .opt > summary::-webkit-details-marker { display: none; }
+  .opt > summary:hover .opt-title, .opt > summary:hover .chev { color: var(--red); }
+  .opt[open] > summary .chev { transform: rotate(90deg); }
+  .opt-title { font-weight: 600; color: var(--ink); }
+  .opt-state { color: var(--ink-3); font-size: 13px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .opt-body { display: grid; grid-template-columns: 260px 1fr 124px; gap: 6px 12px; padding: 0 0 14px; align-items: start; }
+  .chev { width: 16px; height: 16px; flex: none; display: grid; place-items: center; color: var(--ink-3); transition: transform .15s; }
+  .chev::before { content: ""; width: 6px; height: 6px; border: solid currentColor; border-width: 0 1.6px 1.6px 0; transform: rotate(-45deg); }
+
+  .input {
+    flex: 1; min-width: 0; resize: none; display: block;
+    font: 16px/1.5 var(--sans); color: var(--ink);
+    background: var(--input-bg); border: 1px solid var(--stone-2); border-radius: 8px;
+    padding: 11px 14px; min-height: 48px; outline: none;
+    box-shadow: inset 0 1px 2px rgba(var(--shadow-rgb), .06);
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .input:hover { border-color: var(--ink-3); }
+  .input:focus { border-color: var(--ink); box-shadow: 0 0 0 3px rgba(var(--red-rgb), .18); }
+  .input::placeholder { color: var(--ink-3); }
+  #docs { font-size: 14px; }
+  .input-wrap { position: relative; min-width: 0; }
+  .input-wrap .input { width: 100%; padding-right: 140px; }
+  .input-tools { position: absolute; top: 9px; right: 22px; display: flex; gap: 6px; }  /* clear of the scroll bar of a long text */
+  .input-tools .copy { margin: 0; }
+  .input-tools .copy[hidden] { display: none; }
+
+  .copy {
+    flex: none; display: inline-grid; place-items: center; width: 30px; height: 30px; margin-left: auto; padding: 0;
+    border: 1px solid var(--line); border-radius: 7px; cursor: pointer; color: var(--ink-2);
+    background: var(--field); box-shadow: 0 1px 0 rgba(var(--shadow-rgb), .06);
+    transition: color .15s, background .15s, border-color .15s;
+  }
+  .copy svg { width: 15px; height: 15px; }
+  .copy:hover { color: var(--ink); border-color: var(--stone-2); background: var(--input-bg); }
+  .copy:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+  .copy.done { color: var(--on-primary); background: var(--primary); border-color: var(--primary); }
+  #delDoc:hover, #delQ:hover { color: var(--danger); }
+
+  .btn {
+    font: 600 15px var(--sans); height: 44px; padding: 0 22px; border-radius: 8px; cursor: pointer;
+    border: 1px solid var(--primary); background: var(--primary); color: var(--on-primary);
+    display: inline-flex; align-items: center; gap: 8px; transition: background .15s;
+  }
+  .btn:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .btn.primary { height: 48px; width: 124px; padding: 0; justify-content: center; flex: none; }
+
+  /* Settings row: same controls as index.html */
+  .settings { display: flex; align-items: flex-start; gap: 10px 24px; flex-wrap: wrap; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--paper-2); }
+  .ctl { display: flex; flex-direction: column; gap: 4px; }
+  .ctl.grow { flex: 1 1 150px; max-width: 240px; }
+  .ctl-label { display: flex; align-items: center; gap: 12px; white-space: nowrap; height: 22px; font-size: 14px; font-weight: 500; color: var(--ink-2); }
+  .ctl-row { display: flex; align-items: center; gap: 12px; height: 36px; }
+  .ctl-row input[type=range] { flex: 1; width: 0; min-width: 70px; }
+  .ctl output { font: 500 15px var(--mono); color: var(--ink); min-width: 36px; }
+  .ctl[hidden] { display: none; }
+  .tipped { cursor: help; text-decoration: underline dotted var(--stone-2); text-underline-offset: 4px; }
+  .chat-set { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 10px 24px; padding: 0 0 14px; }
+  .chat-set .ctl { flex: 1 1 200px; max-width: 280px; }
+  .chat-hint { flex-basis: 100%; font-size: 12.5px; line-height: 1.5; }
+  .radio { display: inline-flex; align-items: center; gap: 5px; font-weight: 500; color: var(--ink); cursor: pointer; }
+  .radio input { accent-color: var(--red); width: 15px; height: 15px; margin: 0; cursor: pointer; }
+  .seg { display: inline-flex; background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 3px; }
+  .ctl .seg { height: 36px; align-self: flex-start; }
+  .seg button {
+    font: 500 13px var(--sans); color: var(--ink-2); background: transparent; border: 0;
+    height: 28px; padding: 0 10px; border-radius: 6px; cursor: pointer;
+  }
+  .seg button:hover { color: var(--ink); }
+  .seg button[aria-pressed="true"] { background: var(--primary); color: var(--on-primary); }
+  .seg button:disabled { opacity: .4; cursor: default; }
+  input[type=range] { -webkit-appearance: none; appearance: none; width: 150px; height: 22px; background: transparent; cursor: pointer; margin: 0; }
+  input[type=range]::-webkit-slider-runnable-track { height: 6px; border-radius: 3px; background: linear-gradient(var(--primary), var(--primary)) 0 / var(--fill, 50%) 100% no-repeat, var(--paper-2); }
+  input[type=range]::-moz-range-track { height: 6px; border-radius: 3px; background: var(--paper-2); }
+  input[type=range]::-moz-range-progress { height: 6px; border-radius: 3px; background: var(--primary); }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; margin-top: -7px; border-radius: 50%; background: var(--field); border: 2px solid var(--primary); box-shadow: 0 1px 3px rgba(0,0,0,.15); }
+  input[type=range]::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: var(--field); border: 2px solid var(--primary); }
+  .error { color: var(--danger); font-size: 14px; padding: 8px 2px 0; }
+  .error:empty { display: none; }
+
+  /* Main: the output panel */
+  .main { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; min-height: 0; }
+  .panel { background: var(--field); border: 1px solid var(--line); border-radius: var(--r); display: flex; flex-direction: column; min-height: 0; box-shadow: var(--lift); }
+  .panel-head {
+    display: flex; align-items: center; gap: 20px; padding: 12px 18px; border-bottom: 1px solid var(--paper-2);
+    font-size: 13px; color: var(--ink-3); min-height: 46px; flex-wrap: wrap; flex: none;
+  }
+  .stats b { color: var(--ink); font-weight: 600; font-family: var(--mono); }
+  .stats > span + span { margin-left: 12px; }
+  .output { flex: 1; overflow-y: auto; position: relative; }  /* relative: offsetTop of a step is measured from here */
+  .sec { border-bottom: 1px solid var(--paper-2); }
+  .sec > summary {
+    position: sticky; top: 0; z-index: 2; list-style: none; cursor: pointer; user-select: none;
+    display: flex; align-items: center; gap: 8px; min-height: 46px; padding: 8px 18px 8px 16px;
+    background: var(--field); border-bottom: 1px solid transparent;
+    font: 600 13px var(--sans); color: var(--ink);
+  }
+  .sec[open] > summary { border-bottom-color: var(--paper-2); }
+  .sec > summary:hover { background: color-mix(in srgb, var(--field) 94%, var(--ink)); }
+  .sec > summary::-webkit-details-marker { display: none; }
+  .sec > summary .sub { font: 400 12px var(--sans); color: var(--ink-3); }
+  .sec[open] > summary .chev { transform: rotate(90deg); }
+  .sec-body { padding: 14px 22px 18px; }
+  .hint { color: var(--ink-3); margin: 0; }
+  .empty { display: block; font: 15px/1.6 var(--sans); color: var(--ink-3); }
+
+  /* Explanations stay quiet: small grey text in a light box. The data is the focus. */
+  .lede, .explain {
+    margin: 0 0 16px; padding: 9px 14px; border-radius: 8px;
+    background: rgba(var(--shadow-rgb), .025); font-size: 12.5px; line-height: 1.55; color: var(--ink-3);
+  }
+  .lede code, .explain code { font-size: 11.5px; }
+  .explain p { margin: 0; }
+  .explain > p:first-child { color: var(--ink-2); }
+  .explain ul { margin: 4px 0 0; padding-left: 18px; }
+  .more { margin-top: 4px; }
+  .more > summary { display: inline; cursor: pointer; font-weight: 500; }
+  .more > summary:hover { color: var(--red); }
+  .more p { margin-top: 2px; }
+  .steps { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; margin-right: auto; }
+  .steps button {
+    display: inline-flex; align-items: center; gap: 7px; height: 30px; padding: 0 10px 0 5px; border-radius: 15px;
+    border: 0; background: transparent; color: var(--ink); font: 600 13px var(--sans); cursor: pointer;
+  }
+  .steps button:hover { background: rgba(var(--shadow-rgb), .05); }
+  .steps .arrow { color: var(--stone-2); }
+  .steps .phase { font: 500 10.5px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); margin: 0 4px 0 2px; }
+  .steps .phase + button { margin-left: 0; }
+  .steps .gap { width: 1px; height: 18px; background: var(--line); margin: 0 10px; }
+  .stepnum {
+    display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; flex: none;
+    background: var(--paper-2); color: var(--ink-3); font: 600 11px var(--sans);
+  }
+
+  /* Cards: every output sits in a bordered card with a header bar */
+  .card { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--field); min-width: 0; }
+  .card + .card { margin-top: 16px; }
+  .card-head {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 6px 24px; padding: 10px 14px;
+    background: var(--paper); border-bottom: 1px solid var(--line); font-size: 13px; color: var(--ink-2);
+  }
+  .card-head h3 { margin: 0; font: 600 13px var(--sans); color: var(--ink); }
+  .card-head .right { margin-left: auto; }
+  .card-foot { border-top: 1px solid var(--line); border-bottom: 0; }
+  .card-body { padding: 14px; }
+  .spec { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+  .spec span { font: 500 10.5px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
+  .spec b { font: 500 12.5px var(--mono); color: var(--ink); white-space: pre; }
+  .two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+  .two .card + .card { margin-top: 0; }
+  .col-head { font: 500 10.5px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
+
+  [data-tip] { cursor: help; }
+  #tip {
+    position: fixed; z-index: 50; max-width: 340px; padding: 10px 12px; border-radius: 8px; pointer-events: none;
+    background: var(--tip-bg); color: var(--tip-fg); font: 13px/1.45 var(--sans); box-shadow: 0 8px 24px -6px rgba(0,0,0,.35);
+    opacity: 0; transform: translateY(2px); transition: opacity .12s, transform .12s;
+  }
+  #tip.show { opacity: 1; transform: none; }
+  #tip b { display: block; font-weight: 600; margin-bottom: 4px; }
+  #tip span { display: block; color: var(--tip-sub); }
+
+  /* ---- Tools page: one chat; under each message, the steps of the harness as cards */
+  .app { height: auto; min-height: 100vh; grid-template-rows: auto; align-self: flex-start; align-content: start; }
+  .panel { flex: none; }
+  html, body { height: auto; min-height: 100vh; }
+  #chatModel { min-width: 300px; }
+  /* + menu: Tools ›, then a list of the tools with On/Off switches (like the Connectors menu of a chatbot). */
+  .plus-wrap { margin-right: 8px; }
+  .perm-menu.plus-menu { width: 220px; }
+  .perm-menu.tools-menu { left: 228px; width: 300px; max-height: 420px; overflow-y: auto; }
+  .perm-menu .sub { grid-template-columns: 20px 1fr 16px; }
+  .perm-menu .sub[aria-expanded="true"] { background: var(--paper); }
+  .perm-menu .sep { height: 1px; margin: 6px 8px; background: var(--line); }
+  .perm-menu .tl { grid-template-columns: 20px 1fr 34px; }
+  .perm-menu .tl .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .plus-wrap .perm-menu { border-radius: 14px; padding: 6px; }
+  .plus-wrap .perm-menu button { padding: 7px 10px; border-radius: 8px; font-size: 14px; }
+  .plus-wrap .perm-menu button svg { width: 17px; height: 17px; color: var(--ink-2); }
+  .perm-menu .tl[aria-checked="true"] { background: transparent; color: var(--ink); }
+  .perm-menu .tl:hover { background: var(--paper); }
+  .sw { position: relative; width: 34px; height: 20px; border-radius: 10px; background: var(--stone-2); transition: background .15s; }
+  .sw::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.25); transition: transform .15s; }
+  [aria-checked="true"] > .sw { background: var(--primary); }
+  [aria-checked="true"] > .sw::after { transform: translateX(14px); }
+  .perm-menu .none { padding: 8px 10px; font-size: 13px; color: var(--ink-3); }
+  @media (max-width: 640px) { .perm-menu.tools-menu { left: 0; } }
+  .lede { margin-bottom: 14px; }
+  .lede .more { display: inline; }
+  .lede .more[open] { display: block; }
+  .lede .more > summary { margin-left: 6px; color: var(--red); }
+  .lede .more p { margin: 6px 0 0; }
+  .linkbtn { border: 0; background: none; padding: 0; font: inherit; color: var(--red); cursor: pointer; }
+  .note a { color: var(--red); text-decoration: none; }
+  .note a:hover, .linkbtn:hover { text-decoration: underline; }
+  .linkbtn:hover { text-decoration: underline; }
+  .preset-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .preset-row select.field { width: 340px; max-width: 100%; height: 36px; font-weight: 400; font-size: 14px; }
+  .btn.small { height: 36px; padding: 0 18px; font-size: 14px; }
+  .btn.ghost { background: var(--field); color: var(--ink); border-color: var(--line); font-weight: 500; }
+  .btn.ghost:hover { background: var(--input-bg); border-color: var(--stone-2); }
+  .btn.ghost.warn:hover { color: var(--danger); }
+  .ex-card { margin-top: 12px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13.5px; color: var(--ink-2); }
+  .chip { display: inline-flex; gap: 6px; align-items: center; height: 28px; padding: 0 10px; border-radius: 14px; background: var(--paper-2); color: var(--ink); }
+  .look { margin-left: 8px; color: var(--ink-3); }
+  .info { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; border: 1px solid var(--stone-2); color: var(--ink-3); font: 600 11px/1 var(--sans); cursor: help; flex: none; }
+  .info:hover, .info:focus { color: var(--ink); border-color: var(--ink-3); outline: none; }
+  .status { font-size: 12.5px; color: var(--ink-3); padding: 10px 2px 0; }
+  .status:empty { display: none; }
+  .cap { font: 500 11.5px/22px var(--sans); padding: 0 9px; border-radius: 11px; white-space: nowrap; background: var(--paper-2); color: var(--ink-2); cursor: help; }
+  .cap.yes { background: rgba(var(--red-rgb), .12); color: var(--red); }
+
+  /* Tabs as folder tabs (same as the Memory page) */
+  .tabbox { display: grid; min-width: 0; }
+  .tabs { display: flex; gap: 2px; padding: 0 10px; position: relative; z-index: 1; }
+  .tabs button {
+    display: inline-flex; align-items: center; gap: 8px; height: 42px; padding: 0 18px; margin-bottom: -1px;
+    border: 1px solid transparent; border-bottom: 0; border-radius: 9px 9px 0 0; background: transparent;
+    font: 600 14px var(--sans); color: var(--ink-3); cursor: pointer;
+  }
+  .tabs button:hover { color: var(--ink); background: rgba(var(--shadow-rgb), .04); }
+  .tabs button[aria-selected="true"] { color: var(--ink); background: var(--paper-2); border-color: var(--line); box-shadow: inset 0 3px 0 var(--primary); }
+  .tabs .cnt { font: 500 12px var(--sans); color: var(--ink-3); }
+  .tabpane { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; min-width: 0; padding: 16px; background: var(--paper-2); border: 1px solid var(--line); border-radius: var(--r); }
+  .tabpane[hidden] { display: none; }
+  .panel-head h2 { margin: 0; font: 600 14px var(--sans); color: var(--ink); }
+  .panel-head .sub { font-size: 12.5px; color: var(--ink-3); }
+  .panel-head .stats { margin-left: auto; }
+  .panel-head .btn { height: 32px; padding: 0 14px; font-size: 13px; border-radius: 8px; }
+
+  /* The steps of the harness, as in the book: a strip on top, the current step marked */
+  .flow { display: flex; align-items: center; gap: 6px 8px; flex-wrap: wrap; padding: 10px 18px; border-bottom: 1px solid var(--paper-2); }
+  .flow .fs { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink-2); padding: 2px 8px 2px 3px; border-radius: 12px; }
+  .flow .fs.on { background: rgba(var(--red-rgb), .1); color: var(--ink); }
+  .flow .fs.on .stepnum { background: var(--primary); color: var(--on-primary); }
+  .flow .arrow { color: var(--stone-2); font-size: 12px; }
+  .flow .who { font: 500 10.5px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); margin: 0 2px 0 6px; }
+
+  .chatlog { min-height: 260px; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
+  .chat-empty { margin: auto; text-align: center; color: var(--ink-3); font-size: 14px; max-width: 360px; line-height: 1.6; }
+  .bubble { max-width: 80%; padding: 8px 12px; border-radius: 12px; font-size: 14px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+  .bubble.user { align-self: flex-end; background: var(--paper-2); border-bottom-right-radius: 4px; }
+  .capture .chatlog { height: auto !important; overflow: visible !important; }
+  .capture .side { position: static; height: auto; align-self: stretch; }  /* the sidebar runs the full length of the page */
+  .tok-meta { font-size: 12px; color: var(--ink-3); margin-top: -6px; cursor: help; }
+  .tok-meta.user { align-self: flex-end; }
+  .tok-meta.assistant { align-self: flex-start; }
+  .bubble.assistant { align-self: flex-start; background: var(--field); border: 1px solid var(--line); border-bottom-left-radius: 4px; }
+  .bubble .wait, .bubble .ph { color: var(--ink-3); }
+
+  /* One card per step. Head: number, step, book step, one-line result. Body: the real data. */
+  .steps-col { display: grid; gap: 8px; margin: 2px 0 4px; }
+  .step { border: 1px solid var(--line); border-radius: 8px; background: var(--field); min-width: 0; overflow: hidden; }
+  .step-hd { display: flex; align-items: center; gap: 8px 10px; flex-wrap: wrap; padding: 8px 12px; background: var(--paper); font-size: 13px; color: var(--ink-2); }
+  .step.has-bd > .step-hd { border-bottom: 1px solid var(--line); }
+  .step-hd b { font-weight: 600; color: var(--ink); }
+  .step-hd .book { font: 500 10.5px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
+  .step-hd .sum { min-width: 0; color: var(--ink-2); }
+  .step-hd .sum code, .step-bd code { font: 12px var(--mono); }
+  .step-hd .right { margin-left: auto; display: inline-flex; gap: 6px; align-items: center; color: var(--ink-3); font-size: 12px; }
+  .step-hd .stepnum { background: var(--ink); color: var(--field); }
+  .step.bad .step-hd .stepnum { background: var(--danger); }
+  .step-bd { padding: 10px 12px; display: grid; gap: 8px; }
+  .step-bd > p { margin: 0; font-size: 13px; color: var(--ink-2); }
+  .badge { font: 500 11px/18px var(--sans); padding: 0 7px; border-radius: 9px; white-space: nowrap; background: var(--paper-2); color: var(--ink-2); }
+  .badge.blue { background: rgba(var(--red-rgb), .12); color: var(--red); }
+  .badge.bad { background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger); }
+  .call { font: 12.5px/1.5 var(--mono); color: var(--ink); padding: 6px 10px; border-radius: 6px; background: rgba(var(--red-rgb), .06); white-space: pre-wrap; word-break: break-word; }
+  .chk { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 2px 6px; font-size: 13px; color: var(--ink-2); }
+  .chk .ok { color: var(--red); font-weight: 700; }
+  .chk .no { color: var(--danger); font-weight: 700; }
+  .chk .fix { color: var(--ink-3); }
+
+  details.x { border-top: 1px solid var(--paper-2); }
+  .step-bd details.x:first-child { border-top: 0; }
+  details.x > summary { list-style: none; cursor: pointer; user-select: none; display: flex; align-items: center; gap: 6px; padding: 6px 0; font-size: 12.5px; color: var(--ink-2); }
+  details.x > summary::-webkit-details-marker { display: none; }
+  details.x > summary:hover { color: var(--red); }
+  details.x[open] > summary .chev { transform: rotate(90deg); }
+  details.x > summary .chev { width: 12px; height: 12px; }
+  details.x > summary .k { color: var(--ink-3); margin-left: 4px; }
+  .raw { margin: 0; padding: 8px 10px; border: 1px solid var(--paper-2); border-radius: 6px; font: 12px/1.65 var(--mono); white-space: pre-wrap; word-break: break-word; color: var(--ink); background: var(--input-bg); }
+  .raw .sp {
+    display: inline-block; line-height: 1.45; padding: 0 5px; margin: 0 1px; border-radius: 5px; cursor: help;
+    color: var(--red); background: rgba(var(--red-rgb), .08); box-shadow: inset 0 0 0 1px rgba(var(--red-rgb), .55);
+  }
+  .raw .sp.bos { color: var(--ink-2); background: var(--paper-2); box-shadow: inset 0 0 0 1px var(--stone-2); }
+  .raw .tx { cursor: help; border-radius: 4px; padding: 0 2px; box-shadow: inset 0 0 0 1px var(--stone-2); background: rgba(var(--shadow-rgb), .03); }
+  .raw .nl { color: var(--stone-2); }
+  .raw .hint, .hint-s { font: 12.5px var(--sans); color: var(--ink-3); }
+  .nd .inj { margin: 6px 0 6px; }
+  .pre.gen { background: var(--paper); border-color: transparent; color: var(--ink-3); cursor: default; }
+  .legend { display: flex; gap: 6px 14px; flex-wrap: wrap; align-items: center; font-size: 12px; color: var(--ink-3); }
+  .legend .raw { display: inline; padding: 0; border: 0; background: none; }
+  .msg { display: grid; grid-template-columns: 80px minmax(0, 1fr); gap: 8px; padding: 6px 10px; }
+  .msg + .msg { border-top: 1px solid var(--paper-2); }
+  .msgs { border: 1px solid var(--paper-2); border-radius: 6px; }
+  .msg.new { box-shadow: inset 3px 0 0 var(--primary); }
+  .role { font: 500 10.5px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); padding-top: 2px; }
+  .msg-text { font: 12px/1.55 var(--mono); white-space: pre-wrap; word-break: break-word; color: var(--ink); }
+  .msg-text details.x { border-top: 0; }
+  .msg-text details.x > summary { padding: 0; font: inherit; color: var(--ink); white-space: normal; align-items: flex-start; gap: 4px; }
+  .msg-text details.x > summary .chev { margin-top: 3px; flex: none; }
+  .msg-text details.x > summary .rc-lbl { flex: 1 1 auto; min-width: 0; }
+  .msg-text details.x > summary .rc-n { color: var(--ink-3); }
+  .msg-text details.x[open] .rc-pv { display: none; }
+  .found .msg { grid-template-columns: 136px minmax(0, 1fr); }
+  .found .role { font: 12px/1.55 var(--mono); letter-spacing: 0; text-transform: none; padding-top: 0; }
+  .rc-full { margin: 4px 0 6px 18px; padding-left: 10px; border-left: 2px solid var(--paper-2); color: var(--ink-2); }
+  .pre { margin: 0; padding: 8px 10px; border: 1px solid var(--paper-2); border-radius: 6px; font: 12px/1.55 var(--mono); white-space: pre-wrap; word-break: break-word; color: var(--ink-2); background: var(--input-bg); }
+  .note { padding: 8px 12px; border-radius: 6px; background: rgba(var(--shadow-rgb), .025); color: var(--ink-3); font-size: 12.5px; line-height: 1.5; }
+  .note code { font-size: 11.5px; }
+
+  /* Allow or Deny (Permissions: Ask every time): where you look, at the end of the chat */
+  .next { display: flex; align-items: center; gap: 10px 14px; flex-wrap: wrap; padding: 10px 12px; border: 1px dashed rgba(var(--red-rgb), .6); border-radius: 8px; background: rgba(var(--red-rgb), .04); font-size: 13.5px; color: var(--ink-2); }
+  .next b { color: var(--ink); font-weight: 600; }
+  .next .btns { margin-left: auto; display: flex; gap: 8px; }
+  .next .btn { height: 34px; padding: 0 16px; font-size: 13.5px; }
+
+  .sendbar { padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+  /* The message box stays at the bottom of the window when open settings rows make the page taller. */
+  #pane-chat .sendbar { position: sticky; bottom: 35px; z-index: 5; }  /* 35px: where sizeChat puts it, so it does not move */
+  .capture #pane-chat .sendbar { position: static; }
+  /* Examples: chips below the message box while the chat is empty. A click fills the box; you send it. */
+  .starters { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; padding: 4px 2px 0; }
+  .starters[hidden] { display: none; }
+  .starter {
+    font: 500 13px var(--sans); color: var(--ink-2); background: var(--field); cursor: pointer;
+    border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; white-space: nowrap;
+    box-shadow: 0 1px 0 rgba(var(--shadow-rgb), .06); transition: color .15s, border-color .15s, background .15s;
+  }
+  .starter:hover { color: var(--ink); border-color: var(--stone-2); background: var(--input-bg); }
+  .starter:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+  .starter:disabled { opacity: .5; cursor: default; }
+  .starter-saved { display: inline-flex; }  /* a saved example: the chip and its delete button, joined */
+  .starter-saved > .starter:first-child { border-radius: 999px 0 0 999px; border-right: 0; padding-right: 10px; }
+  .starter-del { border-radius: 0 999px 999px 0; padding: 0 10px 0 8px; display: inline-grid; place-items: center; }
+  .starter-del svg { width: 13px; height: 13px; }
+  .starter-del:hover, #saveMsg.del:hover { color: var(--danger); }
+  #saveMsg:disabled { opacity: .4; cursor: default; }
+  /* The message box: the text on top, the tools under it (permissions left, Send right), in one rounded box */
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .send-tools { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; font-size: 12.5px; color: var(--ink-3); }
+  .send-tools .btn { height: 32px; padding: 0 12px; font-size: 13px; }
+
+  /* Tools tab */
+  .tool-list { display: grid; gap: 10px; padding: 14px 18px 18px; }
+  .tool { border: 1px solid var(--line); border-radius: 8px; background: var(--field); overflow: hidden; }
+  .tool.off { opacity: .6; }
+  .tool-hd { display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; padding: 8px 12px; background: var(--paper); border-bottom: 1px solid var(--line); }
+  .tool-hd .nm { font: 600 14px var(--sans); color: var(--ink); }  /* the display name; the function name is in the signature below */
+  .tool-hd .right { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+  .tool-hd label.on { position: relative; display: inline-flex; align-items: center; cursor: pointer; }
+  .tool-hd label.on input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+  .tool-hd label.on input:checked + .sw { background: var(--primary); }
+  .tool-hd label.on input:checked + .sw::after { transform: translateX(14px); }
+  .tool-hd label.on input:focus-visible + .sw { outline: 2px solid var(--primary); outline-offset: 2px; }
+  .tool-hd input[type=checkbox], .prow input[type=checkbox] { accent-color: var(--red); width: 15px; height: 15px; margin: 0; cursor: pointer; }
+  .tool-bd { padding: 10px 12px; display: grid; gap: 6px; font-size: 13px; color: var(--ink-2); }
+  .tool-bd .sig { font: 12.5px var(--mono); color: var(--ink); }
+  .tool-bd .src { font: 11.5px var(--mono); color: var(--ink-3); word-break: break-all; }
+  .tool-bd.tv { padding: 14px 16px; gap: 0; }
+  .tv-row { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 12px; padding: 12px 0; }
+  .tv-row:first-child { padding-top: 2px; }
+  .tv-row:last-child { padding-bottom: 2px; }
+  .tv-row + .tv-row { border-top: 1px solid var(--paper-2); }
+  .tv-lbl { font-size: 12.5px; font-weight: 500; color: var(--ink-2); }
+  .tv-val { display: grid; gap: 8px; min-width: 0; line-height: 1.5; }
+  .tv-val details.x { border-top: 0; }
+  .tv-val details.x > summary { padding: 0; }
+  .tv-val details.x[open] > summary { margin-bottom: 8px; }
+  .edit > .grp { grid-column: 1 / -1; margin-top: 10px; padding-top: 14px; border-top: 1px solid var(--paper-2); font: 600 13px var(--sans); color: var(--ink); }
+  .edit .src-b { font: 12.5px var(--mono); color: var(--ink-3); padding-top: 8px; }
+  .tool .copy { width: 28px; height: 28px; margin: 0; }
+  .tool .copy.del:hover { color: var(--danger); }
+  .edit { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 8px 12px; align-items: start; }
+  .edit > span { font-size: 12.5px; font-weight: 500; color: var(--ink-2); padding-top: 8px; }
+  .edit .field, .edit textarea { width: 100%; min-width: 0; height: 34px; font-size: 13.5px; }
+  .edit textarea.field { height: auto; min-height: 56px; padding: 7px 10px; resize: vertical; font: 13.5px/1.45 var(--sans); }
+  .edit .mono { font-family: var(--mono); font-size: 12.5px; }
+  .ptab { display: grid; gap: 6px; }
+  .prow { display: grid; grid-template-columns: minmax(90px, 140px) 104px 86px minmax(0, 1fr) 28px; gap: 6px; align-items: center; }
+  .prow .field { height: 32px; font-size: 13px; padding: 0 8px; }
+  .prow select.field { min-width: 0; padding-right: 26px; background-position: right 8px center; }
+  .prow label { display: inline-flex; gap: 5px; align-items: center; font-size: 12.5px; color: var(--ink-2); }
+  .prow.hd { font: 500 10.5px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
+  .card-tools { display: flex; gap: 8px; flex-wrap: wrap; padding: 10px 18px; border-top: 1px solid var(--line); background: var(--paper); align-items: center; border-radius: 0 0 var(--r) var(--r); }
+  .card-tools .btn { height: 32px; padding: 0 12px; font-size: 13px; }
+  .card-tools select.field { height: 32px; min-width: 0; width: 230px; font-size: 13px; font-weight: 400; }
+  .card-tools .hint { font-size: 12px; margin-left: auto; color: var(--ink-3); }
+
+  /* Formatted prompt: one block per part, a colour per kind of token (light and dark) */
+  /* Blue and grey only: blue for the tool parts, greys for the rest. */
+  :root { --c-turn: #4b4b52; --c-think: #8e8e93; --c-tool: #1f6ff2; --c-call: #1f6ff2; --c-resp: #4f6fa8; --c-q: #8e8e93; --c-ans: #8e8e93; --c-other: var(--red); }
+  :root[data-theme="dark"] { --c-turn: #b9b9c0; --c-think: #85858c; --c-tool: #4c8dff; --c-call: #4c8dff; --c-resp: #8aa4d6; --c-q: #85858c; --c-ans: #85858c; }
+  .raw .sp, .pv .sp, .legend .sp { --c: var(--c-other); color: var(--c); background: color-mix(in srgb, var(--c) 12%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 55%, transparent); }
+  .raw .tx, .pv .tx, .legend .tx { --c: var(--c-other); color: var(--c); background: transparent; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 45%, transparent); border-radius: 4px; padding: 0 3px; }
+  .pv .tx, .legend .tx { box-shadow: none; outline: 1px dashed color-mix(in srgb, var(--c) 60%, transparent); outline-offset: -1px; }
+  .c-turn { --c: var(--c-turn) !important; } .c-think { --c: var(--c-think) !important; } .c-tool { --c: var(--c-tool) !important; } .c-call { --c: var(--c-call) !important; }
+  .c-resp { --c: var(--c-resp) !important; } .c-q { --c: var(--c-q) !important; } .c-bos { --c: var(--ink-3) !important; }
+  .pv { display: grid; gap: 4px; padding: 10px; border: 1px solid var(--paper-2); border-radius: 6px; background: var(--input-bg); font: 12px/1.75 var(--mono); color: var(--ink); }
+  .pv .sp { display: inline-block; line-height: 1.45; padding: 0 5px; margin: 0 1px; border-radius: 5px; cursor: help; }
+  .pv .tx { cursor: help; }
+  .pl { padding: 0 4px; white-space: pre-wrap; }
+  .pl .rl { color: var(--c-turn); font-weight: 600; margin-left: 2px; }
+  .pb { --c: var(--ink-3); padding: 6px 10px; border-radius: 6px; white-space: pre-wrap; word-break: break-word; background: color-mix(in srgb, var(--c) 7%, transparent); }
+  .pb.k-sys { --c: var(--ink-3); } .pb.k-user { --c: var(--c-turn); } .pb.k-ans { --c: var(--c-ans); } .pb.k-tool { --c: var(--c-tool); }
+  .pb.k-call { --c: var(--c-call); background: color-mix(in srgb, var(--c) 13%, transparent); box-shadow: inset 3px 0 0 var(--c); } .pb.k-resp { --c: var(--c-resp); } .pb.k-think { --c: var(--c-think); }
+  .pb .key { color: var(--ink-3); }
+  .pb .fn { color: var(--c); font-weight: 700; }
+  .pv .nl { color: var(--stone-2); }
+  .pb details.th { border: 0; }
+  .pb details.th > summary { padding: 0; font: inherit; }
+  .pb details.th > summary .k { font-family: var(--sans); font-size: 11.5px; }
+  .pb details.th[open] > summary { margin-bottom: 2px; }
+  .view-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .seg.sm { padding: 2px; } .seg.sm button { height: 24px; font-size: 12px; padding: 0 9px; }
+  /* How it works: a short numbered list */
+  ol.how { margin: 8px 0 2px; padding-left: 20px; display: grid; gap: 3px; }
+  ol.how b { color: var(--ink-2); font-weight: 600; }
+  ol.how i { font-style: normal; color: var(--ink); }
+  /* Model card: a popover under the button, next to the model select */
+  /* What the switches do */
+  .effect { display: flex; flex-wrap: wrap; gap: 2px 18px; padding: 7px 18px; border-bottom: 1px solid var(--paper-2); background: rgba(var(--shadow-rgb), .02); font-size: 12.5px; line-height: 1.5; color: var(--ink-3); }
+  .effect b { color: var(--ink-2); font-weight: 600; }
+  .flow .fs.off { color: var(--ink-3); text-decoration: line-through; text-decoration-color: var(--stone-2); opacity: .7; }
+  /* The message, where you type */
+  .send-tools .status { padding: 0; }
+  .ctl-inline { margin-left: auto; display: inline-flex; align-items: center; gap: 10px; font-size: 13px; color: var(--ink-2); }
+  .ctl-inline.l { margin-left: 0; }
+  .ctl-inline .seg { padding: 2px; }
+  .ctl-inline .seg button { height: 26px; }
+  .card-tools.top { border-top: 0; border-bottom: 1px solid var(--line); border-radius: 0; }
+  /* One card per model call; one row per event: who, what, meta, Details */
+  .callcard { border: 1px solid var(--line); border-radius: 8px; background: var(--field); overflow: hidden; flex: none; }
+  .callcard-hd { padding: 7px 14px; background: var(--paper); border-bottom: 1px solid var(--line); font-size: 12.5px; color: var(--ink-3); }
+  .ev + .ev { border-top: 1px solid var(--paper-2); }
+  .ev > summary, .ev-row { display: grid; grid-template-columns: 76px minmax(0, 1fr) auto 70px; gap: 12px; align-items: baseline; padding: 9px 14px; font-size: 13.5px; line-height: 1.5; }
+  .ev > summary { list-style: none; cursor: pointer; }
+  .ev > summary::-webkit-details-marker { display: none; }
+  .ev > summary:hover { background: rgba(var(--shadow-rgb), .025); }
+  .ev > summary:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+  .ev .who { color: var(--ink-3); }
+  .ev .what { color: var(--ink); min-width: 0; overflow-wrap: anywhere; }
+  .ev .what code { font: 12.5px var(--mono); }
+  .ev .meta { color: var(--ink-3); font-size: 12.5px; white-space: nowrap; }
+  .ev .more { justify-self: end; display: inline-flex; align-items: center; gap: 2px; color: var(--ink-3); font-size: 12.5px; }
+  .ev > summary:hover .more { color: var(--red); }
+  .ev .more .chev { width: 14px; height: 14px; }
+  .ev[open] > summary .more .chev { transform: rotate(90deg); }
+  .ev-bd { padding: 4px 14px 12px calc(14px + 64px + 12px); display: grid; gap: 8px; }
+  .ev-bd > p { margin: 0; font-size: 13px; color: var(--ink-2); }
+  .ev-bd > p.lbl { font-size: 12.5px; color: var(--ink-3); margin-bottom: -4px; }
+  .ev-bd > details.x:first-child { border-top: 0; }
+  .ev.bad .what { color: var(--danger); }
+  .ev.bad .what code { color: inherit; }
+  .ev.pending .ev-row { grid-template-columns: 76px minmax(0, 1fr) auto auto; background: rgba(var(--red-rgb), .04); }
+  .ev.pending .what { color: var(--ink-2); }
+  .ev.pending .btns { gap: 8px; }
+  .ev.pending .btn { height: 30px; padding: 0 14px; font-size: 13px; }
+  .ev.new { animation: evIn .35s ease-out; }
+  @keyframes evIn { from { opacity: 0; transform: translateY(-3px); } }
+  @media (prefers-reduced-motion: reduce) { .ev.new { animation: none; } }
+  .sysrow { margin: 0; padding: 0 18px; border-top: 0; border-bottom: 1px solid var(--paper-2); }
+  .sysrow .opt-body { grid-template-columns: 260px 1fr; }
+  .opt-state.on { color: var(--red); }
+  @media (max-width: 640px) { .sysrow .opt-body { grid-template-columns: 1fr; } .sysrow .opt-body > :nth-child(2) { display: none; } }
+  /* Sliders: as on the Trace page (.ctl), the label above the slider */
+  .sampling { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 10px 20px; padding: 12px 18px 14px; }
+  .sampling .ctl { flex: 1 1 190px; min-width: 150px; max-width: 300px; }
+  .sampling .ctl-label { gap: 8px; }
+  .sampling .ctl output { min-width: 52px; }
+  .sampling .ctl-seg { flex: none; min-width: 0; }
+  .ctl-seg .seg button { height: 28px; }
+  .sampling .ctl-calls { flex: 1 1 160px; min-width: 140px; max-width: 220px; }
+  @media (max-width: 640px) { .sampling .ctl { flex: 1 1 100%; } }
+  .pb-lbl { font: 11.5px var(--sans); color: var(--ink-3); margin-bottom: 2px; }
+  .pb details.th > summary .pb-lbl { display: inline; margin-left: 8px; }
+  /* The chat scrolls inside its panel, so the message box stays in view */
+  .chatlog { height: 420px; overflow-y: auto; overscroll-behavior: contain; }
+  .panel-head .stats span + span { margin-left: 12px; }
+  /* Archived chats: a menu below the Chats button, and a bar above an archived chat (read only) */
+  .cbox.archived { background: var(--paper-2); border-color: var(--line); }
+  .cbox.archived:hover { border-color: var(--line); }
+  .cbox.archived .cbox-input:disabled { cursor: not-allowed; background: transparent; }
+  .cbox.archived .send-round:disabled { opacity: .4; cursor: not-allowed; }
+  .chats-wrap { margin-left: -12px; }
+  .perm-menu.chats-menu { top: calc(100% + 6px); bottom: auto; width: 420px; max-height: 420px; overflow-y: auto; }
+  .chats-menu .chat-row { display: flex; align-items: center; gap: 4px; }
+  .chats-menu .chat-row > button:first-child { display: block; flex: 1; min-width: 0; }
+  .chats-menu .chat-row .nm { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .chats-menu .chat-row .d { display: block; }
+  .chats-menu .chat-row[aria-current="true"] > button:first-child { color: var(--primary); }
+  .chats-menu .chat-del { flex: none; width: 30px; height: 30px; display: grid; place-items: center; padding: 0; color: var(--ink-3); }
+  .chats-menu .chat-del:hover { color: var(--ink); }
+  .chats-menu .chat-del svg { width: 15px; height: 15px; }
+  .arch-end { margin: 18px auto 4px; text-align: center; font-size: 13px; color: var(--ink-3); line-height: 1.6; }
+  .arch-end .btn { margin-top: 10px; height: 36px; width: 124px; padding: 0; justify-content: center; }
+  .sampling input[type="range"]:disabled { opacity: .5; cursor: default; }  /* read only: an archived chat, or a run */
+  /* Running: a timer where the model works */
+  .busy-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--primary); margin-right: 6px; animation: pulse 1s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .25; } }
+  @media (prefers-reduced-motion: reduce) { .busy-dot { animation: none; } }
+  .small-btn { height: 30px !important; padding: 0 12px !important; font-size: 12.5px !important; }
+  .ti { display: inline-grid; place-items: center; flex: none; color: var(--ink-2); }
+  .ti svg { width: 17px; height: 17px; }
+  .tool-hd .ti { margin-right: -2px; }
+  .icon-row { display: flex; align-items: center; gap: 10px; }
+  .icon-row .ti { width: 36px; height: 36px; border: 1px solid var(--line); border-radius: 8px; background: var(--field); }
+  .icon-row .ti svg { width: 20px; height: 20px; }
+  .icon-row input { flex: 1; min-width: 0; }
+  .icon-row a { flex: none; font-size: 13px; color: var(--primary); }
+  .ctx { display: inline-flex; align-items: center; gap: 6px; cursor: help; }
+  .ctx svg { width: 15px; height: 15px; transform: rotate(-90deg); }
+  .ctx circle { fill: none; stroke: var(--line); stroke-width: 2.5; }
+  .ctx circle.arc { stroke: var(--primary); stroke-linecap: round; }
+  .ctx.high circle.arc { stroke: #d98e04; }
+  .ctx.full circle.arc { stroke: var(--danger); }
+  .edit-actions { display: flex; justify-content: flex-end; gap: 8px; padding-top: 10px; }
+  .note-box { padding: 0 0 14px; display: grid; gap: 10px; }
+  .opt > summary .sum-ctl { margin-left: auto; display: inline-flex; align-items: center; gap: 10px; cursor: default; }
+  .sum-ctl .seg { padding: 2px; } .sum-ctl .seg button { height: 26px; }
+  .opt:has(.sum-ctl)[open] > summary { height: 48px; }
+  .opt:not([open]) > summary .sum-ctl { display: none; }  /* the switch shows when the row is open */
+  .opt-title, .sum-ctl .seg button { white-space: nowrap; }
+  /* Phone, row open: the switch goes on its own line under the title; it shows the setting, so the state text hides */
+  @media (max-width: 640px) { .opt[open] #stNote { display: none; } .opt:has(.sum-ctl)[open] > summary { flex-wrap: wrap; height: auto; padding: 8px 0; row-gap: 6px; }
+    .opt > summary .sum-ctl { margin-left: 24px; flex-basis: 100%; } }
+  .note-box .pre.json { max-height: none; }
+  .note-box textarea { width: 100%; min-height: 150px; font: 12.5px/1.55 var(--mono); resize: vertical; }
+
+  @media (max-width: 860px) {
+    .app { padding: 0 16px 16px; }
+    select.field, #chatModel { min-width: 0; width: 100%; }
+    .top { flex-wrap: wrap; height: auto; padding: 12px 0; }
+    .msg { grid-template-columns: 1fr; gap: 2px; }
+    .bubble { max-width: 94%; }
+    .ev > summary, .ev-row, .ev.pending .ev-row { grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; }
+    .ev .who { grid-column: 1 / -1; font-size: 12px; }
+    .ev .meta:empty { display: none; }
+    .ev-bd { padding-left: 14px; }
+    .edit { grid-template-columns: 1fr; }
+    .tv-row { grid-template-columns: 1fr; gap: 6px; }
+    .edit > span { padding-top: 0; }
+    .prow { grid-template-columns: 1fr 1fr; }
+  }
+
+  /* ---- MCP page */
+  .who-chip { display: inline-flex; align-items: center; gap: 5px; }
+  .srv-list { display: grid; gap: 10px; padding: 14px 18px 18px; }
+  .srv { border: 1px solid var(--line); border-radius: 8px; background: var(--field); overflow: hidden; }
+  .srv-hd { display: flex; align-items: center; gap: 10px 12px; flex-wrap: wrap; padding: 10px 12px; }
+  .srv-hd .av { width: 34px; height: 34px; flex: none; display: grid; place-items: center; border-radius: 8px; background: var(--paper-2); color: var(--ink-2); font: 600 14px var(--sans); }
+  .srv-hd .av svg { width: 18px; height: 18px; }
+  .srv-hd .nmw { display: grid; gap: 1px; min-width: 0; flex: 1 1 260px; }
+  .srv-hd .nm { font: 600 14px var(--sans); color: var(--ink); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .srv-hd .ln { font: 12px var(--mono); color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .srv-hd .right { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+  .srv-hd .btn { height: 32px; padding: 0 12px; font-size: 13px; }
+  .srv.sug { border-style: dashed; background: transparent; }
+  .srv .d { padding: 0 12px 10px 58px; font-size: 12.5px; color: var(--ink-3); margin-top: -4px; }
+  .grp-hd { font: 500 10.5px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); padding: 6px 2px 0; }
+  .sw-btn { position: relative; display: inline-flex; align-items: center; gap: 8px; border: 0; background: none; padding: 0 4px; cursor: pointer; font: 12.5px var(--sans); color: var(--ink-3); }
+  .sw-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: 10px; }
+  .add-wrap { position: relative; }
+  .add-wrap .perm-menu { top: calc(100% + 6px); bottom: auto; left: auto; right: 0; width: 290px; }
+  .head-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+  .head-actions .btn { height: 32px; padding: 0 14px; font-size: 13px; }
+  .btn.dark { background: var(--ink); border-color: var(--ink); color: var(--field); }
+  .btn.dark:hover { background: var(--ink-2); border-color: var(--ink-2); }
+  /* Setup: the LM Studio settings that the API needs */
+  .setup { margin: 14px 18px 0; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .setup.bad { border-color: color-mix(in srgb, var(--danger) 45%, var(--line)); }
+  .setup-hd { display: flex; align-items: center; gap: 10px; padding: 9px 12px; background: var(--paper); font-size: 13px; color: var(--ink-2); flex-wrap: wrap; }
+  .setup-hd b { color: var(--ink); }
+  .setup-hd .btn { height: 30px; padding: 0 12px; font-size: 12.5px; margin-left: auto; }
+  .setup-bd { padding: 10px 14px 12px; display: grid; gap: 6px; font-size: 13px; color: var(--ink-2); }
+  .setup-bd ol { margin: 0; padding-left: 20px; display: grid; gap: 3px; }
+  .chkrow { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 8px; align-items: baseline; }
+  .chkrow .ok { color: var(--red); font-weight: 700; }
+  .chkrow .no { color: var(--danger); font-weight: 700; }
+  .chkrow .q { color: var(--ink-3); font-weight: 700; }
+  .chkrow .r { color: var(--ink-3); font-size: 12px; }
+  /* Form: Connect to a custom MCP */
+  .back { display: inline-flex; align-items: center; gap: 6px; border: 0; background: none; color: var(--ink-3); font: 500 13px var(--sans); cursor: pointer; padding: 0; }
+  .back:hover { color: var(--ink); }
+  .back svg { width: 15px; height: 15px; }
+  .form-wrap { padding: 16px 18px 18px; display: grid; gap: 14px; max-width: 860px; }
+  .form-wrap h3 { margin: 0; font: 600 18px var(--sans); color: var(--ink); }
+  .fcard { border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: grid; gap: 12px; background: var(--field); }
+  .fcard + .fcard { margin-top: 0; }
+  .frow2 { display: grid; gap: 6px; }
+  .frow2 + .frow2 { border-top: 1px solid var(--paper-2); padding-top: 12px; }
+  .frow2 > label, .frow2 > .lb { font: 600 13.5px var(--sans); color: var(--ink); }
+  .frow2 .hint-s { margin-top: -2px; }
+  .frow2 .field { width: 100%; height: 38px; font-size: 14px; min-width: 0; }
+  .frow2 .field.mono { font: 13px var(--mono); }
+  .kv { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 30px; gap: 6px; align-items: center; }
+  .kv.one { grid-template-columns: minmax(0, 1fr) 30px; }
+  .rm { width: 30px; height: 30px; border: 0; background: none; color: var(--ink-3); cursor: pointer; display: grid; place-items: center; border-radius: 6px; }
+  .rm:hover { color: var(--danger); background: var(--paper); }
+  .rm svg { width: 15px; height: 15px; }
+  .btn.danger { background: var(--danger); border-color: var(--danger); color: #fff; }
+  .btn.danger:hover { filter: brightness(.92); background: var(--danger); border-color: var(--danger); }
+  .linkish { border: 0; background: none; padding: 0; font: inherit; color: var(--primary); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+  .auth-card { display: grid; gap: 8px; color: var(--ink-2); font-size: 13.5px; padding: 12px 14px; border: 1px solid var(--line); background: var(--paper); }
+  .auth-card b { color: var(--ink); }
+  .auth-card p { margin: 0; }
+  .auth-card code { font: 12.5px var(--mono); overflow-wrap: anywhere; }
+  .auth-kv { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 14px; margin: 0; font-size: 13px; }
+  .auth-kv dt { color: var(--ink-3); }
+  pre.raw.cap { max-height: 280px; overflow: auto; }
+  .ico { display: inline-block; width: 18px; height: 18px; background: currentColor; -webkit-mask: var(--i) center / contain no-repeat; mask: var(--i) center / contain no-repeat; }
+  .icon-row { display: flex; align-items: center; gap: 10px; }
+  .icon-row .field { flex: 1; min-width: 0; }
+  .icon-prev { width: 38px; height: 38px; flex: none; display: grid; place-items: center; border-radius: 8px; background: var(--paper-2); color: var(--ink-2); }
+  .icon-prev .ico, .icon-prev svg { width: 20px; height: 20px; }
+  .ico-img { width: 20px; height: 20px; object-fit: contain; border-radius: 4px; display: block; }
+  .icon-prev .ico-img { width: 22px; height: 22px; }
+  .opt { font-weight: 400; color: var(--ink-3); font-size: 12.5px; margin-left: 4px; }
+  .srv .ln.desc { font-family: var(--sans); font-size: 13px; }
+  .ev-i { margin-left: 6px; vertical-align: 1px; }
+  .ev-bd > .lbl-s { margin: 6px 0 2px; }
+  .ev-bd > .lbl-s:first-child { margin-top: 0; }
+  /* MCP Servers tab: a card opens to show the tools; ⋯ menu for Edit and Remove */
+  .srv-hd { align-items: center; }
+  .srv-open { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; border: 0; background: none; padding: 0; text-align: left; cursor: pointer; color: inherit; font: inherit; }
+  .srv-open .nm { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .srv-open .chev { margin-left: 4px; }
+  .srv.open .srv-open .chev { transform: rotate(90deg); }
+  .srv { overflow: visible; }
+  .srv .ml-tools, .srv > .ml-none { margin: 0; padding: 8px 14px 10px 58px; border-top: 1px solid var(--paper-2); }
+  .srv-open .nmw { flex: 1 1 auto; }
+  .srv-open .ml-count { margin-left: auto; padding-left: 8px; }
+  .more-wrap { position: relative; }
+  .more-btn { width: 34px; height: 34px; border: 1px solid transparent; border-radius: 8px; background: none; color: var(--ink-3); cursor: pointer; font-size: 18px; line-height: 1; }
+  .more-btn:hover, .more-btn[aria-expanded="true"] { background: var(--paper-2); color: var(--ink); }
+  .perm-menu.more-menu { top: calc(100% + 4px); bottom: auto; right: 0; left: auto; width: 160px; z-index: 30; }
+  .more-menu .danger-item { color: var(--danger); }
+  .setup.ok1 { display: flex; align-items: center; gap: 10px; padding: 10px 16px; font-size: 13.5px; color: var(--ink-2); }
+  .setup.ok1 .ok { color: var(--primary); font-weight: 700; }
+  .setup.ok1 .linkish { margin-left: auto; font-size: 13px; }
+  /* Details view */
+  .insp-hd .av { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 8px; background: var(--paper-2); }
+  .conn { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; padding: 0; border: 0; background: none; font-size: 13px; color: var(--ink-3); }
+  .conn .sep { color: var(--line); }
+  .conn.ok > span:nth-child(2) { color: var(--ink); font-weight: 600; }
+  .conn.bad { color: var(--danger); }
+  .cap-box { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .cap-tabs { display: flex; gap: 2px; padding: 6px 8px 0; background: var(--paper); border-bottom: 1px solid var(--line); }
+  .cap-tabs button { border: 0; background: none; padding: 8px 12px; font: 500 13.5px var(--sans); color: var(--ink-3); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+  .cap-tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--primary); }
+  .cap-tabs .n { color: var(--ink-3); font-weight: 400; margin-left: 2px; }
+  .cap-list > .none { padding: 12px 14px; color: var(--ink-3); font-size: 13px; }
+  .cap-i { border-bottom: 1px solid var(--paper-2); }
+  .cap-i:last-child, .cap-r:last-child { border-bottom: 0; }
+  .cap-i > summary { display: flex; align-items: center; gap: 10px; padding: 9px 14px; cursor: pointer; list-style: none; font-size: 13px; color: var(--ink-3); min-width: 0; }
+  .cap-i > summary::-webkit-details-marker { display: none; }
+  .cap-i[open] > summary .chev { transform: rotate(90deg); }
+  .cap-i code, .cap-r code { font: 13px var(--mono); color: var(--ink); white-space: nowrap; }
+  .cap-bd { padding: 0 14px 12px 40px; display: grid; gap: 6px; }
+  .cap-bd pre { max-height: 260px; overflow: auto; white-space: pre-wrap; }
+  .cap-r { display: flex; align-items: center; gap: 10px; padding: 8px 14px; border-bottom: 1px solid var(--paper-2); font-size: 13px; color: var(--ink-3); min-width: 0; flex-wrap: wrap; }
+  .cap-r .clamp1, .cap-i .clamp1 { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cap-r .field.sm { height: 30px; width: 130px; font-size: 13px; }
+  .btn.sm { height: 30px; padding: 0 10px; font-size: 13px; }
+  .cap-op { border-top: 1px solid var(--line); padding: 10px 14px; display: grid; gap: 6px; }
+  .insp details.x { border: 1px solid var(--line); border-radius: 10px; }
+  .insp details.x > summary { display: flex; align-items: center; gap: 8px; padding: 10px 14px; cursor: pointer; list-style: none; font: 600 13.5px var(--sans); color: var(--ink); }
+  .insp details.x > summary::-webkit-details-marker { display: none; }
+  .insp details.x > summary .q { font-weight: 400; color: var(--ink-3); font-size: 12.5px; }
+  .insp details.x[open] > summary .chev { transform: rotate(90deg); }
+  .insp details.x > .x-bd { padding: 0 14px 12px; font-size: 13px; line-height: 1.6; color: var(--ink-2); white-space: pre-wrap; }
+  .insp details.x > .rpc { border: 0; border-top: 1px solid var(--paper-2); border-radius: 0; margin: 0; }
+  .insp details.x > pre { margin: 0 14px 12px; }
+  /* Chat card head: the steps and the numbers, as on the RAG page */
+  .log-head { display: flex; align-items: center; gap: 8px 16px; flex-wrap: wrap; border-bottom: 1px solid var(--paper-2); padding-right: 18px; }
+  .log-head .flow2 { border-bottom: 0; padding: 12px 18px; }
+  .log-head .stats { margin-left: auto; font-size: 13px; color: var(--ink-3); }
+  .log-head .stats > span + span { margin-left: 12px; }
+  /* MCP list: one row per server, its tools below when open */
+  .mcp-list { padding: 4px 18px 14px; display: grid; gap: 6px; }
+  .ml-srv { border: 1px solid var(--line); border-radius: 8px; background: var(--field); }
+  .ml-hd { display: flex; align-items: center; gap: 10px; padding: 6px 10px; }
+  .ml-name { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; border: 0; background: none; padding: 4px 0; cursor: pointer; color: var(--ink); font: 13.5px var(--sans); text-align: left; }
+  .ml-name code { font: 13px var(--mono); }
+  .ml-name .av { width: 18px; height: 18px; display: grid; place-items: center; color: var(--ink-3); }
+  .ml-name .av svg { width: 16px; height: 16px; }
+  .ml-count { margin-left: auto; color: var(--ink-3); font-size: 12.5px; white-space: nowrap; }
+  .ml-name .chev { flex: none; }
+  .ml-srv.open .ml-name .chev { transform: rotate(90deg); }
+  .ml-tools { border-top: 1px solid var(--paper-2); padding: 6px 12px 10px 56px; display: grid; gap: 2px; }
+  .ml-th { display: flex; gap: 14px; align-items: baseline; font: 600 12px var(--sans); color: var(--ink-3); text-transform: uppercase; letter-spacing: .05em; padding: 4px 0; }
+  .ml-th span { margin-right: auto; }
+  .ml-th .linkish { font: 500 12.5px var(--sans); text-transform: none; letter-spacing: 0; }
+  .ml-tool { display: flex; align-items: baseline; gap: 8px; padding: 3px 0; font-size: 13px; color: var(--ink-3); cursor: pointer; min-width: 0; }
+  .ml-tool input { transform: translateY(2px); accent-color: var(--primary); }
+  .ml-tool code { font: 13px var(--mono); color: var(--ink); white-space: nowrap; }
+  .ml-tool .clamp1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1; }
+  .ml-none { padding: 8px 12px 10px 56px; color: var(--ink-3); font-size: 13px; border-top: 1px solid var(--paper-2); }
+  .mcp-list > .ml-none { border: 0; padding: 6px 0; }
+  .ml-none.bad { color: var(--danger); }
+  .ml-note { color: var(--ink-3); font-size: 12.5px; line-height: 1.5; padding: 6px 2px 0; }
+  .ml-note b { color: var(--ink-2); }
+  .linkish:disabled { color: var(--ink-3); cursor: default; text-decoration: none; }
+  @media (max-width: 640px) { .ml-tools, .ml-none { padding-left: 12px; } .ml-name .badge { display: none; } }
+  .conn .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; transform: translateY(-1px); }
+  .conn.ok .dot { background: var(--ok, #1e8e3e); box-shadow: 0 0 0 3px rgba(30, 142, 62, .15); }
+  .conn.bad .dot { background: var(--danger); box-shadow: 0 0 0 3px rgba(217, 48, 37, .15); }
+  .conn.bad b { color: var(--danger); }
+  .auth-form { display: grid; gap: 6px; padding-top: 8px; border-top: 1px solid var(--line); }
+  .auth-form label { display: grid; gap: 2px; }
+  .auth-form label span { color: var(--ink-3); font-size: 12.5px; }
+  .auth-row { display: flex; gap: 8px; }
+  .auth-row .field { flex: 1; min-width: 0; height: 38px; font-size: 13px; }
+  .auth-bad { color: var(--danger) !important; }
+  .addrow2 { display: flex; gap: 8px; }
+  .addrow2 .addrow { flex: 1; }
+  .auth-kv dd { margin: 0; font: 12.5px var(--mono); overflow-wrap: anywhere; }
+  .addrow { height: 34px; border: 0; border-radius: 8px; background: var(--paper-2); color: var(--ink-2); font: 500 13px var(--sans); cursor: pointer; }
+  .addrow:hover { color: var(--ink); background: var(--line); }
+  .typerow { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .form-foot { display: flex; align-items: center; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
+  .form-foot .btn { height: 36px; padding: 0 18px; font-size: 14px; }
+  .form-foot .error { padding: 0; margin-right: auto; }
+  .trust { font-size: 12.5px; color: var(--ink-3); line-height: 1.5; }
+  /* Inspect */
+  .insp { padding: 14px 18px 18px; display: grid; gap: 14px; }
+  .insp-hd { display: flex; align-items: center; gap: 10px 14px; flex-wrap: wrap; }
+  .insp-hd h3 { margin: 0; font: 600 17px var(--sans); color: var(--ink); }
+  .caps3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; align-items: start; }
+  .capcol { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; min-width: 0; }
+  .capcol-hd { padding: 9px 12px; background: var(--paper); border-bottom: 1px solid var(--line); display: grid; gap: 1px; }
+  .capcol-hd b { font: 600 13.5px var(--sans); color: var(--ink); }
+  .capcol-hd span { font-size: 12px; color: var(--ink-3); }
+  .capcol-bd { display: grid; }
+  .capi { padding: 9px 12px; display: grid; gap: 4px; font-size: 12.5px; color: var(--ink-2); min-width: 0; }
+  .capi + .capi { border-top: 1px solid var(--paper-2); }
+  .capi .t { font: 600 12.5px var(--mono); color: var(--ink); overflow-wrap: anywhere; }
+  .capi .s { font: 11.5px var(--mono); color: var(--ink-3); overflow-wrap: anywhere; }
+  .capi .acts { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 2px; }
+  .capi .acts .btn { height: 28px; padding: 0 10px; font-size: 12.5px; }
+  .capi .acts .field { height: 28px; font-size: 12.5px; min-width: 0; flex: 1 1 120px; padding: 0 8px; }
+  .capi .clamp { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .capi.open .clamp { display: block; }
+  .capcol .none { padding: 10px 12px; font-size: 12.5px; color: var(--ink-3); }
+  .rpc { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .rpc-hd { padding: 9px 12px; background: var(--paper); border-bottom: 1px solid var(--line); font-size: 13px; color: var(--ink-2); display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .rpc-hd b { color: var(--ink); }
+  .rpc .ev > summary, .rpc .ev-row { grid-template-columns: 64px 118px minmax(0, 1fr) auto; }
+  .rpc .ev-bd { padding-left: 14px; }
+  .dir { font: 500 12px var(--sans); color: var(--ink-3); white-space: nowrap; }
+  .dir.out { color: var(--red); }
+  .res-out { max-height: 320px; overflow: auto; }
+  /* Directory */
+  .dir-search { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .dir-search .field { flex: 1 1 280px; height: 38px; font-size: 14px; }
+  .dir-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 24px; }
+  .dir-item { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 4px 12px; padding: 12px 2px; border-bottom: 1px solid var(--paper-2); align-items: start; }
+  .dir-item .av { width: 34px; height: 34px; border-radius: 8px; background: var(--paper-2); display: grid; place-items: center; font: 600 14px var(--sans); color: var(--ink-2); overflow: hidden; }
+  .dir-item .av { position: relative; }
+  .dir-item .av img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: var(--field); }
+  .dir-item .t { font: 600 13.5px var(--sans); color: var(--ink); overflow-wrap: anywhere; }
+  .dir-item .s { font-size: 12.5px; color: var(--ink-2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .dir-item .m { font-size: 12px; color: var(--ink-3); overflow-wrap: anywhere; }
+  .dir-item .btn { height: 30px; padding: 0 12px; font-size: 12.5px; }
+  .dir-item a { color: var(--ink-3); }
+  .more-row { display: flex; justify-content: center; padding-top: 12px; }
+  /* Chat: + menu with Tools › and MCP › */
+  .perm-menu.mcp-menu { left: 228px; width: 320px; max-height: 420px; overflow-y: auto; }
+  @media (max-width: 640px) { .perm-menu.mcp-menu { left: 0; } }
+  .perm-menu .tl .sv { font: 11.5px var(--sans); color: var(--ink-3); }
+  .perm-menu .tl .nmw2 { display: grid; min-width: 0; }
+  .attach { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; }
+  .attach[hidden] { display: none; }
+  .att { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 4px 0 10px; border-radius: 14px; background: var(--paper-2); font-size: 12.5px; color: var(--ink); max-width: 100%; }
+  .att .k { color: var(--ink-3); }
+  .att button { width: 22px; height: 22px; border: 0; border-radius: 50%; background: none; color: var(--ink-3); cursor: pointer; display: grid; place-items: center; }
+  .att button:hover { color: var(--danger); }
+  .att svg { width: 13px; height: 13px; }
+  .srv-tag { font: 500 11px/18px var(--sans); padding: 0 7px; border-radius: 9px; background: rgba(var(--red-rgb), .12); color: var(--red); white-space: nowrap; }
+  .ev .who b { font-weight: 500; color: var(--ink-2); }
+  .bubble.md { white-space: normal; }
+  .bubble.md p { margin: 0 0 6px; } .bubble.md p:last-child { margin-bottom: 0; }
+  .bubble.md p.h { font-weight: 600; }
+  .bubble.md ul, .bubble.md ol { margin: 0 0 6px; padding-left: 20px; }
+  .bubble.md code { font: 12.5px var(--mono); }
+  #log .ev > summary, #log .ev-row { grid-template-columns: 104px minmax(0, 1fr) auto 70px; }
+  #log .ev-bd { padding-left: calc(14px + 104px + 12px); }
+  @media (max-width: 860px) { #log .ev > summary, #log .ev-row { grid-template-columns: minmax(0, 1fr) auto; } #log .ev-bd { padding-left: 14px; } }
+  .setup a { color: var(--red); text-decoration: none; } .setup a:hover { text-decoration: underline; }
+  .ev .what .q { color: var(--ink-3); }
+  .flow2 { display: flex; align-items: center; gap: 6px 8px; flex-wrap: wrap; padding: 10px 18px; border-bottom: 1px solid var(--paper-2); font-size: 12.5px; color: var(--ink-2); }
+  .flow2 .fs { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px 2px 3px; border-radius: 12px; cursor: help; }
+  .flow2 .fs.on { background: rgba(var(--red-rgb), .1); color: var(--ink); }
+  .flow2 .fs.on .stepnum { background: var(--primary); color: var(--on-primary); }
+  .flow2 .fs.done .stepnum { background: var(--ink-3); color: var(--field); }
+  .flow2 .arrow { color: var(--stone-2); }
+  .roles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 8px 0 4px; }
+  .roles > div { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; background: var(--field); }
+  .roles b { display: block; color: var(--ink-2); }
+  @media (max-width: 860px) {
+    .caps3, .dir-grid, .roles { grid-template-columns: minmax(0, 1fr); }
+    .kv { grid-template-columns: minmax(0, 1fr) 30px; }
+    .kv > :nth-child(2) { grid-column: 1; }
+    .kv > .rm { grid-row: 1 / span 2; grid-column: 2; }
+    .rpc .ev > summary, .rpc .ev-row { grid-template-columns: minmax(0, 1fr) auto; }
+    .srv .d { padding-left: 12px; }
+  }
+</style>
+<link rel="stylesheet" href="/composer.css">
+<script>
+  // Saved choice, else the system setting. Set before the page draws, so there is no flash.
+  let t = null;
+  try { t = localStorage.getItem("theme"); } catch {}
+  document.documentElement.dataset.theme = t || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+  // Sidebar: always folded on a narrow screen; else the saved choice, or open.
+  const narrow = matchMedia("(max-width: 860px)");
+  const sideFor = () => { let v = null; try { v = localStorage.getItem("sidebar"); } catch {} return narrow.matches ? "closed" : v || "open"; };
+  document.documentElement.dataset.side = sideFor();
+  narrow.addEventListener("change", () => document.documentElement.dataset.side = sideFor());
+</script>
+</head>
+<body>
+<nav class="side" aria-label="Pages">
+  <div class="side-top"><button type="button" class="side-toggle" id="sideToggle" title="Show or hide the sidebar" aria-label="Show or hide the sidebar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/></svg></button></div>
+  <a href="/" title="Trace: tokens and their probabilities"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 6h5M12 6h8M4 12h10M17 12h3M4 18h3M10 18h10"/></svg><span>Trace</span></a>
+  <a href="/embeddings.html" title="Tokenizer: tokens, IDs and embeddings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="5" height="5" rx="1"/><rect x="3" y="14" width="5" height="5" rx="1"/><path d="M11 7.5h10M11 16.5h10M14 5v5M17 5v5M14 14v5M17 14v5"/></svg><span>Tokenizer</span></a>
+  <a href="/rag.html" title="RAG: answers from your documents"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h10M4 9h7M4 13h5"/><circle cx="15.5" cy="15.5" r="4"/><path d="M18.5 18.5 21 21"/></svg><span>RAG</span></a>
+  <a href="/memory.html" title="Memory: what the agent remembers"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 3 8l9 5 9-5-9-5z"/><path d="M3 12.5l9 5 9-5"/><path d="M3 17l9 5 9-5"/></svg><span>Memory</span></a>
+  <a href="/tools.html" title="Tools: how a model uses tools"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.1L3 17.7 6.3 21l6.3-6.3a4 4 0 0 0 5.1-5.4l-2.6 2.6-2.4-.5-.5-2.4z"/></svg><span>Tools</span></a>
+  <a href="/mcp.html" aria-current="page" title="MCP: connect a model to tools and data"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19.97 11.84c.66-.66 1.02-1.53 1.02-2.46s-.36-1.8-1.02-2.46l-.04-.04a3.45 3.45 0 0 0-2.46-1.02c-.17 0-.34.03-.51.05c.02-.17.05-.33.05-.51c0-.93-.36-1.8-1.02-2.46s-1.53-1.02-2.46-1.02s-1.8.36-2.46 1.02L3.2 10.81a.694.694 0 0 0 .98.98l7.87-7.87c.39-.39.92-.61 1.47-.61A2.08 2.08 0 0 1 15.6 5.4c0 .56-.22 1.08-.61 1.48l-5.86 5.86l-.08.08c-.27.27-.27.71 0 .98c.14.14.31.2.49.2s.36-.07.49-.2l5.94-5.94a2.09 2.09 0 0 1 2.95 0l.04.04c.39.39.61.92.61 1.47s-.22 1.08-.61 1.48l-7.11 7.11c-.63.63-.63 1.66 0 2.29l1.46 1.46c.14.14.31.2.49.2s.36-.07.49-.2c.27-.27.27-.71 0-.98l-1.46-1.46a.235.235 0 0 1 0-.33l7.11-7.11Z"/><path d="M17.96 9.83a.694.694 0 0 0-.98-.98l-5.82 5.82c-.81.81-2.14.81-2.95 0s-.81-2.14 0-2.95l5.82-5.82a.694.694 0 0 0-.98-.98l-5.82 5.82a3.476 3.476 0 0 0 0 4.92c.68.68 1.57 1.02 2.46 1.02s1.78-.34 2.46-1.02l5.82-5.82Z"/></svg><span>MCP</span></a>
+  <a href="/settings.html" class="side-foot" title="Settings: model formats, embedding prefixes and LM Studio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>Settings</span></a>
+</nav>
+<div class="app">
+  <header class="top">
+    <h1>MCP</h1>
+    <select id="chatModel" class="field" aria-label="Chat model" hidden></select>
+    <span class="spacer"></span>
+    <span class="seg" id="theme" role="group" aria-label="Theme">
+      <button data-theme="light" aria-pressed="false">Light</button>
+      <button data-theme="dark" aria-pressed="false">Dark</button>
+    </span>
+  </header>
+
+  <section class="composer" aria-label="About">
+    <div class="lede">A playground for MCP, the Model Context Protocol: one standard way to connect a model to tools and data. Here LM Studio is the MCP host: it starts the servers of its <code>mcp.json</code>, gives their tools to the model, and runs each tool call. This page sends your message and shows each step.
+      <details class="more"><summary>How it works</summary>
+        <div class="roles">
+          <div><b>Host</b>The application that the user works in, here LM Studio. It runs the model and has one client for each server.</div>
+          <div><b>Client</b>A part of the host. It holds one connection to one server and sends it JSON-RPC messages.</div>
+          <div><b>Server</b>A program that gives tools, resources and prompts. Local (stdio: the host starts it as a child process) or remote (Streamable HTTP: a URL).</div>
+        </div>
+        <p>A server has three kinds of capabilities. <b>Tools</b> are model-controlled: the model selects one and writes the call. <b>Resources</b> are application-controlled: data, like a file, that the host reads and adds to the context. <b>Prompts</b> are user-controlled: ready messages that you select, like a slash command.</p>
+        <ol class="how">
+          <li><b>Connect</b> · the host starts or calls each server and asks which tools it has (<code>tools/list</code>).</li>
+          <li><b>Prompt and tools</b> · the host puts your message and the tool definitions into the prompt of the model.</li>
+          <li><b>Tool selection</b> · the model selects a tool and writes the call, or answers at once.</li>
+          <li><b>Tool call</b> · the host sends <code>tools/call</code> to the server of that tool. The server calls its API or reads its files.</li>
+          <li><b>Result</b> · the server returns the result to the host, and the host adds it to the prompt.</li>
+          <li><b>Answer</b> · the model reads the result and writes the answer.</li>
+        </ol>
+        <p>The model never talks to a server. It only writes text; the host does the rest. Over the API, LM Studio runs each tool call at once: there is no approval step.</p>
+      </details></div>
+  </section>
+
+  <div class="tabbox">
+  <div class="tabs" role="tablist" aria-label="Views">
+    <button type="button" role="tab" data-tab="chat" aria-selected="true">Chat</button>
+    <button type="button" role="tab" data-tab="servers" aria-selected="false">MCP Servers</button>
+  </div>
+
+  <div class="tabpane" id="pane-chat" role="tabpanel">
+  <section class="panel" aria-label="Chat">
+    <div class="panel-head"><button type="button" id="newChat" class="btn ghost" title="Start a new chat: clear the conversation. LM Studio forgets it too: the next message has no previous_response_id.">New</button>
+      <div class="perm-wrap chats-wrap"><button type="button" id="chatsBtn" class="btn ghost" aria-haspopup="menu" aria-expanded="false" aria-controls="chatsMenu" title="Archived chats: each chat is archived when a message finishes. Open one to view it again, read only.">Archived</button>
+        <div class="perm-menu chats-menu" id="chatsMenu" role="menu" aria-label="Archived chats" hidden></div></div>
+</div>
+    <div class="opts sysrow">
+      <details class="opt" id="optSystem">
+        <summary><span class="chev"></span><span class="opt-title">System prompt</span><span class="opt-state" id="stSystem"></span></summary>
+        <div class="opt-body">
+          <label for="sysExamples" class="lbl-s">Examples</label>
+          <div class="lbl-s">Instructions for the model. LM Studio puts them first, before the tool definitions.</div>
+          <select id="sysExamples" class="field ex"></select>
+          <div class="input-wrap"><textarea id="system" class="input" rows="1" placeholder="Instructions for the model, for example: Answer in one sentence."></textarea><div class="input-tools"><button type="button" class="copy" id="delSystem" title="Delete saved system prompt" aria-label="Delete saved system prompt" hidden></button><button type="button" class="copy" id="saveSystem" title="Save system prompt to the list" aria-label="Save system prompt to the list"></button><button type="button" class="copy" id="copySystem" title="Copy system prompt" aria-label="Copy system prompt"></button></div></div>
+        </div>
+      </details>
+    </div>
+    <!-- MCP list: the servers and the tools of each one that LM Studio may give to the model -->
+    <div class="opts sysrow">
+      <details class="opt" id="optMcp">
+        <summary><span class="chev"></span><span class="opt-title">MCP list</span><span class="opt-state" id="stMcp"></span><span class="sum-ctl"><span class="info" tabindex="0" data-tip-title="MCP list" data-tip="The servers of mcp.json. A server that is on goes into integrations. Its tools: LM Studio gives only the tools with a check to the model (allowed_tools). A tool without a check is not in the prompt, so the model cannot call it.">i</span></span></summary>
+        <div class="mcp-list" id="mcpList"></div>
+      </details>
+    </div>
+    <div class="sampling">
+      <div class="ctl">
+        <div class="ctl-label"><label for="temp">Temperature</label><span class="info" tabindex="0" data-tip-title="Temperature" data-tip="0: the model always picks the most likely token, so each run is the same. Higher: more random.">i</span></div>
+        <div class="ctl-row"><input type="range" id="temp" min="0" max="2" step="0.1" aria-describedby="tempV"><output id="tempV"></output></div>
+      </div>
+      <div class="ctl">
+        <div class="ctl-label"><label for="maxTok">Max tokens</label><span class="info" tabindex="0" data-tip-title="Max tokens" data-tip="The most tokens the model can write in one model call, its thinking included (max_output_tokens). A turn with a tool has two or more model calls, so the turn can have more tokens. A low limit cuts the reply.">i</span></div>
+        <div class="ctl-row"><input type="range" id="maxTok" min="0" max="9" step="1" aria-describedby="maxTokV"><output id="maxTokV"></output></div>
+      </div>
+    </div>
+  </section>
+  <section class="panel" aria-label="Chat log">
+    <div class="log-head"><div class="flow2" id="flow" aria-label="The steps of MCP"></div><span class="stats" id="stats"></span></div>
+    <div class="chatlog" id="log"></div>
+  </section>
+  <section class="panel sendbar" aria-label="Your message">
+    <div class="cbox">
+      <div class="attach" id="attach" hidden></div>
+      <div class="cbox-top"><textarea id="msg" class="cbox-input" rows="1" placeholder="Ask something, or select an example." title="Enter sends the message. Shift + Enter adds a line."></textarea></div>
+      <div class="cbox-bar">
+        <div class="perm-wrap plus-wrap"><button type="button" class="perm-btn" id="plusBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="plusMenu" title="Tools and MCP servers" aria-label="Tools and MCP servers"></button>
+          <div class="perm-menu plus-menu" id="plusMenu" role="menu" aria-label="Add" hidden></div>
+          <div class="perm-menu tools-menu" id="toolsMenu" role="menu" aria-label="Tools" hidden></div>
+          <div class="perm-menu mcp-menu" id="mcpMenu" role="menu" aria-label="MCP servers" hidden></div></div>
+        <div id="chatPick" class="grow"></div>
+        <button id="sendBtn" class="send-round" title="Send the message (Enter)" aria-label="Send"></button>
+      </div>
+    </div>
+    <div class="starters" id="starters" role="group" aria-label="Examples"></div>
+    <div class="send-tools"><span class="status" id="status" aria-live="polite"></span></div>
+    <div class="error" id="error" role="alert"></div>
+  </section>
+  </div>
+
+  <div class="tabpane" id="pane-servers" role="tabpanel" hidden>
+  <section class="panel" aria-label="MCP servers" id="srvPanel"></section>
+  </div>
+  </div>
+</div>
+
+<script src="/composer.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const getJ = async url => { const r = await fetch(url); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error?.message || `Error ${r.status}`); return j; };
+const post = async (url, body, method = "POST") => {
+  const r = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error?.message || j.error || `Error ${r.status}`); return j;
+};
+const SVG = (d, w = 1.8) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+const IC = {
+  plus: SVG('<path d="M5 12h14M12 5v14"/>', 2), chev: SVG('<path d="M9 6l6 6-6 6"/>'), back: SVG('<path d="M19 12H5M12 19l-7-7 7-7"/>'),
+  blocks: SVG('<path d="M10 22V7a1 1 0 0 0-1-1H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5a1 1 0 0 0-1-1H2"/><rect width="8" height="8" x="14" y="2" rx="1"/>'),
+  plug: '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M19.97 11.84c.66-.66 1.02-1.53 1.02-2.46s-.36-1.8-1.02-2.46l-.04-.04a3.45 3.45 0 0 0-2.46-1.02c-.17 0-.34.03-.51.05c.02-.17.05-.33.05-.51c0-.93-.36-1.8-1.02-2.46s-1.53-1.02-2.46-1.02s-1.8.36-2.46 1.02L3.2 10.81a.694.694 0 0 0 .98.98l7.87-7.87c.39-.39.92-.61 1.47-.61A2.08 2.08 0 0 1 15.6 5.4c0 .56-.22 1.08-.61 1.48l-5.86 5.86l-.08.08c-.27.27-.27.71 0 .98c.14.14.31.2.49.2s.36-.07.49-.2l5.94-5.94a2.09 2.09 0 0 1 2.95 0l.04.04c.39.39.61.92.61 1.47s-.22 1.08-.61 1.48l-7.11 7.11c-.63.63-.63 1.66 0 2.29l1.46 1.46c.14.14.31.2.49.2s.36-.07.49-.2c.27-.27.27-.71 0-.98l-1.46-1.46a.235.235 0 0 1 0-.33l7.11-7.11Z"/><path d="M17.96 9.83a.694.694 0 0 0-.98-.98l-5.82 5.82c-.81.81-2.14.81-2.95 0s-.81-2.14 0-2.95l5.82-5.82a.694.694 0 0 0-.98-.98l-5.82 5.82a3.476 3.476 0 0 0 0 4.92c.68.68 1.57 1.02 2.46 1.02s1.78-.34 2.46-1.02l5.82-5.82Z"/></svg>',
+  manage: SVG('<path d="M14 17H5M19 7h-9"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/>'),
+  del: SVG('<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/>', 2), x: SVG('<path d="M18 6 6 18M6 6l12 12"/>', 2),
+  globe: SVG('<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20M2 12h20"/>'),
+  term: SVG('<path d="m4 17 6-6-6-6M12 19h8"/>'), file: SVG('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/>'),
+  wrench: SVG('<path d="M14.7 6.3a4 4 0 0 0-5.4 5.1L3 17.7 6.3 21l6.3-6.3a4 4 0 0 0 5.1-5.4l-2.6 2.6-2.4-.5-.5-2.4z"/>'),
+  book: SVG('<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/>'),
+  folder: SVG('<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>'),
+  search: SVG('<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>'),
+};
+
+// ---------------------------------------------------------------- State
+const S_DEFAULT = { tab: "chat", on: {}, system: "", temp: 0, maxTokens: 1500, allowed: {} };
+const S = { ...S_DEFAULT };
+try { Object.assign(S, JSON.parse(localStorage.getItem("mcpPage") || "{}")); } catch {}
+if (!S.allowed || typeof S.allowed !== "object") S.allowed = {};
+const keep = () => { try { localStorage.setItem("mcpPage", JSON.stringify(S)); } catch {} };
+let cfg = { servers: [], text: "" }, tools = [], checks = {}, token = { set: false }, busy = false, ctrl = null;
+var chatId = null, viewing = null;  // the archived chat on screen (read only), else null
+let chat = [], lastResponseId = null, attached = [];  // attached: resources that you add to the next message
+const view = { mode: "list" };  // Servers tab: list | form | inspect | dir
+const srv = n => cfg.servers.find(s => s.name === n);
+const enabled = () => cfg.servers.filter(s => S.on[s.name] && S.allowed[s.name]?.length !== 0);
+
+// The servers that the page suggests. LM Studio starts them; the page only writes their entries into mcp.json.
+const suggested = () => [
+  { name: "lm-trace", title: "LM Trace tools", icon: IC.wrench, desc: "The tools of the Tools page, served by LM Trace on this computer (Streamable HTTP). It also has 2 resources and 2 prompts.",
+    def: { type: "http", url: cfg.lmTraceUrl || "http://localhost:8765/mcp" } },
+  { name: "parallel-search", title: "Parallel Search", icon: IC.globe, desc: "Search the web and read pages, from Parallel. A remote server; no API key.",
+    def: { type: "http", url: "https://search.parallel.ai/mcp" } },
+  { name: "filesystem", title: "Filesystem (read only)", icon: IC.folder, desc: "The official Filesystem server, for the sample folder mcp-files. --read-only: the model can list and read files, not change them.",
+    def: { type: "stdio", command: cfg.npx || "npx", args: ["-y", "@modelcontextprotocol/server-filesystem", "--read-only", cfg.sampleDir || "mcp-files"] } },
+];
+// Icon and description of a server: LM Trace keeps them in mcp-meta.json. mcp.json has no fields for them.
+let meta = [];
+const metaOf = n => meta.find(m => m.name === n) || {};
+// An icon: an Iconify name (set:icon), or an https:// link to a PNG, SVG or ICO file.
+const ICON_RE = /^[a-z0-9-]+:[a-z0-9-]+$/;
+const isIconUrl = u => { try { const x = new URL(u); return x.protocol === "https:" && /\.(png|svg|ico)$/i.test(x.pathname); } catch { return false; } };
+const validIcon = id => ICON_RE.test(id || "") || isIconUrl(id || "");
+const iconify = id => ICON_RE.test(id || "") ? `<span class="ico" style="--i:url('https://api.iconify.design/${id.replace(":", "/")}.svg')" aria-hidden="true"></span>`
+  : isIconUrl(id || "") ? `<img class="ico-img" src="${esc(id)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : "";
+const titleOf = n => suggested().find(x => x.name === n)?.title || n;
+const iconOf = s => iconify(metaOf(s.name).icon) || suggested().find(x => x.name === s.name)?.icon || (s.type === "http" ? IC.globe : IC.term);
+async function loadMeta() { try { const m = await getJ("/mcp-meta"); meta = Array.isArray(m) ? m : []; } catch { meta = []; } }
+async function saveMeta(name, old, m) {
+  meta = meta.filter(x => x.name !== name && x.name !== old);
+  if (m && (m.icon || m.description)) meta.push({ name, ...(m.icon ? { icon: m.icon } : {}), ...(m.description ? { description: m.description } : {}) });
+  try { await post("/mcp-meta", meta, "PUT"); } catch (e) { setStatus(`Not saved: ${e.message}`); }
+}
+const lineOf = s => s.type === "http" ? s.def.url : [s.def.command, ...(s.def.args || [])].join(" ");
+
+async function loadConfig() {
+  try { cfg = await getJ("/mcp-config"); } catch (e) { cfg = { servers: [], text: "", error: e.message }; }
+  for (const n of Object.keys(S.on)) if (!srv(n)) delete S.on[n];
+  keep();
+  
+}
+async function loadTools() { try { const t = await getJ("/tools"); tools = Array.isArray(t) ? t : []; } catch { tools = []; } }
+async function loadToken() { try { token = await getJ("/lmstudio-token"); } catch {} }
+// Can the LM Studio API use the servers of mcp.json? One check is enough: the setting is for all of them.
+async function check(name) {
+  checks[name] = { state: "checking" }; renderServers();
+  try { checks[name] = await post("/mcp-check", { name }); } catch (e) { checks[name] = { state: "other", message: e.message }; }
+  renderServers(); renderChat();
+  return checks[name];
+}
+const permState = () => { const v = Object.values(checks).map(c => c.state); return v.includes("ok") ? "ok" : v.includes("token") ? "token" : v.includes("denied") ? "denied" : v.length ? v[0] : null; };
+
+// ---------------------------------------------------------------- Tooltip, theme, sidebar, tabs
+const tip = Object.assign(document.createElement("div"), { id: "tip", role: "tooltip" });
+document.body.append(tip);
+document.addEventListener("mouseover", e => {
+  const el = e.target.closest("[data-tip]");
+  if (!el) return tip.classList.remove("show");
+  tip.innerHTML = `<b>${esc(el.dataset.tipTitle || "")}</b><span>${esc(el.dataset.tip)}</span>`;
+  tip.classList.add("show");
+  const r = el.getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight;
+  tip.style.left = Math.max(8, Math.min(r.left, innerWidth - w - 8)) + "px";
+  tip.style.top = (r.bottom + 8 + h > innerHeight ? r.top - h - 8 : r.bottom + 8) + "px";
+});
+document.addEventListener("scroll", () => tip.classList.remove("show"), true);
+document.addEventListener("focusin", e => { const el = e.target.closest?.("[data-tip]"); if (el) el.dispatchEvent(new MouseEvent("mouseover", { bubbles: true })); });
+document.addEventListener("focusout", () => tip.classList.remove("show"));
+$("sideToggle").onclick = () => {
+  const v = document.documentElement.dataset.side === "closed" ? "open" : "closed";
+  document.documentElement.dataset.side = v;
+  if (!narrow.matches) try { localStorage.setItem("sidebar", v); } catch {}
+};
+function setTheme(v, save) {
+  document.documentElement.dataset.theme = v;
+  document.querySelectorAll("#theme button").forEach(b => b.setAttribute("aria-pressed", b.dataset.theme === v));
+  if (save) try { localStorage.setItem("theme", v); } catch {}
+}
+document.querySelectorAll("#theme button").forEach(b => { b.onclick = () => setTheme(b.dataset.theme, true); });
+setTheme(document.documentElement.dataset.theme, false);
+function setTab(v) {
+  S.tab = v; keep();
+  document.querySelectorAll(".tabs [data-tab]").forEach(b => b.setAttribute("aria-selected", b.dataset.tab === v));
+  $("pane-chat").hidden = v !== "chat"; $("pane-servers").hidden = v !== "servers";
+  if (v === "servers") renderServers(); else { sizeChat(); renderChat(); }
+}
+document.querySelectorAll(".tabs [data-tab]").forEach(b => b.onclick = () => { if (b.dataset.tab === "servers") view.mode = "list"; setTab(b.dataset.tab); });
+
+// ---------------------------------------------------------------- Servers tab
+const sw = (on, attrs = "", label = "") => `<button type="button" class="sw-btn" role="switch" aria-checked="${on}" ${attrs}>${label}<span class="sw" aria-hidden="true"></span></button>`;
+const isLocal = u => /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])[:/]/.test(u || "");
+const typeBadge = s => s.type === "http" && isLocal(s.def.url)
+  ? `<span class="badge" data-tip-title="Streamable HTTP, on this computer" data-tip="The host sends each JSON-RPC message in an HTTP POST to the URL. Here the server is LM Trace itself, on this computer: no child process, but the same protocol as a remote server.">Local · HTTP</span>`
+  : s.type === "http"
+  ? `<span class="badge" data-tip-title="Streamable HTTP" data-tip="A remote server: the host sends each JSON-RPC message in an HTTP POST to its URL. The server runs somewhere else (here: ${esc(new URL(s.def.url.replace(/•••/g, "x")).hostname)}).">Remote · HTTP</span>`
+  : `<span class="badge" data-tip-title="stdio" data-tip="A local server: the host starts it as a child process and sends JSON-RPC messages on its standard input. The answers come on its standard output, one JSON object per line.">Local · stdio</span>`;
+
+function setupCard() {
+  const st = permState(), first = cfg.servers[0]?.name;
+  const row = (ok, text, right = "") => `<div class="chkrow"><span class="${ok === true ? "ok" : ok === false ? "no" : "q"}">${ok === true ? "✓" : ok === false ? "✕" : "?"}</span><span>${text}</span><span class="r">${right}</span></div>`;
+  const tokRow = row(token.set ? true : st === "ok" ? true : st === "token" ? false : null,
+    token.set ? "LM Trace has an API token of LM Studio" : "No API token in LM Trace", token.set ? (token.source === "env" ? "from LM_API_TOKEN" : "saved in Settings") : `<a href="/settings.html#lmstudio">Settings</a>`);
+  const permRow = row(st === "ok" ? true : st === "denied" || st === "token" ? false : null,
+    st === "ok" ? "LM Studio lets the API use the servers of mcp.json" : st === "denied" ? "LM Studio does not let the API use the servers of mcp.json" : st === "token" ? "LM Studio asks for an API token" : st === "offline" ? "LM Studio does not answer" : st === "checking" ? "Checking…" : "Not checked yet",
+    checks[first]?.message && st !== "ok" ? esc(checks[first].message.slice(0, 90)) : "");
+  const bad = st && st !== "ok" && st !== "checking";
+  if (st === "ok" && token.set) return `<div class="setup ok1"><span class="ok">✓</span><span>LM Studio lets the API use the servers of mcp.json</span><button type="button" class="linkish" data-act="check">Check again</button></div>`;
+  return `<div class="setup${bad ? " bad" : ""}"><div class="setup-hd"><b>LM Studio settings</b><span>The chat uses the servers through the LM Studio API, so LM Studio must allow it.</span>
+      ${first ? `<button type="button" class="btn ghost" data-act="check">Check again</button>` : ""}</div>
+    <div class="setup-bd">${tokRow}${permRow}
+      ${bad || !token.set ? `<ol><li>In LM Studio, open <b>Developer</b> › <b>Server Settings</b>.</li><li>Turn on <b>Require Authentication</b>, and <b>Allow calling servers from mcp.json</b>.</li><li>Create an API token (Manage tokens), copy it, and paste it in LM Trace <a href="/settings.html#lmstudio">Settings</a>.</li></ol>` : ""}</div></div>`;
+}
+
+function renderServers() {
+  const p = $("srvPanel");
+  if (view.mode === "form") return renderForm(p);
+  if (view.mode === "inspect") return renderInspect(p);
+  if (view.mode === "dir") return renderDir(p);
+  const have = new Set(cfg.servers.map(s => s.name));
+  const sug = suggested().filter(x => !have.has(x.name));
+  p.innerHTML = `<div class="panel-head"><h2>MCP servers</h2><span class="sub">The servers in the <code>mcp.json</code> of LM Studio. LM Studio starts them when a chat uses them.</span>
+      <div class="head-actions"><button type="button" class="btn ghost" data-act="dir">Browse directory</button>
+        <div class="add-wrap"><button type="button" class="btn dark" id="addBtn" aria-haspopup="menu" aria-expanded="false">Add <span aria-hidden="true">▾</span></button>
+          <div class="perm-menu" id="addMenu" role="menu" hidden>
+            <button type="button" role="menuitem" data-act="add-stdio">${IC.term}<span>Local server</span><span></span><span class="d">stdio: LM Studio starts a program on this computer and talks to it through stdin and stdout</span></button>
+            <button type="button" role="menuitem" data-act="add-http">${IC.globe}<span>Remote server</span><span></span><span class="d">Streamable HTTP: LM Studio sends requests to a URL</span></button>
+          </div></div></div></div>
+    ${cfg.error ? `<div class="error" style="padding:12px 18px 0">${esc(cfg.error)}</div>` : ""}
+    ${cfg.servers.length ? setupCard() : ""}
+    <div class="srv-list">
+      ${cfg.servers.length ? "" : `<p class="hint">No servers in mcp.json yet. Add one of the suggested servers below, or your own.</p>`}
+      ${cfg.servers.map(s => { const open = mlOpen.has(s.name); return `<div class="srv${open ? " open" : ""}"><div class="srv-hd">
+          <button type="button" class="srv-open" data-ml-open="${esc(s.name)}" aria-expanded="${open}" title="${open ? "Hide" : "Show"} the tools of mcp/${esc(s.name)}"><span class="av">${iconOf(s)}</span>
+            <span class="nmw"><span class="nm">${esc(titleOf(s.name))} ${typeBadge(s)}</span><span class="ln${metaOf(s.name).description ? " desc" : ""}" title="${esc(lineOf(s))}">${esc(metaOf(s.name).description || lineOf(s))}</span></span><span class="ml-count">${mlCount(s)}</span><span class="chev"></span></button>
+          <div class="right">${sw(!!S.on[s.name], `data-on="${esc(s.name)}" title="Use this server in the chat" aria-label="Use ${esc(s.name)} in the chat"`)}
+            ${view.del === s.name ? `<button type="button" class="btn danger" data-del="${esc(s.name)}" data-confirm="1" title="Remove ${esc(s.name)} from mcp.json. LM Studio then removes its plugin mcp/${esc(s.name)}. LM Trace keeps a copy of the old file.">Uninstall</button><button type="button" class="btn ghost" data-act="del-cancel">Keep</button>`
+              : `<button type="button" class="btn ghost" data-inspect="${esc(s.name)}" title="Connect to the server and show its tools, resources, prompts and messages">Details</button>
+            <div class="more-wrap"><button type="button" class="more-btn" data-more="${esc(s.name)}" aria-haspopup="menu" aria-expanded="${view.more === s.name}" aria-label="More for ${esc(s.name)}">⋯</button>
+              ${view.more === s.name ? `<div class="perm-menu more-menu" role="menu"><button type="button" role="menuitem" data-edit="${esc(s.name)}">Edit</button><div class="sep"></div><button type="button" role="menuitem" class="danger-item" data-del="${esc(s.name)}">Uninstall</button></div>` : ""}</div>`}</div></div>
+          ${open ? mlToolsHtml(s, busy) : ""}
+          ${!s.validName ? `<div class="d">This name has characters that the page cannot use in a plugin id. Rename it to use it in the chat.</div>` : ""}</div>`; }).join("")}
+      ${sug.length ? `<div class="grp-hd" style="padding-top:12px">Suggested</div>` + sug.map(x => `<div class="srv sug"><div class="srv-hd"><span class="av">${x.icon}</span>
+          <div class="nmw"><span class="nm">${esc(x.title)} ${typeBadge({ type: x.def.type, def: x.def })}</span><span class="ln">${esc(x.def.url || [x.def.command, ...x.def.args].join(" "))}</span></div>
+          <div class="right"><button type="button" class="btn ghost" data-sug="${esc(x.name)}" title="Open the form with this server, so you can see the entry before you save it">Add</button></div></div>
+          <div class="d">${esc(x.desc)}</div></div>`).join("") : ""}
+    </div>
+    <div class="opts sysrow" style="border-top:1px solid var(--paper-2)"><details class="opt" id="optJson"${view.jsonOpen ? " open" : ""}><summary><span class="chev"></span><span class="opt-title">mcp.json</span><span class="opt-state">${esc(cfg.path || "")} · the secrets show as •••</span></summary>
+      <pre class="raw" style="margin:0 0 14px">${esc(cfg.text || "")}</pre></details></div>`;
+  $("optJson").ontoggle = e => { view.jsonOpen = e.target.open; };
+}
+
+// The form: Connect to a custom MCP. One server entry of mcp.json.
+function blankDef(type) { return type === "http" ? { type, url: "", headers: [] } : { type, command: "", args: [""], env: [], cwd: "" }; }
+function openForm(opts) {
+  const s = opts.name ? srv(opts.name) : null;
+  const d = opts.def || s?.def || {};
+  const type = opts.type || (d.url !== undefined ? "http" : "stdio");
+  view.mode = "form";
+  view.form = { old: s ? s.name : null, name: opts.newName ?? s?.name ?? "", type, note: opts.note || "",
+    url: d.url || "", headers: Object.entries(d.headers || {}).filter(([k]) => k.toLowerCase() !== "authorization"), command: d.command || "", args: (d.args && d.args.length ? [...d.args] : [""]),
+    env: Object.entries(d.env || {}), cwd: d.cwd || "", error: "",
+    icon: (s && metaOf(s.name).icon) || opts.icon || "", description: (s && metaOf(s.name).description) || opts.description || "" };
+  const au = Object.entries(d.headers || {}).find(([k]) => k.toLowerCase() === "authorization");
+  view.form.auth = au ? "key" : "none"; view.form.key = au ? String(au[1]).replace(/^Bearer\s+/i, "") : "";
+  if (opts.envNeeded) for (const k of opts.envNeeded) if (!view.form.env.some(([a]) => a === k)) view.form.env.push([k, ""]);
+  if (opts.headersNeeded) for (const k of opts.headersNeeded) if (!view.form.headers.some(([a]) => a === k)) view.form.headers.push([k, ""]);
+  setTab("servers");
+}
+function formDef() {
+  const f = view.form, kv = list => Object.fromEntries(list.filter(([k]) => k.trim()).map(([k, v]) => [k.trim(), v]));
+  if (f.type === "http") {
+    const d = { url: f.url.trim() }, h = kv(f.headers);
+    if (f.auth === "key" && f.key.trim()) h.Authorization = f.key.trim() === "•••" ? "•••" : `Bearer ${f.key.trim()}`;
+    if (Object.keys(h).length) d.headers = h; return d;
+  }
+  const d = { command: f.command.trim(), args: f.args.filter(a => a !== "") }; const e = kv(f.env); if (Object.keys(e).length) d.env = e; if (f.cwd.trim()) d.cwd = f.cwd.trim(); return d;
+}
+// The entry in mcp.json, with the API key shown as •••
+function previewOf() {
+  const f = view.form, d = formDef();
+  if (d.headers?.Authorization) d.headers = { ...d.headers, Authorization: "Bearer •••" };
+  return JSON.stringify({ mcpServers: { [f.name || "name"]: d } }, null, 2);
+}
+function renderForm(p) {
+  const f = view.form;
+  const kvRows = (key, ph1, ph2) => f[key].map(([k, v], i) => `<div class="kv"><input class="field mono" data-kv="${key}.${i}.0" value="${esc(k)}" placeholder="${ph1}" aria-label="${ph1}"><input class="field mono" data-kv="${key}.${i}.1" value="${esc(v)}" placeholder="${ph2}" aria-label="${ph2}"><button type="button" class="rm" data-rm="${key}.${i}" aria-label="Remove">${IC.del}</button></div>`).join("");
+  const preview = previewOf();
+  p.innerHTML = `<div class="form-wrap">
+    <button type="button" class="back" data-act="back">${IC.back}Back</button>
+    <h3>${f.old ? `Edit ${esc(f.old)}` : "Connect to a custom MCP"}</h3>
+    ${f.note ? `<div class="note">${f.note}</div>` : ""}
+    <div class="fcard">
+      <div class="frow2"><label for="fIcon">Icon <span class="opt">optional</span></label><div class="icon-row"><span class="icon-prev" id="fIconPrev">${iconify(f.icon) || IC.plug}</span><input id="fIcon" class="field mono" value="${esc(f.icon)}" placeholder="simple-icons:github or https://…/icon.png" autocomplete="off" spellcheck="false"><a class="linkish" href="https://icon-sets.iconify.design/" target="_blank" rel="noopener">Browse icons</a></div>
+        <span class="hint-s">An Iconify name (set:icon), or an https:// link to a PNG, SVG or ICO file.</span></div>
+      <div class="frow2"><label for="fName">Name</label><input id="fName" class="field mono" value="${esc(f.name)}" placeholder="MCP server name, for example parallel-search" autocomplete="off">
+        <span class="hint-s">The key in mcp.json. LM Studio uses it in the plugin id <code>mcp/${esc(f.name || "name")}</code>. Lowercase letters, digits, - and _.</span></div>
+      <div class="frow2"><label for="fDesc">Description <span class="opt">optional</span></label><input id="fDesc" class="field" value="${esc(f.description)}" placeholder="What it does, in a few words" autocomplete="off"></div>
+      <div class="frow2 typerow"><span class="lb">Type</span><span class="seg" id="fType" role="group" aria-label="Type"><button type="button" data-v="stdio" aria-pressed="${f.type === "stdio"}">STDIO</button><button type="button" data-v="http" aria-pressed="${f.type === "http"}">Streamable HTTP</button></span></div>
+    </div>
+    <div class="fcard">${f.type === "http" ? `
+      <div class="frow2"><label for="fUrl">URL</label><input id="fUrl" class="field mono" value="${esc(f.url)}" placeholder="https://mcp.example.com/mcp">
+        <span class="hint-s">The HTTPS address where the server accepts MCP requests.</span></div>
+      <div class="frow2 typerow"><span class="lb">Authentication <span class="info" tabindex="0" data-tip="API key: LM Studio sends the header Authorization: Bearer &lt;key&gt; with each request. The page shows the key as •••.">i</span></span><span class="seg" id="fAuth" role="group" aria-label="Authentication"><button type="button" data-v="none" aria-pressed="${f.auth === "none"}">None</button><button type="button" data-v="key" aria-pressed="${f.auth === "key"}">API key</button></span></div>
+      ${f.auth === "key" ? `<div class="frow2"><label for="fKey">API key</label><input id="fKey" class="field mono" type="password" value="${esc(f.key)}" placeholder="Paste the API key" autocomplete="off" spellcheck="false"></div>` : ""}
+      <div class="frow2"><span class="lb">Headers <span class="opt">optional</span></span>${kvRows("headers", "Name", "Value")}<button type="button" class="addrow" data-add="headers">+ Add header</button></div>`
+    : `
+      <div class="frow2"><label for="fCmd">Command to launch</label><input id="fCmd" class="field mono" value="${esc(f.command)}" placeholder="npx">
+        <span class="hint-s">The program that starts the server. Use the full path if LM Studio cannot find it, for example ${esc(cfg.npx || "/opt/homebrew/bin/npx")}.</span></div>
+      <div class="frow2"><span class="lb">Arguments</span>${f.args.map((a, i) => `<div class="kv one"><input class="field mono" data-arg="${i}" value="${esc(a)}" aria-label="Argument ${i + 1}"><button type="button" class="rm" data-rm="args.${i}" aria-label="Remove">${IC.del}</button></div>`).join("")}<button type="button" class="addrow" data-add="args">+ Add argument</button></div>
+      <div class="frow2"><span class="lb">Environment variables</span>${kvRows("env", "Key", "Value")}<button type="button" class="addrow" data-add="env">+ Add environment variable</button></div>
+      <div class="frow2"><label for="fCwd">Working directory</label><input id="fCwd" class="field mono" value="${esc(f.cwd)}" placeholder="~/code (optional)"></div>`}
+    </div>
+    <div class="fcard"><div class="frow2"><span class="lb">The entry in mcp.json</span><pre class="raw" id="fPrev">${esc(preview)}</pre></div></div>
+    <p class="trust">Only use servers from developers that you trust. A server runs with your rights (stdio) or gets your data (HTTP). LM Trace keeps a copy of the old file in mcp.json.lm-trace.bak.</p>
+    <div class="form-foot"><span class="error" id="fErr">${esc(f.error)}</span><button type="button" class="btn ghost" data-act="back">Cancel</button><button type="button" class="btn" data-act="save">Save</button></div>
+  </div>`;
+  $("fName").focus();
+}
+function syncForm(e) {
+  const f = view.form, el = e.target;
+  if (el.id === "fName") f.name = el.value; else if (el.id === "fUrl") f.url = el.value; else if (el.id === "fCmd") f.command = el.value; else if (el.id === "fCwd") f.cwd = el.value;
+  else if (el.id === "fIcon") f.icon = el.value; else if (el.id === "fDesc") f.description = el.value; else if (el.id === "fKey") f.key = el.value;
+  else if (el.dataset.arg) f.args[+el.dataset.arg] = el.value;
+  else if (el.dataset.kv) { const [k, i, j] = el.dataset.kv.split("."); f[k][+i][+j] = el.value; }
+  else return;
+  const pv = $("fPrev"); if (pv) pv.textContent = previewOf();
+  if (el.id === "fIcon") { const ic = $("fIconPrev"); if (ic) ic.innerHTML = iconify(f.icon.trim()) || IC.plug; }
+}
+async function saveForm() {
+  const f = view.form;
+  try {
+    if (f.type === "http" && f.auth === "key" && !f.key.trim()) throw new Error("Paste the API key, or select None.");
+    if (f.icon.trim() && !validIcon(f.icon.trim())) throw new Error("Icon: an Iconify name like simple-icons:github, or an https:// link to a PNG, SVG or ICO file.");
+    cfg = { ...cfg, ...(await post("/mcp-config", { name: f.name.trim(), old: f.old, def: { type: f.type, ...formDef() } })) };
+    await saveMeta(f.name.trim(), f.old, { icon: f.icon.trim(), description: f.description.trim() });
+    if (f.old && f.old !== f.name.trim()) delete S.on[f.old];
+    S.on[f.name.trim()] = true; keep();
+    
+    view.mode = "list"; renderServers(); check(f.name.trim());
+  } catch (e) { f.error = e.message; $("fErr").textContent = e.message; }
+}
+
+// The API key of an HTTP server: saved as the header Authorization: Bearer <key>, then the page connects again.
+async function saveKey(name) {
+  const key = $("authKey").value.trim().replace(/^Bearer\s+/i, ""), s = srv(name);
+  if (!key) { $("authErr").textContent = "Paste the API key first."; return; }
+  if (!s) return;
+  const headers = Object.fromEntries(Object.entries(s.def.headers || {}).filter(([k]) => k.toLowerCase() !== "authorization"));
+  try {
+    cfg = { ...cfg, ...(await post("/mcp-config", { name, old: name, def: { type: "http", ...s.def, headers: { ...headers, Authorization: `Bearer ${key}` } } })) };
+    delete checks[name];
+    openInspect(name);
+  } catch (e) { $("authErr").textContent = e.message; }
+}
+
+// Inspect: the page asks LM Trace to connect to the server as a host does, and shows each message.
+async function openInspect(name, op) {
+  const same = view.insp?.name === name;
+  view.mode = "inspect"; view.insp = { name, loading: true, data: same ? view.insp.data : null, op, tab: same ? view.insp.tab : "tools", rpcOpen: same && view.insp.rpcOpen };
+  setTab("servers");
+  try {
+    const r = await post("/mcp-inspect", { name, ...(op ? { op } : {}) });
+    if (op) { view.insp.data = { ...view.insp.data, log: r.log, opResult: r, opErr: r.error }; }
+    else { view.insp.data = r; if (!r.error) toolCache[name] = { state: "ok", tools: r.tools || [] }; }
+  } catch (e) { view.insp.data = { ...(view.insp.data || {}), error: e.message }; }
+  view.insp.loading = false;
+  if (view.mode === "inspect") renderServers();
+}
+const sigOf = t => { const p = t.inputSchema?.properties || {}, req = t.inputSchema?.required || []; return `${t.name}(${Object.entries(p).map(([k, v]) => `${k}${req.includes(k) ? "" : "?"}: ${v.type || "any"}`).join(", ")})`; };
+function rpcRows(log) {
+  if (!log?.length) return "";
+  return log.map((e, i) => {
+    if (e.dir === "note") return `<div class="ev-row"><span class="meta">${e.ms} ms</span><span class="dir">Host</span><span class="what" style="color:var(--ink-3)">${esc(e.text)}</span><span></span></div>`;
+    const m = e.msg || {}, isReq = !!m.method, label = m.method || (m.http ? `HTTP ${m.http}` : m.error ? `error ${m.error.code}` : "result");
+    const dir = e.dir === "out" ? "Host → Server" : "Server → Host";
+    const sum = isReq ? `<code>${esc(m.method)}</code>${m.id !== undefined ? ` <span class="q">id ${m.id}</span>` : ` <span class="q">notification: no answer</span>`}` : `<code>${esc(label)}</code>${m.http ? ` <span class="q">not JSON-RPC: an HTTP answer</span>` : ` <span class="q">id ${esc(m.id)}</span>`}${e.sse ? ` <span class="q">· as an SSE event</span>` : ""}`;
+    return `<details class="ev"><summary><span class="meta">${e.ms} ms</span><span class="dir ${e.dir}">${dir}</span><span class="what">${sum}</span><span class="more">JSON<span class="chev"></span></span></summary><div class="ev-bd"><pre class="raw">${esc(JSON.stringify(m, null, 2))}</pre></div></details>`;
+  }).join("");
+}
+// The state line of the Details view: a short result of the last connection. Inspect connects, lists, and closes.
+function connState(v, d) {
+  if (v.loading) return `<div class="conn busy"><span class="busy-dot"></span>Connecting…</div>`;
+  if (d.error) return `<div class="conn bad"><span class="dot"></span>Not reachable · ${esc(d.error)}</div>`;
+  if (!d.version) return "";
+  const log = d.log || [], end = log.length ? log[log.length - 1].ms : 0;
+  const tip = `LM Trace connected as a host does (${d.mode === "discover" ? "server/discover" : "initialize"}), listed what the server has, then closed the connection. LM Studio makes its own connection when a chat uses the server.`;
+  return `<div class="conn ok"><span class="dot"></span><span>Online</span>${d.serverInfo?.name ? `<span class="sep">·</span><span>${esc(d.serverInfo.name)} ${esc(d.serverInfo.version || "")}</span>` : ""}`
+    + `<span class="sep">·</span><span data-tip-title="Protocol version" data-tip="${d.mode === "discover" ? "The server knows version 2026-07-28: no handshake; each request carries the version." : "The server does not know server/discover, so the client uses the initialize handshake of the older version."}">MCP ${esc(d.version)}</span>`
+    + `<span class="sep">·</span><span>${end} ms</span><span class="info" tabindex="0" data-tip-title="Details" data-tip="${esc(tip)}">i</span></div>`;
+}
+
+// HTTP 401: what the server asks for, from its protected resource metadata (RFC 9728)
+function authCard(a, name) {
+  const m = a.metadata || {}, as = m.authorization_servers || [];
+  const hasAuth = Object.keys(srv(name)?.def?.headers || {}).some(k => k.toLowerCase() === "authorization");
+  return `<div class="note auth-card"><b>The server needs an access token</b>
+    <p>An HTTP server can ask for a token before it answers. It answers <code>401</code>${a.wwwAuthenticate ? ` with <code>WWW-Authenticate: ${esc(a.wwwAuthenticate)}</code>` : ""}. The client then reads the server's <i>protected resource metadata</i>${a.metadataUrl ? ` at <code>${esc(a.metadataUrl)}</code>` : ""}, which names the authorization server that gives the tokens.</p>
+    ${a.metadata ? `<dl class="auth-kv">${as.length ? `<dt>Tokens from</dt><dd>${as.map(esc).join(", ")}</dd>` : ""}${m.scopes_supported?.length ? `<dt>Scopes</dt><dd>${m.scopes_supported.map(esc).join(", ")}</dd>` : ""}${m.bearer_methods_supported?.length ? `<dt>Token in</dt><dd>${m.bearer_methods_supported.map(esc).join(", ")}</dd>` : ""}${m.resource_documentation ? `<dt>Docs</dt><dd>${esc(m.resource_documentation)}</dd>` : ""}</dl>` : `<p>The server has no metadata at the usual address.</p>`}
+    ${hasAuth ? `<p class="auth-bad">LM Trace sent the <code>Authorization</code> header of mcp.json, but the server refused it. Check the key, or paste a new one.</p>` : ""}
+    <div class="auth-form"><label for="authKey"><b>API key</b> <span>Get one from ${as.length ? esc(as[0].replace(/^https?:\/\//, "")) : "the service"}. LM Trace saves it in mcp.json as the header <code>Authorization: Bearer &lt;key&gt;</code>. LM Studio sends that header with each request. The page shows it only as •••.</span></label>
+      <div class="auth-row"><input id="authKey" class="field mono" type="password" autocomplete="off" spellcheck="false" placeholder="Paste the API key"><button type="button" class="btn" data-act="auth-save" data-name="${esc(name)}">Save and connect</button></div>
+      <span class="error" id="authErr"></span></div></div>`;
+}
+
+function renderInspect(p) {
+  const v = view.insp, d = v.data || {}, s = srv(v.name), op = d.opResult;
+  const tab = v.tab || "tools";
+  const lists = { tools: d.tools, resources: d.resources, prompts: d.prompts };
+  const TABS = [["tools", "Tools", "Model-controlled: the model selects a tool and writes the call."],
+    ["resources", "Resources", "Application-controlled: you attach a resource; the host reads it and adds it to the message."],
+    ["prompts", "Prompts", "User-controlled: you select a prompt, like a slash command."]];
+  const none = v.loading ? "Connecting…" : d.error ? "Not reachable" : "None";
+  const items = lists[tab];
+  let body;
+  if (!items) body = `<div class="none">${none}</div>`;
+  else if (!items.length) body = `<div class="none">The server has no ${tab}.</div>`;
+  else if (tab === "tools") body = items.map(t => `<details class="cap-i"><summary><span class="chev"></span><code>${esc(t.name)}</code><span class="clamp1">${esc((t.description || "").split("\n")[0])}</span>${t.annotations?.readOnlyHint ? `<span class="badge">read only</span>` : ""}</summary>
+      <div class="cap-bd"><pre class="raw">${esc(t.description || "")}</pre><div class="lbl-s">inputSchema</div><pre class="raw">${esc(JSON.stringify(t.inputSchema || {}, null, 2))}</pre></div></details>`).join("");
+  else if (tab === "resources") body = items.map(r => `<div class="cap-r"><code>${esc(r.title || r.name)}</code><span class="clamp1">${esc(r.uri)}</span>
+      <button type="button" class="btn ghost sm" data-read="${esc(r.uri)}">Read</button><button type="button" class="btn ghost sm" data-attach="${esc(r.uri)}" data-attach-name="${esc(r.title || r.name)}" title="Read it and add it to your next message">Attach to chat</button></div>`).join("")
+      + (d.resourceTemplates?.length ? d.resourceTemplates.map(r => `<div class="cap-r"><code>${esc(r.title || r.name)}</code><span class="clamp1">${esc(r.uriTemplate)} · template</span></div>`).join("") : "");
+  else body = items.map(pr => `<div class="cap-r"><code>${esc(pr.title || pr.name)}</code><span class="clamp1">${esc(pr.description || "")}</span>
+      ${(pr.arguments || []).map(a => `<input class="field sm" data-parg="${esc(pr.name)}" data-pname="${esc(a.name)}" placeholder="${esc(a.name)}${a.required ? "" : " (optional)"}" title="${esc(a.description || a.name)}">`).join("")}<button type="button" class="btn ghost sm" data-pget="${esc(pr.name)}">Use in chat</button></div>`).join("");
+  const nMsg = (d.log || []).filter(e => e.dir !== "note").length;
+  p.innerHTML = `<div class="insp">
+    <button type="button" class="back" data-act="back">${IC.back}Back</button>
+    <div class="insp-hd"><span class="av">${s ? iconOf(s) : IC.plug}</span><h3>${esc(titleOf(v.name))}</h3>${s ? typeBadge(s) : ""}
+      <span style="margin-left:auto"></span><button type="button" class="btn ghost" data-inspect="${esc(v.name)}"${v.loading ? " disabled" : ""} title="Stop the server and start it again: a new process (stdio) or a new session (HTTP). Then list what it has. LM Studio has its own copy of the server; this does not restart it.">${v.loading ? '<span class="busy-dot"></span>Restarting…' : "Force Restart"}</button></div>
+    ${connState(v, d)}
+    ${d.auth ? authCard(d.auth, v.name) : ""}
+    <div class="cap-box"><div class="cap-tabs" role="tablist">${TABS.map(([k, l, tip]) => `<button type="button" role="tab" data-cap="${k}" aria-selected="${k === tab}" title="${esc(tip)}">${l} <span class="n">${lists[k] ? lists[k].length : "–"}</span></button>`).join("")}</div>
+      <div class="cap-list">${body}</div>
+      ${op ? `<div class="cap-op"><div class="lbl-s">${op.read ? "resources/read" : "prompts/get"}</div>${d.opErr ? `<div class="error">${esc(d.opErr)}</div>` : `<pre class="raw res-out">${esc(op.read ? (op.read.contents || []).map(c => c.text ?? "(binary)").join("\n\n") : (op.prompt?.messages || []).map(m => `${m.role}: ${m.content?.text ?? JSON.stringify(m.content)}`).join("\n\n"))}</pre>`}</div>` : ""}</div>
+    ${d.instructions ? `<details class="x"><summary><span class="chev"></span>Instructions of the server <span class="q">${d.instructions.length.toLocaleString()} characters · the host can add them to the system prompt</span></summary><div class="x-bd">${esc(d.instructions)}</div></details>` : ""}
+    <details class="x"${v.rpcOpen ? " open" : ""} data-rpc><summary><span class="chev"></span>JSON-RPC messages <span class="q">${v.loading && !d.log ? "…" : `${nMsg} message${nMsg === 1 ? "" : "s"}`}</span></summary><div class="rpc">${rpcRows(d.log)}</div></details>
+    ${d.stderr?.length ? `<details class="x"><summary><span class="chev"></span>stderr <span class="q">the log of the server</span></summary><pre class="raw">${esc(d.stderr.join("\n"))}</pre></details>` : ""}
+  </div>`;
+}
+
+// Browse directory: the official MCP registry (registry.modelcontextprotocol.io), through LM Trace.
+async function loadDir(more) {
+  const v = view.dir;
+  v.loading = true; renderServers();
+  try {
+    const q = new URLSearchParams({ search: v.q }); if (more && v.next) q.set("cursor", v.next);
+    const j = await getJ("/mcp-registry?" + q);
+    v.items = more ? [...v.items, ...j.servers] : j.servers; v.next = j.metadata?.nextCursor; v.error = "";
+  } catch (e) { v.error = e.message; }
+  v.loading = false; renderServers();
+}
+function dirEntry(it) {
+  const s = it.server || {}, remote = (s.remotes || []).find(r => r.type === "streamable-http"), pkg = (s.packages || []).find(p => p.transport?.type === "stdio" && ["npm", "pypi"].includes(p.registryType));
+  return { s, remote, pkg, anyRemote: (s.remotes || [])[0], key: s.name };
+}
+function renderDir(p) {
+  const v = view.dir;
+  // The first letter, and the icon of the server over it when it loads (some icons are broken or blocked).
+  const avatar = s => { const icon = (s.icons || [])[0]?.src, l = esc((s.title || s.name.split("/").pop() || "?")[0].toUpperCase());
+    return l + (icon && /^https:/.test(icon) ? `<img src="${esc(icon)}" alt="" referrerpolicy="no-referrer" loading="lazy" onerror="this.remove()">` : ""); };
+  p.innerHTML = `<div class="insp">
+    <button type="button" class="back" data-act="back">${IC.back}Back</button>
+    <div class="insp-hd"><h3>Browse directory</h3><span class="hint">The official MCP registry, <a href="https://registry.modelcontextprotocol.io/" target="_blank" rel="noopener" style="color:var(--red)">registry.modelcontextprotocol.io</a>: the latest version of each server. Anyone can publish a server there, so check it before you add it.</span></div>
+    <form class="dir-search" id="dirForm"><input id="dirQ" class="field" value="${esc(v.q)}" placeholder="Search servers, for example filesystem, weather, github" aria-label="Search the registry"><button class="btn small" type="submit">Search</button></form>
+    ${v.error ? `<div class="error">${esc(v.error)}</div>` : ""}
+    <div class="dir-grid">${v.items.map((it, i) => { const { s, remote, pkg, anyRemote } = dirEntry(it);
+      const how = remote ? `Remote · HTTP · ${esc(new URL(remote.url).hostname)}` : pkg ? `Local · ${pkg.registryType} · ${esc(pkg.identifier)}` : anyRemote ? `Remote · ${esc(anyRemote.type)}` : (s.packages || [])[0] ? `${esc(s.packages[0].registryType)} package` : "";
+      const keys = [...(remote?.headers || []).filter(h => h.isRequired || h.isSecret).map(h => h.name), ...(pkg?.environmentVariables || []).filter(e => e.isRequired).map(e => e.name)];
+      const can = remote || pkg;
+      return `<div class="dir-item"><span class="av">${avatar(s)}</span><div style="min-width:0;display:grid;gap:2px"><span class="t">${esc(s.title || s.name)}</span><span class="s">${esc(s.description || "")}</span>
+          <span class="m">${esc(s.name)} · v${esc(s.version || "?")}${how ? " · " + how : ""}${keys.length ? ` · needs ${esc(keys.join(", "))}` : ""}${s.repository?.url ? ` · <a href="${esc(s.repository.url)}" target="_blank" rel="noopener noreferrer">source</a>` : ""}</span></div>
+          ${can ? `<button type="button" class="btn ghost" data-dir="${i}" title="Open the form with this server">Add</button>` : `<span class="m" title="LM Trace can add Streamable HTTP servers and npm or PyPI packages that use stdio">Not supported</span>`}</div>`; }).join("")}</div>
+    ${v.loading ? `<p class="hint"><span class="busy-dot"></span>Searching…</p>` : !v.items.length && !v.error ? `<p class="hint">No servers found.</p>` : ""}
+    ${v.next && !v.loading ? `<div class="more-row"><button type="button" class="btn ghost small" data-act="dir-more">More</button></div>` : ""}
+  </div>`;
+  $("dirForm").onsubmit = e => { e.preventDefault(); v.q = $("dirQ").value.trim(); loadDir(false); };
+}
+function addFromDir(i) {
+  const { s, remote, pkg } = dirEntry(view.dir.items[i]);
+  const name = (s.name.split("/").pop() || "server").toLowerCase().replace(/[^a-z0-9_-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "server";
+  const note = `From the registry: <b>${esc(s.title || s.name)}</b> ${esc(s.version || "")}. Check the fields before you save.`;
+  if (remote) return openForm({ type: "http", newName: name, def: { url: remote.url }, note, headersNeeded: (remote.headers || []).filter(h => h.isRequired || h.isSecret).map(h => h.name) });
+  const runtime = pkg.registryType === "npm" ? (cfg.npx || "npx") : "uvx";
+  const args = pkg.registryType === "npm" ? ["-y", pkg.version ? `${pkg.identifier}@${pkg.version}` : pkg.identifier] : [pkg.version ? `${pkg.identifier}==${pkg.version}` : pkg.identifier];
+  for (const a of pkg.packageArguments || []) if (a.type === "positional" && (a.value || a.default)) args.push(a.value || a.default);
+  openForm({ type: "stdio", newName: name, def: { command: runtime, args }, note, envNeeded: (pkg.environmentVariables || []).filter(e => e.isRequired).map(e => e.name) });
+}
+
+// Clicks on the Servers tab
+$("srvPanel").addEventListener("click", async e => {
+  const t = e.target, a = t.closest("[data-act]")?.dataset.act;
+  if (mlClick(t)) return;
+  const mo = t.closest("[data-more]"); if (mo) { view.more = view.more === mo.dataset.more ? null : mo.dataset.more; renderServers(); return; }
+  if (view.more && !t.closest(".more-menu")) { view.more = null; renderServers(); }
+  if (t.closest("#addBtn")) { const m = $("addMenu"); m.hidden = !m.hidden; $("addBtn").setAttribute("aria-expanded", !m.hidden); return; }
+  if (a === "back") { view.mode = "list"; renderServers(); return; }
+  if (a === "add-stdio" || a === "add-http") return openForm({ type: a === "add-http" ? "http" : "stdio", def: blankDef(a === "add-http" ? "http" : "stdio") });
+  if (a === "dir") { view.mode = "dir"; view.dir = view.dir || { q: "", items: [], next: null }; renderServers(); if (!view.dir.items.length) loadDir(false); return; }
+  if (a === "dir-more") return loadDir(true);
+  if (a === "check") { const n = cfg.servers[0]?.name; if (n) { await loadToken(); check(n); } return; }
+  if (a === "save") return saveForm();
+  const sg = t.closest("[data-sug]"); if (sg) { const x = suggested().find(y => y.name === sg.dataset.sug); return openForm({ type: x.def.type, newName: x.name, def: x.def, note: esc(x.desc) }); }
+  const on = t.closest("[data-on]"); if (on) { const n = on.dataset.on; S.on[n] = !S.on[n]; keep(); if (S.on[n]) loadServerTools(n); renderServers(); renderChat(); if (S.on[n] && !checks[n]) check(n); return; }
+  const ed = t.closest("[data-edit]"); if (ed) { view.more = null; return openForm({ name: ed.dataset.edit }); }
+  if (a === "auth-save") return saveKey(t.closest("[data-name]").dataset.name);
+  if (a === "del-cancel") { view.del = null; renderServers(); return; }
+  const del = t.closest("[data-del]"); if (del) {
+    const n = del.dataset.del;
+    if (!del.dataset.confirm) { view.del = n; view.more = null; renderServers(); return; }
+    view.del = null;
+    try { cfg = { ...cfg, ...(await post("/mcp-config/delete", { name: n })) }; if (meta.some(m => m.name === n)) saveMeta(n, null, null); delete S.on[n]; delete checks[n]; keep();  renderServers(); renderChat(); }
+    catch (err) { cfg.error = err.message; renderServers(); }
+    return; }
+  const ins = t.closest("[data-inspect]"); if (ins) return openInspect(ins.dataset.inspect);
+  const ct = t.closest("[data-cap]"); if (ct) { view.insp.tab = ct.dataset.cap; renderServers(); return; }
+  const rd = t.closest("[data-read]"); if (rd) return openInspect(view.insp.name, { read: rd.dataset.read });
+  const at = t.closest("[data-attach]"); if (at) return attachResource(view.insp.name, at.dataset.attach, at.dataset.attachName);
+  const pg = t.closest("[data-pget]"); if (pg) return usePrompt(view.insp.name, pg.dataset.pget);
+  const di = t.closest("[data-dir]"); if (di) return addFromDir(+di.dataset.dir);
+  if (view.mode === "form") {
+    const f = view.form;
+    const ty = t.closest("#fType [data-v]"); if (ty) { f.type = ty.dataset.v; renderServers(); return; }
+    const au = t.closest("#fAuth [data-v]"); if (au) { f.auth = au.dataset.v; renderServers(); if (f.auth === "key") $("fKey")?.focus(); return; }
+    const ad = t.closest("[data-add]"); if (ad && ad.dataset.add === "apikey") { f.headers = f.headers.filter(([k, v]) => k || v); f.headers.push(["Authorization", "Bearer "]); renderServers(); const i = document.querySelector(`[data-kv="headers.${f.headers.length - 1}.1"]`); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } return; }
+    if (ad) { const k = ad.dataset.add; f[k].push(k === "args" ? "" : ["", ""]); renderServers(); return; }
+    const rm = t.closest("[data-rm]"); if (rm) { const [k, i] = rm.dataset.rm.split("."); f[k].splice(+i, 1); if (k === "args" && !f.args.length) f.args.push(""); renderServers(); return; }
+  }
+});
+$("srvPanel").addEventListener("toggle", e => { if (e.target.matches?.("[data-rpc]") && view.insp) view.insp.rpcOpen = e.target.open; }, true);
+$("srvPanel").addEventListener("input", e => { if (view.mode === "form") syncForm(e); });
+$("srvPanel").addEventListener("keydown", e => { if (e.target.id === "authKey" && e.key === "Enter") { e.preventDefault(); saveKey(view.insp.name); return; } if (view.mode === "form" && e.key === "Enter" && e.target.matches("input")) { e.preventDefault(); saveForm(); } });
+document.addEventListener("click", e => { if (!e.target.closest(".add-wrap") && $("addMenu")) { $("addMenu").hidden = true; $("addBtn")?.setAttribute("aria-expanded", false); } });
+const alertRow = m => { $("error").textContent = m; };
+
+// Resources and prompts go to the chat: a resource as an attachment, a prompt as the text of your message.
+async function attachResource(name, uri, title) {
+  try {
+    const r = await post("/mcp-inspect", { name, op: { read: uri } });
+    if (r.error) throw new Error(r.error);
+    const text = (r.read?.contents || []).map(c => c.text ?? "").join("\n");
+    attached = attached.filter(x => x.uri !== uri); attached.push({ server: name, uri, title, text });
+    renderAttach(); setTab("chat"); $("msg").focus();
+  } catch (e) { view.insp.data = { ...view.insp.data, error: e.message }; renderServers(); }
+}
+async function usePrompt(name, pname) {
+  const args = {}; document.querySelectorAll(`[data-parg="${CSS.escape(pname)}"]`).forEach(i => { if (i.value.trim()) args[i.dataset.pname] = i.value.trim(); });
+  const r = await post("/mcp-inspect", { name, op: { prompt: pname, arguments: args } }).catch(e => ({ error: e.message }));
+  if (r.error || !r.prompt) { view.insp.data = { ...view.insp.data, log: r.log || view.insp.data.log, opResult: r, opErr: r.error || "No prompt" }; return renderServers(); }
+  $("msg").value = (r.prompt.messages || []).filter(m => m.role === "user").map(m => m.content?.text || "").join("\n\n");
+  $("msg").dispatchEvent(new Event("input"));
+  setTab("chat"); $("msg").focus();
+  setStatus(`Prompt ${pname} from ${name}: the server filled it in (prompts/get). Send it, or change it first.`);
+}
+function renderAttach() {
+  $("attach").hidden = !attached.length;
+  $("attach").innerHTML = attached.map((a, i) => `<span class="att" title="${esc(a.uri)}">${IC.file}<span>${esc(a.title)}</span><span class="k">${esc(a.server)} · ${a.text.length.toLocaleString()} chars</span><button type="button" data-unattach="${i}" aria-label="Remove">${IC.x}</button></span>`).join("");
+}
+$("attach").onclick = e => { const b = e.target.closest("[data-unattach]"); if (b) { attached.splice(+b.dataset.unattach, 1); renderAttach(); } };
+
+// ---------------------------------------------------------------- Chat: + menu with Tools › and MCP ›
+function renderPlus() {
+  $("plusBtn").innerHTML = IC.plus;
+  const n = enabled().length;
+  $("plusMenu").innerHTML = `<button type="button" role="menuitem" class="sub" id="plusTools" aria-haspopup="menu" aria-expanded="${!$("toolsMenu").hidden}">${IC.blocks}<span>Tools</span>${IC.chev}</button>`
+    + `<button type="button" role="menuitem" class="sub" id="plusMcp" aria-haspopup="menu" aria-expanded="${!$("mcpMenu").hidden}">${IC.plug}<span>MCP${n ? ` <span style="color:var(--ink-3)">· ${n} on</span>` : ""}</span>${IC.chev}</button>`;
+}
+function renderToolsMenu() {
+  const lt = srv("lm-trace");
+  $("toolsMenu").innerHTML = `<div class="hd">The tools of the Tools page, through the LM Trace MCP server</div>`
+    + (!lt ? `<button type="button" role="menuitem" data-act="add-lt">${IC.plus}<span>Add the LM Trace server to mcp.json</span><span></span></button>`
+      : !S.on["lm-trace"] ? `<button type="button" role="menuitemcheckbox" class="tl" aria-checked="false" data-mcp="lm-trace">${IC.wrench}<span class="nm">Turn on the LM Trace server</span><span class="sw" aria-hidden="true"></span></button>` : "")
+    + `<button type="button" role="menuitem" data-act="manage-tools">${IC.manage}<span>Manage tools</span><span></span></button><div class="sep"></div>`
+    + (tools.map((t, i) => `<button type="button" role="menuitemcheckbox" class="tl" aria-checked="${!!t.on}" data-tool="${i}" title="${esc(t.name)}: ${esc(t.description)}">${IC.wrench}<span class="nm">${esc(t.title || t.name)}</span><span class="sw" aria-hidden="true"></span></button>`).join("") || `<div class="none">No tools. Create one on the Tools page.</div>`);
+}
+function renderMcpMenu() {
+  $("mcpMenu").innerHTML = `<button type="button" role="menuitem" data-act="custom">${IC.plus}<span>Custom MCP</span><span></span></button>`
+    + `<button type="button" role="menuitem" data-act="manage">${IC.manage}<span>Manage MCP</span><span></span></button><div class="sep"></div>`
+    + (cfg.servers.map(s => `<button type="button" role="menuitemcheckbox" class="tl" aria-checked="${!!S.on[s.name]}" data-mcp="${esc(s.name)}" title="${esc(lineOf(s))}">${iconOf(s)}<span class="nmw2"><span class="nm">${esc(titleOf(s.name))}</span><span class="sv">${s.type === "http" ? (isLocal(s.def.url) ? "Local · HTTP" : "Remote · HTTP") : "Local · stdio"} · mcp/${esc(s.name)}</span></span><span class="sw" aria-hidden="true"></span></button>`).join("")
+      || `<div class="none">No servers in mcp.json. Add one with Custom MCP, or on the Servers tab.</div>`);
+}
+const menus = ["toolsMenu", "mcpMenu"];
+function openPlus(open) {
+  $("plusMenu").hidden = !open; $("plusBtn").setAttribute("aria-expanded", open);
+  if (!open) menus.forEach(m => $(m).hidden = true);
+  renderPlus();
+}
+function openSub(id, open) {
+  menus.forEach(m => $(m).hidden = true);
+  if (open) { (id === "toolsMenu" ? renderToolsMenu : renderMcpMenu)(); $(id).hidden = false; }
+  renderPlus();
+}
+$("plusBtn").onclick = () => { if (!busy) openPlus($("plusMenu").hidden); };
+$("plusMenu").onclick = e => { if (e.target.closest("#plusTools")) openSub("toolsMenu", $("toolsMenu").hidden); else if (e.target.closest("#plusMcp")) openSub("mcpMenu", $("mcpMenu").hidden); };
+$("plusMenu").onmouseover = e => { if (e.target.closest("#plusTools") && $("toolsMenu").hidden) openSub("toolsMenu", true); else if (e.target.closest("#plusMcp") && $("mcpMenu").hidden) openSub("mcpMenu", true); };
+async function saveTools() { try { await post("/tools", tools, "PUT"); } catch (e) { setStatus(`Not saved: ${e.message}`); } }
+$("toolsMenu").onclick = async e => {
+  const t = e.target.closest("[data-tool]"), a = e.target.closest("[data-act]")?.dataset.act, m = e.target.closest("[data-mcp]");
+  if (t && !busy) { const tool = tools[+t.dataset.tool]; tool.on = !tool.on; await saveTools(); if (toolCache["lm-trace"]) loadServerTools("lm-trace", true); renderToolsMenu(); renderChat(); }
+  else if (m) { S.on["lm-trace"] = true; keep(); renderToolsMenu(); renderPlus(); renderChat(); if (!checks["lm-trace"]) check("lm-trace"); }
+  else if (a === "add-lt") { openPlus(false); const x = suggested()[0]; openForm({ type: "http", newName: x.name, def: x.def, note: esc(x.desc) }); }
+  else if (a === "manage-tools") location.href = "/tools.html";
+};
+$("mcpMenu").onclick = e => {
+  const m = e.target.closest("[data-mcp]"), a = e.target.closest("[data-act]")?.dataset.act;
+  if (m && !busy) { const n = m.dataset.mcp; S.on[n] = !S.on[n]; keep(); if (S.on[n]) loadServerTools(n); renderMcpMenu(); renderPlus(); renderChat(); if (S.on[n] && !checks[n]) check(n); }
+  else if (a === "custom") { openPlus(false); openForm({ type: "http", def: blankDef("http") }); }
+  else if (a === "manage") { openPlus(false); view.mode = "list"; setTab("servers"); }
+};
+document.addEventListener("click", e => { if (!e.composedPath().some(n => n.classList?.contains("plus-wrap"))) openPlus(false); });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("plusMenu").hidden) { openPlus(false); $("plusBtn").focus(); } });
+
+// ---------------------------------------------------------------- Chat: the run
+// The steps of MCP, as in the How it works list. The step of the newest event is marked.
+const FLOW = [
+  ["Connect", "The host starts or calls each server and asks for its tools (tools/list)."],
+  ["Prompt and tools", "The host puts your message and the tool definitions into the prompt of the model."],
+  ["Tool selection", "The model selects a tool and writes the call, or answers at once."],
+  ["Tool call", "The host sends tools/call to the server of that tool."],
+  ["Result", "The server returns the result. The host adds it to the prompt."],
+  ["Answer", "The model reads the result and writes the answer."],
+];
+let flowStep = -1;
+function renderFlow() {
+  $("flow").innerHTML = `<span class="who" style="font:500 10.5px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);margin-right:4px">Steps</span>` + FLOW.map(([t, d], i) => `${i ? '<span class="arrow">→</span>' : ""}<span class="fs${i === flowStep ? " on" : i < flowStep ? " done" : ""}" tabindex="0" data-tip-title="${i + 1}. ${esc(t)}" data-tip="${esc(d)}"><span class="stepnum">${i + 1}</span>${esc(t)}</span>`).join("");
+}
+const setFlow = i => { if (i !== flowStep) { flowStep = i; renderFlow(); } };
+const setStatus = s => { $("status").innerHTML = s; };
+const fmtS = ms => ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1)} s`;
+const pretty = s => { try { return JSON.stringify(typeof s === "string" ? JSON.parse(s) : s, null, 2); } catch { return String(s); } };
+// The output of an MCP tool, as LM Studio reports it: the content array of the result (text parts).
+function outputText(out) {
+  try { const a = JSON.parse(out); if (Array.isArray(a)) return a.map(c => c.type === "text" ? (() => { try { return JSON.stringify(JSON.parse(c.text), null, 2); } catch { return c.text; } })() : `[${c.type}]`).join("\n\n"); } catch {}
+  return String(out ?? "");
+}
+const preview = (s, n = 140) => { s = String(s || "").replace(/\s+/g, " ").trim(); return s.length > n ? s.slice(0, n) + "…" : s; };
+// A small markdown view of the answer: bold, italic, code, headings and lists. The text is escaped first.
+function md(t) {
+  const inline = x => esc(x).replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>").replace(/(^|[^*])\*([^*\s][^*]*)\*/g, "$1<i>$2</i>");
+  let html = "", list = null;
+  for (const line of t.split("\n")) {
+    const m = line.match(/^\s*([*-]|\d+\.)\s+(.*)$/), h = line.match(/^#{1,4}\s+(.*)$/);
+    const kind = m ? (/\d/.test(m[1]) ? "ol" : "ul") : null;
+    if (list && kind !== list) { html += `</${list}>`; list = null; }
+    if (m) { if (!list) { html += `<${kind}>`; list = kind; } html += `<li>${inline(m[2])}</li>`; }
+    else if (h) html += `<p class="h">${inline(h[1])}</p>`;
+    else if (line.trim()) html += `<p>${inline(line)}</p>`;
+  }
+  return html + (list ? `</${list}>` : "");
+}
+const argText = a => Object.entries(a || {}).map(([k, v]) => `${k}: ${JSON.stringify(v)}`).join(", ");
+const labelOf = pi => pi?.type === "plugin" ? (pi.plugin_id || "").replace(/^mcp\//, "") : pi?.server_label || "server";
+
+function newTurn(text, req) { return { user: text, req, rows: [], calls: 0, answer: "", t0: Date.now(), stats: null, error: "", seq0: null, rpc: [] }; }
+// A row: {call, who, what (html), meta, body (html), cls}. Rows with the same call number share a card.
+function addRow(turn, r) { turn.rows.push({ call: turn.calls, ...r }); return turn.rows.at(-1); }
+let openKeys = new Set();
+function rowHtml(r, key) {
+  const head = `<span class="who">${r.who}</span><span class="what">${r.what}${r.tip ? ` <span class="info ev-i" tabindex="0" data-tip="${esc(r.tip)}">i</span>` : ""}</span><span class="meta">${r.meta || ""}</span>`;
+  return r.body ? `<details class="ev${r.cls ? " " + r.cls : ""}" data-key="${key}"${openKeys.has(key) ? " open" : ""}><summary>${head}<span class="more">Details<span class="chev"></span></span></summary><div class="ev-bd">${r.body}</div></details>`
+    : `<div class="ev${r.cls ? " " + r.cls : ""}"><div class="ev-row">${head}<span></span></div></div>`;
+}
+function turnHtml(turn, ti) {
+  let out = `<div class="bubble user">${esc(turn.user)}</div>`;
+  if (turn.attached?.length) out += `<div class="tok-meta user">+ ${turn.attached.map(a => esc(a.title)).join(", ")} (resource${turn.attached.length > 1 ? "s" : ""})</div>`;
+  const groups = [];
+  for (const [i, r] of turn.rows.entries()) { const g = groups.at(-1); if (g && g.call === r.call) g.rows.push([i, r]); else groups.push({ call: r.call, rows: [[i, r]] }); }
+  for (const g of groups) {
+    const rows = g.rows.map(([i, r]) => rowHtml(r, `${ti}.${i}`)).join("");
+    out += `<section class="callcard"><div class="callcard-hd">${g.rows[0][1].kind === "close" ? "After the turn" : g.call ? `Model call ${g.call}` : "Request"}</div>${rows}</section>`;
+  }
+  if (turn.answer) out += `<div class="bubble assistant md">${md(turn.answer.trim())}</div>`;
+  if (turn.stats) { const s = turn.stats; out += `<div class="tok-meta assistant" data-tip-title="Tokens" data-tip="The stats that LM Studio reports for the turn: input_tokens, total_output_tokens (reasoning_output_tokens of them are thinking) and tokens_per_second. The time is measured by this page.">${s.input_tokens?.toLocaleString()} prompt tokens · ${s.total_output_tokens?.toLocaleString()} output tokens${s.reasoning_output_tokens ? ` (${s.reasoning_output_tokens} thinking)` : ""} · ${s.tokens_per_second ? s.tokens_per_second.toFixed(1) + " tok/s" : ""} · ${fmtS(turn.ms || 0)}</div>`; }
+  if (turn.error) out += `<div class="error">${esc(turn.error)}</div>`;
+  return out;
+}
+function renderChat() {
+  renderPlus(); renderStarters();
+  const on = enabled();
+  renderStats(); renderMcpList(); renderViewBar();
+  const log = $("log");
+  if (!chat.length) { log.innerHTML = `<div class="chat-empty">${on.length ? "Ask something. LM Studio gives the tools of the servers that are on to the model." : "Turn on an MCP server in <b>+</b> › <b>MCP</b>, or add one on the Servers tab."}${permState() && permState() !== "ok" && on.length ? `<br><br><span style="color:var(--danger)">LM Studio does not let the API use the servers of mcp.json yet.</span> <button type="button" class="linkbtn" data-act="setup">How to fix it</button>` : ""}</div>`; return; }
+  const atEnd = log.scrollHeight - log.scrollTop - log.clientHeight < 40;
+  log.innerHTML = chat.map(turnHtml).join("") + archEnd();
+  if (atEnd || busy) log.scrollTop = log.scrollHeight;
+}
+$("log").addEventListener("toggle", e => { const k = e.target.dataset?.key; if (k) e.target.open ? openKeys.add(k) : openKeys.delete(k); }, true);
+$("log").addEventListener("click", e => { if (e.target.closest(".ev-i")) e.preventDefault(); }, true);  // the i shows its tooltip; it does not open the row
+$("log").addEventListener("click", e => { if (e.target.closest("[data-act=setup]")) { view.mode = "list"; setTab("servers"); } if (e.target.closest("#runAgain")) runAgain(); });
+// Run again: a new chat with the settings of the archived chat, then its messages again, one by one. Not a replay:
+// the model and the servers run again.
+async function runAgain() {
+  const v = viewing; if (!v || busy) return;
+  const msgs = chat.map(t => ({ text: t.user, attached: t.attached || [] }));
+  if (v.temp != null) S.temp = v.temp;
+  if (v.maxTokens != null) S.maxTokens = v.maxTokens;
+  S.on = {}; S.allowed = {};
+  for (const n of v.servers || []) if (srv(n)) { S.on[n] = true; if (v.allowed?.[n]) S.allowed[n] = v.allowed[n]; loadServerTools(n); }
+  S.system = v.system || ""; keep();
+  const sel = $("chatModel");
+  if (v.model && [...sel.options].some(o => o.value === v.model)) { sel.value = v.model; sel.dispatchEvent(new Event("change")); }
+  $("newChat").click();
+  $("system").value = S.system; sysPrompt.sync(); renderSampling(); renderChat();
+  for (const m of msgs) {
+    attached = m.attached; renderAttach();
+    $("msg").value = m.text; $("msg").dispatchEvent(new Event("input"));
+    await send();
+    if (chat.at(-1)?.error) break;
+  }
+}
+
+// Examples: for the servers that are on.
+const EXAMPLES = {
+  "parallel-search": ["Search the web: who won the 2026 Stanley Cup?", "What is new in the MCP specification 2026-07-28? Search the web."],
+  "filesystem": ["Which files are in my folder?", "What is the total budget of my trip plan?", "Add up my expenses by category."],
+  "lm-trace": ["What is 123.4 times 56?", "Convert 100 US dollars to Canadian dollars.", "What is the price of Bitcoin in CAD now?"],
+};
+function renderStarters() {
+  const ex = enabled().flatMap(s => EXAMPLES[s.name] || []);
+  const list = [...ex, "No tool needed: what is the capital of Canada?"];
+  $("starters").hidden = chat.length > 0;
+  $("starters").innerHTML = list.map(x => `<button type="button" class="starter">${esc(x)}</button>`).join("");
+}
+$("starters").onclick = e => { const b = e.target.closest(".starter"); if (b) { $("msg").value = b.textContent; $("msg").dispatchEvent(new Event("input")); $("msg").focus(); } };
+
+// The formatted prompt of a model call: what LM Studio gave the model (from its log), with the tool definitions in it.
+async function fillPrompt(turn, row, since) {
+  for (let i = 0; i < 6; i++) {
+    try {
+      const j = await getJ(`/model-input?since=${since}&first=1`);
+      if (j.entry) { row.body = `<pre class="raw cap">${esc(j.entry.input)}</pre>`; renderChat(); return; }
+      if (!j.available) { row.body = `<p class="hint-s">The LM Studio log is not available.</p>`; renderChat(); return; }
+    } catch {}
+    await new Promise(r => setTimeout(r, 700));
+  }
+}
+// The messages of the LM Trace server during the turn: what LM Studio (the host) asked it.
+async function fillRpc(turn) {
+  if (turn.seq0 == null) return;
+  try {
+    const j = await getJ(`/mcp-log?since=${turn.seq0}`);
+    turn.rpc = j.entries;
+  } catch { return; }
+  const calls = turn.rpc.filter(e => e.dir === "in" && e.msg?.method === "tools/call");
+  const isClose = e => e.msg?.method === "notifications/cancelled";
+  const setup = turn.rpc.filter(e => !isClose(e) && !(e.msg?.method === "tools/call") && !(e.dir === "out" && calls.some(c => c.msg.id === e.msg?.id && c.n < e.n)));
+  const close = turn.rpc.filter(isClose);
+  if (close.length && !turn.rows.some(r => r.kind === "close")) {
+    turn.calls++;
+    addRow(turn, { kind: "close", who: "LM Studio", what: "Cancelling tools/list", meta: "notification",
+      tip: "LM Studio sends notifications/cancelled for its tools/list request. The server does not answer a notification. The session stays open for the next message.",
+      body: close.map(e => `<pre class="raw cap">${esc(JSON.stringify(e.msg, null, 2))}</pre>`).join("") });
+  }
+  const r0 = turn.rows.find(r => r.kind === "connect");
+  if (r0 && setup.length) {
+    const methods = setup.filter(e => e.dir === "in").map(e => e.msg?.method).filter(Boolean);
+    r0.meta = esc([...new Set(methods.filter(m => !m.startsWith("notifications/")))].join(", "));
+    r0.body = setup.map(e => `<div class="lbl-s">${e.dir === "in" ? "LM Studio → lm-trace" : "lm-trace → LM Studio"}</div><pre class="raw cap">${esc(JSON.stringify(e.msg, null, 2))}</pre>`).join("");
+  }
+  for (const r of turn.rows.filter(r => r.kind === "call" && r.server === "lm-trace" && !r.rpcDone)) {
+    const req = calls.find(c => c.msg.params?.name === r.tool && JSON.stringify(c.msg.params?.arguments || {}) === JSON.stringify(r.args || {}) && !turn.rows.some(o => o !== r && o.rpcN === c.n));
+    if (!req) continue;
+    const res = turn.rpc.find(e => e.dir === "out" && e.msg?.id === req.msg.id && e.n > req.n);
+    r.rpcN = req.n; r.rpcDone = true;
+    // The answer says if the tool failed: isError true. Mark the result row of this call.
+    const resRow = turn.rows[turn.rows.indexOf(r) + 1];
+    if (res?.msg?.result?.isError && resRow && resRow.kind === "result") { resRow.cls = "bad"; resRow.what = "Returning error"; resRow.meta = "isError: true"; }
+    r.body = `<div class="lbl-s">Request</div><pre class="raw cap">${esc(JSON.stringify(req.msg, null, 2))}</pre>` + (res ? `<div class="lbl-s">Answer</div><pre class="raw cap">${esc(JSON.stringify(res.msg, null, 2))}</pre>` : "");
+  }
+  renderChat();
+}
+
+async function send() {
+  const text = $("msg").value.trim();
+  if (busy) { ctrl?.abort(); return; }
+  if (!text || viewing) return;
+  const model = $("chatModel").value;
+  if (!model) { $("error").textContent = "No model. Download a model in LM Studio first."; return; }
+  $("error").textContent = "";
+  const on = enabled();
+  // A resource is application-controlled: the host (here LM Trace) puts it into the message. The model gets it as text.
+  const input = (attached.length ? attached.map(a => `<resource uri="${a.uri}" server="${a.server}">\n${a.text}\n</resource>`).join("\n\n") + "\n\n" : "") + text;
+  const reasoning = Composer.reasonOf(model);
+  const req = { model, input, stream: true, integrations: on.map(integrationOf), temperature: S.temp, max_output_tokens: S.maxTokens,
+    ...($("system").value.trim() ? { system_prompt: $("system").value.trim() } : {}), ...(reasoning ? { reasoning } : {}),
+    ...(lastResponseId ? { previous_response_id: lastResponseId } : {}) };
+  if (!req.integrations.length) delete req.integrations;
+  const turn = newTurn(text, req);
+  turn.attached = attached; attached = []; renderAttach();
+  chat.push(turn);
+  $("msg").value = ""; $("msg").dispatchEvent(new Event("input"));
+  busy = true; ctrl = new AbortController(); Composer.setSend($("sendBtn"), true); chatPick.setDisabled(true);
+  try { turn.seq0 = (await getJ("/mcp-log?since=999999999")).last; } catch {}
+  addRow(turn, { who: "LM Trace", what: "Sending request", meta: on.length ? `${on.length} MCP server${on.length > 1 ? "s" : ""}` : "no MCP server",
+    tip: `POST /api/v1/chat. integrations names the MCP servers; LM Studio connects to them.${lastResponseId ? " previous_response_id: LM Studio keeps the conversation." : ""}`,
+    body: `<pre class="raw cap">${esc(JSON.stringify(req, null, 2))}</pre>` });
+  if (on.length) { addRow(turn, { kind: "connect", who: "LM Studio", what: "Connecting to servers", meta: "tools/list",
+    tip: "LM Studio starts each stdio server or calls each HTTP server, then asks tools/list. The API does not show these messages; Details shows the ones that the LM Trace server logged." }); setFlow(0); }
+  renderChat();
+  let cur = null, promptRow = null, buf = "", tStep = Date.now();
+  // The time to read the prompt: until the model writes its first token.
+  const endPrompt = () => { if (promptRow && !promptRow.meta) promptRow.meta = fmtS(Date.now() - promptRow.t); };
+  const onEvent = (type, d) => {
+    const now = Date.now();
+    switch (type) {
+      case "model_load.start": cur = addRow(turn, { who: "LM Studio", what: "Loading model" }); break;
+      case "model_load.end": if (cur) cur.meta = d.load_time_seconds ? `${d.load_time_seconds.toFixed(1)} s` : ""; break;
+      case "prompt_processing.start":
+        turn.calls++; tStep = now; setFlow(turn.calls === 1 ? 1 : 4);
+        promptRow = addRow(turn, { t: now, who: "LM Studio", what: "Applying chat template", tip: turn.calls === 1 ? "The prompt: your message and the tool definitions, in the chat template of the model. From the LM Studio log." : "The prompt again, now with the tool result. From the LM Studio log.", body: `<p class="hint-s">Loading…</p>` });
+        fillPrompt(turn, promptRow, now - 1500); break;
+      case "prompt_processing.end": endPrompt(); break;
+      case "reasoning.start": endPrompt(); cur = addRow(turn, { who: "Model", what: "Thinking", text: "", body: "" }); tStep = now; setFlow(2); break;
+      case "reasoning.delta": if (cur) { cur.text += d.content || ""; cur.body = `<pre class="raw cap">${esc(cur.text.trim())}</pre>`; } break;
+      case "reasoning.end": if (cur) { if (!cur.text.trim()) turn.rows.splice(turn.rows.indexOf(cur), 1); else cur.meta = fmtS(now - tStep); } break;
+      case "tool_call.start": endPrompt(); cur = addRow(turn, { who: "Model", what: "Writing tool call…" }); tStep = now; setFlow(2); break;
+      case "tool_call.name": if (cur) { cur.tool = d.tool_name; cur.server = labelOf(d.provider_info); cur.what = `Calling <code>${esc(d.tool_name)}</code> <span class="srv-tag">${esc(titleOf(cur.server))}</span>`; } break;
+      case "tool_call.arguments": {
+        const sv = labelOf(d.provider_info);
+        if (cur) { cur.what = `Calling <code>${esc(d.tool)}</code> <span class="srv-tag">${esc(titleOf(sv))}</span>`; cur.meta = fmtS(now - tStep);
+          cur.tip = "LM Studio parsed the tool call from the output of the model. provider_info names the server.";
+          cur.body = `<pre class="raw cap">${esc(JSON.stringify({ tool: d.tool, arguments: d.arguments, provider_info: d.provider_info }, null, 2))}</pre>`; }
+        cur = addRow(turn, { kind: "call", who: "LM Studio", what: `Sending <code>tools/call</code>`, server: sv, tool: d.tool, args: d.arguments,
+          tip: sv === "lm-trace" ? "The JSON-RPC request to the server, as the LM Trace server logged it." : "The JSON-RPC request to the server. The API does not show it.",
+          body: sv === "lm-trace" ? `<p class="hint-s">Loading…</p>` : "" });
+        tStep = now; setFlow(3); break; }
+      case "tool_call.success": {
+        const sv = labelOf(d.provider_info), out = outputText(d.output);
+        if (cur?.kind === "call") cur.meta = fmtS(now - tStep);
+        addRow(turn, { kind: "result", who: `<span title="${esc(titleOf(sv))}">${esc(sv)}</span>`, what: "Returning result", meta: `${(d.output || "").length.toLocaleString()} chars`,
+          tip: "The content of the tools/call answer. LM Studio adds it to the prompt.", body: `<pre class="raw cap">${esc(out)}</pre>` });
+        setFlow(4); if (sv === "lm-trace") fillRpc(turn); break; }
+      case "tool_call.failure":
+        addRow(turn, { who: "LM Studio", cls: "bad", what: "Tool call failed", meta: esc(preview(d.reason || "", 60)), body: `<pre class="raw cap">${esc(JSON.stringify(d, null, 2))}</pre>` }); break;
+      case "message.start": endPrompt(); cur = addRow(turn, { who: "Model", what: "Writing answer" }); tStep = now; setFlow(5); break;
+      case "message.delta": turn.answer += d.content || ""; break;
+      case "message.end": if (cur) cur.meta = fmtS(now - tStep); break;
+      case "error": turn.error = d.error?.message || JSON.stringify(d.error || d); addRow(turn, { who: "LM Studio", cls: "bad", what: esc(turn.error) + (/requires authentication/i.test(turn.error) ? ` <span class="q">· needs an API key: open Details on MCP Servers</span>` : "") }); break;
+      case "chat.end": {
+        const r = d.result || {}; turn.stats = r.stats; if (r.response_id && !turn.error) lastResponseId = r.response_id; turn.ms = now - turn.t0;
+        const rRow = turn.rows.find(x => x.kind !== "connect" && x.who === "LM Trace");
+        addRow(turn, { who: "LM Studio", what: "Ending turn", meta: r.stats ? `${(r.stats.total_output_tokens ?? 0).toLocaleString()} tokens` : "",
+          tip: "The final result, as a request without stream returns it: each step in output, and response_id for the next message.", body: `<pre class="raw cap">${esc(JSON.stringify(r, null, 2))}</pre>` });
+        break; }
+    }
+  };
+  try {
+    const res = await fetch("/api/v1/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(req), signal: ctrl.signal });
+    if (!res.ok || !res.body) { const j = await res.json().catch(() => ({})); throw new Error(j.error?.message || `HTTP ${res.status}`); }
+    const reader = res.body.getReader(), dec = new TextDecoder();
+    let pending = false;
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let k;
+      while ((k = buf.indexOf("\n\n")) >= 0) {
+        const block = buf.slice(0, k); buf = buf.slice(k + 2);
+        let ev = "", data = "";
+        for (const line of block.split("\n")) { if (line.startsWith("event:")) ev = line.slice(6).trim(); else if (line.startsWith("data:")) data += line.slice(5).trim(); }
+        if (!data) continue;
+        try { onEvent(ev, JSON.parse(data)); } catch (err) { console.warn(err); }
+      }
+      if (!pending) { pending = true; requestAnimationFrame(() => { pending = false; renderChat(); }); }
+    }
+  } catch (e) {
+    turn.error = e.name === "AbortError" ? "Stopped." : e.message;
+    if (/ermission denied/.test(turn.error)) { turn.error += " — In LM Studio: Developer › Server Settings › turn on Require Authentication and Allow calling servers from mcp.json, and save an API token in LM Trace Settings."; on.forEach(s => { checks[s.name] = { state: "denied", message: e.message }; }); }
+  }
+  busy = false; ctrl = null; Composer.setSend($("sendBtn"), false, { key: "Enter" }); chatPick.setDisabled(false); setFlow(-1);
+  if (turn.ms == null) turn.ms = Date.now() - turn.t0;
+  renderChat(); fillRpc(turn); setStatus(""); saveChat();
+  setTimeout(async () => { await fillRpc(turn); saveChat(); }, 1500);  // LM Studio closes its session with the servers just after the turn
+}
+$("sendBtn").onclick = send;
+$("msg").addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(); } });
+Composer.autoGrow($("msg"));
+$("newChat").onclick = () => { if (busy) return; chat = []; lastResponseId = null; chatId = null; viewing = null; openKeys.clear(); renderChat(); setStatus(""); $("error").textContent = ""; };
+const TOK_STEPS = [16, 32, 64, 128, 256, 512, 1024, 1500, 2048, 4096];
+if (!TOK_STEPS.includes(S.maxTokens)) S.maxTokens = 1500;
+function renderSampling() {
+  const t = $("temp"), m = $("maxTok"), i = TOK_STEPS.indexOf(S.maxTokens);
+  t.value = S.temp; $("tempV").textContent = S.temp.toFixed(1); t.style.setProperty("--fill", (S.temp / 2 * 100) + "%");
+  m.value = i; m.style.setProperty("--fill", (i / 9 * 100) + "%"); $("maxTokV").textContent = S.maxTokens.toLocaleString();
+}
+$("temp").oninput = e => { S.temp = Math.round(+e.target.value * 10) / 10; keep(); renderSampling(); };
+$("maxTok").oninput = e => { S.maxTokens = TOK_STEPS[+e.target.value]; keep(); renderSampling(); };
+renderSampling();
+
+// Model picker: the same as on the other pages.
+let modelInfo = [];
+async function loadModels() {
+  try {
+    modelInfo = (await Composer.load()).filter(m => m.type === "llm");
+    const keys = modelInfo.map(m => m.key);
+    $("chatModel").replaceChildren(...keys.map(k => new Option(k)));
+    let saved = null; try { saved = localStorage.getItem("mcpModel") || localStorage.getItem("toolsModel"); } catch {}
+    $("chatModel").value = keys.includes(saved) ? saved : keys.find(k => k === "google/gemma-4-12b") || keys.find(k => modelInfo.find(m => m.key === k)?.capabilities?.trained_for_tool_use) || keys[0];
+  } catch (e) { $("error").textContent = `LM Studio unreachable: ${e.message || e}`; }
+}
+$("chatModel").onchange = () => { try { localStorage.setItem("mcpModel", $("chatModel").value); } catch {} };
+const chatPick = Composer.picker({ select: $("chatModel"), mount: $("chatPick"), label: "Chat model", isBusy: () => busy, onError: m => { $("error").textContent = m; } });
+Composer.setSend($("sendBtn"), false, { key: "Enter" });
+
+// The chat fills the window above the message box; ?capture: no scroll of its own, for full-page screenshots.
+var CAPTURE = new URLSearchParams(location.search).has("capture");
+if (CAPTURE) document.documentElement.classList.add("capture");
+function sizeChat() {
+  const log = $("log"), bar = document.querySelector(".sendbar");
+  if (!log.offsetParent) return;
+  if (CAPTURE) { log.style.height = "auto"; return; }
+  const top = log.getBoundingClientRect().top + scrollY;
+  log.style.height = Math.max(320, innerHeight - top - bar.offsetHeight - 52) + "px";
+}
+addEventListener("resize", sizeChat);
+const fitObs = new ResizeObserver(sizeChat);
+fitObs.observe(document.querySelector(".composer"));
+fitObs.observe(document.querySelector(".sendbar"));
+document.querySelectorAll("#pane-chat details.opt").forEach(d => fitObs.observe(d));
+
+// ---------------------------------------------------------------- MCP list: the servers, and the tools of each one
+// The page asks LM Trace to connect to a server (as Inspect does) to get the names of its tools. A tool with a check
+// goes into allowed_tools. S.allowed[name]: the allowed tools, or no entry for all of them.
+const toolCache = {};  // name → { state: "loading" | "ok" | "error", tools, error }
+const mlOpen = new Set();
+async function loadServerTools(name, again) {
+  if (toolCache[name] && !again && toolCache[name].state !== "error") return;
+  toolCache[name] = { state: "loading" }; refreshMl();
+  try {
+    const r = await post("/mcp-inspect", { name });
+    toolCache[name] = r.error ? { state: "error", error: r.error } : { state: "ok", tools: r.tools || [] };
+  } catch (e) { toolCache[name] = { state: "error", error: e.message }; }
+  refreshMl();
+}
+const allowedOf = name => S.allowed[name] || null;
+const toolCount = name => allowedOf(name)?.length ?? (toolCache[name]?.state === "ok" ? toolCache[name].tools.length : null);
+function integrationOf(s) {
+  const a = allowedOf(s.name);
+  return a ? { type: "plugin", id: `mcp/${s.name}`, allowed_tools: a } : `mcp/${s.name}`;
+}
+// "2 of 3 tools": what LM Studio gives to the model from this server
+function mlCount(s) {
+  if (!S.on[s.name]) return "";
+  const c = toolCache[s.name], a = allowedOf(s.name), all = c?.state === "ok" ? c.tools : null;
+  return a ? (all ? `${a.length} of ${all.length} tools` : `${a.length} tool${a.length === 1 ? "" : "s"}`) : all ? `all ${all.length} tools` : "all tools";
+}
+// The tools of one server, with a check for each: the same on the MCP list and on the MCP Servers tab
+function mlToolsHtml(s, lock) {
+  const c = toolCache[s.name], a = allowedOf(s.name);
+  if (!c && S.on[s.name]) setTimeout(() => loadServerTools(s.name));
+  if (!S.on[s.name]) return `<div class="ml-none">Turn the server on to select its tools.</div>`;
+  if (!c || c.state === "loading") return `<div class="ml-none"><span class="busy-dot"></span>Asking the server for its tools…</div>`;
+  if (c.state === "error") return `<div class="ml-none bad">${esc(c.error)} <button type="button" class="linkish" data-inspect-ml="${esc(s.name)}">Details</button></div>`;
+  return `<div class="ml-tools"><div class="ml-th"><span>Tools</span><button type="button" class="linkish" data-ml-all="${esc(s.name)}"${lock ? " disabled" : ""}>${a ? "Select all" : "Clear all"}</button><button type="button" class="linkish" data-ml-reload="${esc(s.name)}" title="Ask the server for its tools again">Reload</button></div>`
+    + (c.tools.length ? c.tools.map(t => `<label class="ml-tool" title="${esc(t.description || "")}"><input type="checkbox" data-ml-tool="${esc(s.name)}" value="${esc(t.name)}"${!a || a.includes(t.name) ? " checked" : ""}${lock ? " disabled" : ""}><code>${esc(t.name)}</code><span class="clamp1">${esc((t.description || "").split("\n")[0])}</span>${t.annotations?.readOnlyHint ? `<span class="badge" title="The server says that the tool only reads (readOnlyHint)">read only</span>` : ""}</label>`).join("") : `<div class="ml-none">The server has no tools.</div>`)
+    + (a && !a.length ? `<div class="ml-none bad">No tool has a check: LM Studio does not get this server.</div>` : "") + `</div>`;
+}
+const refreshMl = () => { renderChat(); if (S.tab === "servers" && view.mode === "list") renderServers(); };
+function renderMcpList() {
+  const box = $("mcpList"); if (!box) return;
+  const lock = !!viewing || busy;
+  const on = cfg.servers.filter(s => S.on[s.name]);
+  const nTools = on.map(s => toolCount(s.name));
+  $("stMcp").textContent = !cfg.servers.length ? "No servers" : !on.length ? "No server on"
+    : `${on.length} server${on.length > 1 ? "s" : ""} on` + (nTools.every(n => n != null) ? ` · ${nTools.reduce((a, b) => a + b, 0)} tools` : "");
+  $("stMcp").classList.toggle("on", on.length > 0);
+  if (!cfg.servers.length) { box.innerHTML = `<div class="ml-none">No servers in mcp.json. <button type="button" class="linkish" data-act="setup">Add one on the Servers tab</button>.</div>`; return; }
+  box.innerHTML = cfg.servers.map(s => {
+    const isOn = !!S.on[s.name], open = mlOpen.has(s.name);
+    return `<div class="ml-srv${open ? " open" : ""}"><div class="ml-hd">${sw(isOn, `data-ml-on="${esc(s.name)}" title="Use this server in the chat" aria-label="Use ${esc(s.name)} in the chat"${lock ? " disabled" : ""}`)}
+      <button type="button" class="ml-name" data-ml-open="${esc(s.name)}" aria-expanded="${open}"><span class="av">${iconOf(s)}</span><code>mcp/${esc(s.name)}</code>${typeBadge(s)}<span class="ml-count">${mlCount(s)}</span><span class="chev"></span></button></div>${open ? mlToolsHtml(s, lock) : ""}</div>`;
+  }).join("") + `<div class="ml-note">Over the API, LM Studio runs each tool with a check at once: there is no ask step. <span class="info" tabindex="0" data-tip-title="Permission" data-tip="In its own chat, LM Studio can ask before each tool call (Ask before running, or Always allow). The API has no such setting. To block a tool here, clear its check.">i</span></div>`;
+}
+// Clicks on the tools of a server: on the MCP list and on the MCP Servers tab. Returns true when handled.
+function mlClick(t) {
+  const ins = t.closest("[data-inspect-ml]"); if (ins) { openInspect(ins.dataset.inspectMl); return true; }
+  const op = t.closest("[data-ml-open]"); if (op) { const n = op.dataset.mlOpen; mlOpen.has(n) ? mlOpen.delete(n) : mlOpen.add(n); if (mlOpen.has(n) && S.on[n]) loadServerTools(n); refreshMl(); return true; }
+  const rl = t.closest("[data-ml-reload]"); if (rl) { loadServerTools(rl.dataset.mlReload, true); return true; }
+  if (viewing || busy) return !!t.closest("[data-ml-all], [data-ml-on]");
+  const al = t.closest("[data-ml-all]"); if (al) { const n = al.dataset.mlAll; if (S.allowed[n]) delete S.allowed[n]; else S.allowed[n] = []; keep(); refreshMl(); return true; }
+  const on = t.closest("[data-ml-on]"); if (on) { const n = on.dataset.mlOn; S.on[n] = !S.on[n]; keep(); if (S.on[n]) { mlOpen.add(n); loadServerTools(n); if (!checks[n]) check(n); } refreshMl(); return true; }
+  return false;
+}
+$("mcpList").addEventListener("click", e => {
+  if (e.target.closest("[data-act=setup]")) { view.mode = "list"; setTab("servers"); return; }
+  mlClick(e.target);
+});
+document.addEventListener("change", e => {
+  const cb = e.target.closest("[data-ml-tool]"); if (!cb) return;
+  const n = cb.dataset.mlTool, all = toolCache[n]?.tools?.map(t => t.name) || [];
+  const set = new Set(allowedOf(n) || all);
+  cb.checked ? set.add(cb.value) : set.delete(cb.value);
+  const list = all.filter(x => set.has(x));
+  if (list.length === all.length) delete S.allowed[n]; else S.allowed[n] = list;
+  keep(); refreshMl();
+});
+
+// The numbers of the chat, as on the Tools page
+function renderStats() {
+  const on = viewing ? (viewing.servers || []).map(name => ({ name })) : enabled();
+  const nt = on.map(s => viewing ? (viewing.allowed?.[s.name]?.length ?? toolCache[s.name]?.tools?.length ?? null) : toolCount(s.name));
+  const calls = chat.reduce((a, t) => a + new Set(t.rows.filter(r => r.kind !== "close" && r.call > 0).map(r => r.call)).size, 0), tcalls = chat.reduce((a, t) => a + t.rows.filter(r => r.kind === "call").length, 0);
+  $("stats").innerHTML = `<span title="The MCP servers that the chat sends in integrations">Servers on <b>${on.length}</b></span>`
+    + `<span title="The tools of these servers that LM Studio gives to the model">Tools on <b>${nt.every(n => n != null) ? nt.reduce((a, b) => a + b, 0) : "–"}</b></span>`
+    + `<span title="The model calls of this chat: LM Studio calls the model once, then again after each tool result">Model calls <b>${calls}</b></span>`
+    + `<span title="The tools/call requests that LM Studio sent to the servers in this chat">Tool calls <b>${tcalls}</b></span>`;
+}
+
+// ---------------------------------------------------------------- System prompt: examples, save, delete and copy
+const ICON_DEL = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/></svg>';
+const ICON_SAVE = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21l-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/><path d="M12 7v6M9 10h6"/></svg>';
+const ICON_COPY = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/></svg>';
+const ICON_DONE = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>';
+async function copyText(b, text) {
+  if (!text) return;
+  try { await navigator.clipboard.writeText(text); }
+  catch { const ta = Object.assign(document.createElement("textarea"), { value: text }); document.body.append(ta); ta.select(); document.execCommand("copy"); ta.remove(); }
+  b.innerHTML = ICON_DONE; b.classList.add("done"); clearTimeout(b._t);
+  b._t = setTimeout(() => { b.innerHTML = ICON_COPY; b.classList.remove("done"); }, 1000);
+}
+const fit = (t, max = 160) => { t.style.height = "auto"; t.style.height = Math.min(t.scrollHeight + 2, max) + "px"; };
+const SYSTEM_EXAMPLES = [
+  ["Helpful assistant", "You are a helpful assistant."],
+  ["Be concise", "You are a helpful assistant. Be concise. Answer in one sentence."],
+  ["Tools only when needed", "You are a helpful assistant. Use a tool only when the question needs current or exact data. Otherwise, answer from what you know.", "Guardrails"],
+  ["Give the source and the date", "You are a helpful assistant. When you use data from a tool, always say where the data comes from and the date of the data.", "Guardrails"],
+  ["Report tool errors", "You are a helpful assistant. If a tool returns an error, tell the user what went wrong. Never guess the result.", "Guardrails"],
+];
+const sysPrompt = (() => {
+  const box = $("system"), select = $("sysExamples"), saveBtn = $("saveSystem"), delBtn = $("delSystem"), copyBtn = $("copySystem");
+  saveBtn.innerHTML = ICON_SAVE; delBtn.innerHTML = ICON_DEL; copyBtn.innerHTML = ICON_COPY;
+  [saveBtn, delBtn, copyBtn].forEach(b => b.addEventListener("mousedown", e => e.preventDefault()));
+  const short = (t, n = 40) => { t = t.replace(/\s+/g, " ").trim(); return t.length > n ? t.slice(0, n) + "…" : t; };
+  let saved = [];
+  const fill = () => {
+    select.innerHTML = `<option value="">No system prompt</option><option value="c" hidden>Custom</option>`;
+    if (saved.length) { const g = Object.assign(document.createElement("optgroup"), { label: "Saved" }); saved.forEach((p, i) => g.append(new Option(p.name, "s" + i))); select.append(g); }
+    const groups = new Map();
+    SYSTEM_EXAMPLES.forEach(([lbl, , grp = "Examples"], i) => {
+      if (!groups.has(grp)) { groups.set(grp, Object.assign(document.createElement("optgroup"), { label: grp })); select.append(groups.get(grp)); }
+      groups.get(grp).append(new Option(lbl, "e" + i));
+    });
+  };
+  const sync = () => {
+    const v = box.value.trim();
+    const si = v ? saved.findIndex(p => p.text.trim() === v) : -1;
+    const ei = v && si < 0 ? SYSTEM_EXAMPLES.findIndex(e => e[1] === v) : -1;
+    select.value = !v ? "" : si >= 0 ? "s" + si : ei >= 0 ? "e" + ei : "c";
+    delBtn.hidden = si < 0 || !!viewing;
+    const st = $("stSystem");
+    st.textContent = !v ? "Off" : si >= 0 ? saved[si].name : ei >= 0 ? SYSTEM_EXAMPLES[ei][0] : short(v);
+    st.classList.toggle("on", !!v); st.title = v;
+    fit(box, 240);
+  };
+  const store = async () => { const r = await fetch("/system-prompts", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(saved) }); if (!r.ok) throw new Error("Could not save the list."); };
+  saveBtn.onclick = async () => {
+    const v = box.value.trim(); if (!v) return;
+    if (!saved.some(p => p.text.trim() === v)) { saved.push({ name: short(v), text: v }); try { await store(); } catch (e) { saved.pop(); $("error").textContent = e.message; return; } }
+    fill(); sync(); saveBtn.classList.add("done"); clearTimeout(saveBtn._t); saveBtn._t = setTimeout(() => saveBtn.classList.remove("done"), 1000);
+  };
+  delBtn.onclick = async () => {
+    const v = select.value; if (!v.startsWith("s")) return;
+    const i = +v.slice(1), [gone] = saved.splice(i, 1);
+    try { await store(); } catch (e) { saved.splice(i, 0, gone); $("error").textContent = e.message; return; }
+    fill(); sync();
+  };
+  copyBtn.onclick = e => { e.preventDefault(); e.stopPropagation(); copyText(copyBtn, box.value); };
+  select.onchange = () => {
+    const v = select.value; if (v === "c") return;
+    box.value = v === "" ? "" : v.startsWith("s") ? saved[+v.slice(1)].text : SYSTEM_EXAMPLES[+v.slice(1)][1];
+    box.dispatchEvent(new Event("input")); box.focus();
+  };
+  box.addEventListener("input", () => { if (!viewing) { S.system = box.value; keep(); } sync(); });
+  box.value = S.system || "";
+  fill(); sync();
+  fetch("/system-prompts").then(r => r.json()).then(list => { if (Array.isArray(list)) { saved = list.filter(p => p && typeof p.text === "string"); fill(); sync(); } }).catch(() => {});
+  return { sync };
+})();
+
+// ---------------------------------------------------------------- Archived chats
+// The server keeps each chat in mcp-chats/<id>.json, with the settings of its run. An archived chat is read only:
+// the message box is off until you click New. chatId: the file of the chat on screen. viewing: its settings, else null.
+function chatSettings() {
+  const on = enabled();
+  return { model: $("chatModel").value, system: $("system").value, temp: S.temp, maxTokens: S.maxTokens,
+    servers: on.map(s => s.name), allowed: Object.fromEntries(on.filter(s => S.allowed[s.name]).map(s => [s.name, S.allowed[s.name]])) };
+}
+async function saveChat() {
+  if (viewing || !chat.length) return;
+  const now = Date.now();
+  if (!chatId) chatId = `${new Date(now).toISOString().slice(0, 19).replace(/[^0-9]/g, "")}-${Math.random().toString(36).slice(2, 6)}`;
+  const body = { id: chatId, title: chat[0].user.slice(0, 120), created: chat[0].t0 || now, updated: now, model: $("chatModel").value,
+    turns: chat.length, settings: chatSettings(), chat };
+  try { const r = await fetch(`/mcp-chats/${chatId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }); if (!r.ok) throw new Error(`HTTP ${r.status}`); }
+  catch (e) { $("error").textContent = `Chat not saved: ${e.message}`; }
+}
+async function viewChat(id) {
+  if (busy) return;
+  try {
+    const r = await fetch(`/mcp-chats/${id}`); if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const c = await r.json();
+    chat = c.chat || []; chatId = c.id; lastResponseId = null; openKeys.clear();
+    viewing = { ...(c.settings || {}), created: c.created, updated: c.updated };
+    $("system").value = viewing.system || ""; sysPrompt.sync();
+    $("error").textContent = ""; setStatus(""); renderChat(); $("log").scrollTop = 0;
+  } catch (e) { $("error").textContent = `Chat not loaded: ${e.message}`; }
+}
+const fmtWhen = ms => new Date(ms).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+// Read only while an archived chat is on screen: the controls show the settings of that run.
+function renderViewBar() {
+  const v = viewing;
+  $("msg").disabled = !!v; if (!busy) $("sendBtn").disabled = !!v;
+  $("msg").placeholder = v ? "This chat is archived: read only. Click New to start a new chat." : "Ask something, or select an example.";
+  document.querySelector(".cbox").classList.toggle("archived", !!v);
+  ["temp", "maxTok", "system", "sysExamples", "saveSystem", "plusBtn"].forEach(id => $(id).disabled = !!v);
+  if (v) {
+    const t = $("temp"), m = $("maxTok");
+    if (v.temp != null) { t.value = v.temp; $("tempV").textContent = (+v.temp).toFixed(1); t.style.setProperty("--fill", (v.temp / 2 * 100) + "%"); }
+    if (v.maxTokens != null) { const i = Math.max(0, TOK_STEPS.indexOf(v.maxTokens)); m.value = i; m.style.setProperty("--fill", (i / 9 * 100) + "%"); $("maxTokV").textContent = v.maxTokens.toLocaleString(); }
+  } else renderSampling();
+}
+function archEnd() {
+  const v = viewing; if (!v) return "";
+  const when = v.updated || v.created;
+  const srvs = (v.servers || []).map(n => `<code>mcp/${esc(n)}</code>${v.allowed?.[n] ? ` (${v.allowed[n].map(esc).join(", ")})` : ""}`).join(", ");
+  const gone = (v.servers || []).filter(n => !srv(n));
+  return `<div class="arch-end">This chat was archived${when ? ` on ${fmtWhen(when)}` : ""}.<br>Model: ${esc(v.model || "?")} · MCP servers: ${srvs || "none"} · temperature ${v.temp ?? "?"} · max tokens ${v.maxTokens ?? "?"}`
+    + (gone.length ? `<br>Note: ${gone.map(n => `mcp/${esc(n)}`).join(", ")} is no longer in mcp.json.` : "")
+    + `<div><button type="button" class="btn ghost" id="runAgain" title="Send the messages of this chat again as new requests, in a new chat, with the settings of this chat. The model writes new replies, and the servers get new data. The archived chat does not change.">Run again</button></div></div>`;
+}
+async function renderChatsMenu() {
+  const m = $("chatsMenu");
+  m.innerHTML = `<div class="hd">Archived chats</div><div class="none">Loading…</div>`;
+  let list = [];
+  try { list = await fetch("/mcp-chats").then(r => r.json()); } catch (e) { m.innerHTML = `<div class="hd">Archived chats</div><div class="none">${esc(e.message)}</div>`; return; }
+  m.innerHTML = `<div class="hd">Archived chats</div>` + (list.length ? list.map(c => `<div class="chat-row"${c.id === chatId ? ' aria-current="true"' : ""}>`
+    + `<button type="button" role="menuitem" data-chat="${esc(c.id)}"><span class="nm">${esc(c.title || "(no title)")}</span>`
+    + `<span class="d">${c.created ? fmtWhen(c.created) : ""} · ${esc(c.model || "")} · ${c.turns || 0} ${c.turns === 1 ? "message" : "messages"}</span></button>`
+    + `<button type="button" class="chat-del" data-del-chat="${esc(c.id)}" title="Delete this archived chat" aria-label="Delete the archived chat: ${esc(c.title || "")}">${ICON_DEL}</button></div>`).join("")
+    : `<div class="none">No archived chats yet. Each chat is archived when a message finishes.</div>`);
+}
+function openChats(open) { $("chatsMenu").hidden = !open; $("chatsBtn").setAttribute("aria-expanded", open); if (open) renderChatsMenu(); }
+$("chatsBtn").onclick = () => { if (!busy) openChats($("chatsMenu").hidden); };
+$("chatsMenu").onclick = async e => {
+  const del = e.target.closest("[data-del-chat]");
+  if (del) {
+    const id = del.dataset.delChat;
+    try { const r = await fetch(`/mcp-chats/${id}`, { method: "DELETE", headers: { "Content-Type": "application/json" } }); if (!r.ok) throw new Error(`HTTP ${r.status}`); } catch (err) { $("error").textContent = `Not deleted: ${err.message}`; return; }
+    if (id === chatId) $("newChat").click();
+    renderChatsMenu(); return;
+  }
+  const row = e.target.closest("[data-chat]"); if (row) { openChats(false); viewChat(row.dataset.chat); }
+};
+document.addEventListener("click", e => { if (!e.target.closest(".chats-wrap")) openChats(false); });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("chatsMenu").hidden) { openChats(false); $("chatsBtn").focus(); } });
+
+renderFlow();
+(async () => {
+  await Promise.all([loadConfig(), loadTools(), loadToken(), loadModels(), loadMeta()]);
+  for (const s of cfg.servers) if (S.on[s.name]) loadServerTools(s.name);
+  setTab(S.tab === "servers" ? "servers" : "chat");
+  const first = enabled()[0] || cfg.servers[0];
+  if (first?.validName) check(first.name);
+})();
+addEventListener("focus", async () => { await Promise.all([loadConfig(), loadTools(), loadToken()]); if (S.tab === "servers" && view.mode === "list") renderServers(); renderChat(); });
+</script>
+</body>
+</html>
