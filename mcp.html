@@ -861,6 +861,12 @@
   .insp { padding: 14px 18px 18px; display: grid; gap: 14px; }
   .insp-hd { display: flex; align-items: center; gap: 10px 14px; flex-wrap: wrap; }
   .insp-hd h3 { margin: 0; font: 600 17px var(--sans); color: var(--ink); }
+  .insp-hd { flex-wrap: nowrap; }
+  .insp-hd .av { width: 44px; height: 44px; border-radius: 10px; flex: none; }
+  .insp-ttl { display: grid; gap: 4px; min-width: 0; }
+  .insp-name { display: flex; align-items: center; gap: 10px; }
+  .insp-hd > .btn { margin-left: auto; flex: none; height: 32px; padding: 0 14px; font-size: 13px; }
+  .insp-ttl .conn .dot { margin-left: 3px; }
   .caps3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; align-items: start; }
   .capcol { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; min-width: 0; }
   .capcol-hd { padding: 9px 12px; background: var(--paper); border-bottom: 1px solid var(--line); display: grid; gap: 1px; }
@@ -1382,7 +1388,7 @@ function connState(v, d) {
   if (!d.version) return "";
   const log = d.log || [], end = log.length ? log[log.length - 1].ms : 0;
   const tip = `LM Trace connected as a host does (${d.mode === "discover" ? "server/discover" : "initialize"}), listed what the server has, then closed the connection. LM Studio makes its own connection when a chat uses the server.`;
-  return `<div class="conn ok"><span class="dot"></span><span>Online</span>${d.serverInfo?.name ? `<span class="sep">·</span><span>${esc(d.serverInfo.name)} ${esc(d.serverInfo.version || "")}</span>` : ""}`
+  return `<div class="conn ok"><span class="dot"></span><span>Online</span>${d.serverInfo?.name ? `<span class="sep">·</span><span data-tip-title="Server name" data-tip="The name that the server reports in serverInfo. The title above is the name in LM Trace.">${esc(d.serverInfo.name)} ${esc(d.serverInfo.version || "")}</span>` : ""}`
     + `<span class="sep">·</span><span data-tip-title="Protocol version" data-tip="${d.mode === "discover" ? "The server knows version 2026-07-28: no handshake; each request carries the version." : "The server does not know server/discover, so the client uses the initialize handshake of the older version."}">MCP ${esc(d.version)}</span>`
     + `<span class="sep">·</span><span>${end} ms</span><span class="info" tabindex="0" data-tip-title="Details" data-tip="${esc(tip)}">i</span></div>`;
 }
@@ -1422,9 +1428,8 @@ function renderInspect(p) {
   const nMsg = (d.log || []).filter(e => e.dir !== "note").length;
   p.innerHTML = `<div class="insp">
     <button type="button" class="back" data-act="back">${IC.back}Back</button>
-    <div class="insp-hd"><span class="av">${s ? iconOf(s) : IC.plug}</span><h3>${esc(titleOf(v.name))}</h3>${s ? typeBadge(s) : ""}
-      <span style="margin-left:auto"></span><button type="button" class="btn ghost" data-inspect="${esc(v.name)}"${v.loading ? " disabled" : ""} title="Stop the server and start it again: a new process (stdio) or a new session (HTTP). Then list what it has. LM Studio has its own copy of the server; this does not restart it.">${v.loading ? '<span class="busy-dot"></span>Restarting…' : "Force Restart"}</button></div>
-    ${connState(v, d)}
+    <div class="insp-hd"><span class="av">${s ? iconOf(s) : IC.plug}</span><div class="insp-ttl"><div class="insp-name"><h3>${esc(titleOf(v.name))}</h3>${s ? typeBadge(s) : ""}</div>${connState(v, d)}</div>
+      <button type="button" class="btn ghost" data-inspect="${esc(v.name)}"${v.loading ? " disabled" : ""} title="Stop the server and start it again: a new process (stdio) or a new session (HTTP). Then list what it has. LM Studio has its own copy of the server; this does not restart it.">${v.loading ? '<span class="busy-dot"></span>Restarting…' : "Force Restart"}</button></div>
     ${d.auth ? authCard(d.auth, v.name) : ""}
     <div class="cap-box"><div class="cap-tabs" role="tablist">${TABS.map(([k, l, tip]) => `<button type="button" role="tab" data-cap="${k}" aria-selected="${k === tab}" title="${esc(tip)}">${l} <span class="n">${lists[k] ? lists[k].length : "–"}</span></button>`).join("")}</div>
       <div class="cap-list">${body}</div>
