@@ -454,6 +454,7 @@
   /* The message box stays at the bottom of the window when open settings rows make the page taller. */
   #pane-chat .sendbar { position: sticky; bottom: 35px; z-index: 5; }  /* 35px: where sizeChat puts it, so it does not move */
   .capture #pane-chat .sendbar { position: static; }
+  .capture pre.raw.cap, .capture .cap-bd pre, .capture .res-out { max-height: none; overflow: visible; }  /* no inner scroll in a full-page screenshot */
   /* Examples: chips below the message box while the chat is empty. A click fills the box; you send it. */
   .starters { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; padding: 4px 2px 0; }
   .starters[hidden] { display: none; }
@@ -568,7 +569,7 @@
   .callcard { border: 1px solid var(--line); border-radius: 8px; background: var(--field); overflow: hidden; flex: none; }
   .callcard-hd { padding: 7px 14px; background: var(--paper); border-bottom: 1px solid var(--line); font-size: 12.5px; color: var(--ink-3); }
   .ev + .ev { border-top: 1px solid var(--paper-2); }
-  .ev > summary, .ev-row { display: grid; grid-template-columns: 76px minmax(0, 1fr) auto 70px; gap: 12px; align-items: baseline; padding: 9px 14px; font-size: 13.5px; line-height: 1.5; }
+  .ev > summary, .ev-row { display: grid; grid-template-columns: 84px minmax(0, 1fr) auto 70px; gap: 12px; align-items: baseline; padding: 9px 14px; font-size: 13.5px; line-height: 1.5; }
   .ev > summary { list-style: none; cursor: pointer; }
   .ev > summary::-webkit-details-marker { display: none; }
   .ev > summary:hover { background: rgba(var(--shadow-rgb), .025); }
@@ -603,6 +604,9 @@
   .sampling .ctl { flex: 1 1 190px; min-width: 150px; max-width: 300px; }
   .sampling .ctl-label { gap: 8px; }
   .sampling .ctl output { min-width: 52px; }
+  .ctx-state { font-size: 12px; color: var(--ink-3); }
+  #ctxReload { flex: none; height: 28px; padding: 0 10px; font-size: 12.5px; }
+  .error .linkbtn { margin-left: 4px; }
   .sampling .ctl-seg { flex: none; min-width: 0; }
   .ctl-seg .seg button { height: 28px; }
   .sampling .ctl-calls { flex: 1 1 160px; min-width: 140px; max-width: 220px; }
@@ -861,6 +865,12 @@
   .insp { padding: 14px 18px 18px; display: grid; gap: 14px; }
   .insp-hd { display: flex; align-items: center; gap: 10px 14px; flex-wrap: wrap; }
   .insp-hd h3 { margin: 0; font: 600 17px var(--sans); color: var(--ink); }
+  .insp-hd { flex-wrap: nowrap; }
+  .insp-hd .av { width: 44px; height: 44px; border-radius: 10px; flex: none; }
+  .insp-ttl { display: grid; gap: 4px; min-width: 0; }
+  .insp-name { display: flex; align-items: center; gap: 10px; }
+  .insp-hd > .btn { margin-left: auto; flex: none; height: 32px; padding: 0 14px; font-size: 13px; }
+  .insp-ttl .conn .dot { margin-left: 3px; }
   .caps3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; align-items: start; }
   .capcol { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; min-width: 0; }
   .capcol-hd { padding: 9px 12px; background: var(--paper); border-bottom: 1px solid var(--line); display: grid; gap: 1px; }
@@ -911,6 +921,7 @@
   .att button { width: 22px; height: 22px; border: 0; border-radius: 50%; background: none; color: var(--ink-3); cursor: pointer; display: grid; place-items: center; }
   .att button:hover { color: var(--danger); }
   .att svg { width: 13px; height: 13px; }
+  .emu { margin-left: 2px; font: 500 10.5px/16px var(--sans); padding: 0 6px; border: 1px dashed var(--line); border-radius: 8px; color: var(--ink-3); white-space: nowrap; cursor: help; }
   .srv-tag { font: 500 11px/18px var(--sans); padding: 0 7px; border-radius: 9px; background: rgba(var(--red-rgb), .12); color: var(--red); white-space: nowrap; }
   .ev .who b { font-weight: 500; color: var(--ink-2); }
   .bubble.md { white-space: normal; }
@@ -929,7 +940,7 @@
   .flow2 .fs.on .stepnum { background: var(--primary); color: var(--on-primary); }
   .flow2 .fs.done .stepnum { background: var(--ink-3); color: var(--field); }
   .flow2 .arrow { color: var(--stone-2); }
-  .roles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 8px 0 4px; }
+  .roles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 8px 0 4px; }
   .roles > div { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; background: var(--field); }
   .roles b { display: block; color: var(--ink-2); }
   @media (max-width: 860px) {
@@ -977,23 +988,25 @@
   </header>
 
   <section class="composer" aria-label="About">
-    <div class="lede">A playground for MCP, the Model Context Protocol: one standard way to connect a model to tools and data. Here LM Studio is the MCP host: it starts the servers of its <code>mcp.json</code>, gives their tools to the model, and runs each tool call. This page sends your message and shows each step.
+    <div class="lede">A playground for MCP, the Model Context Protocol: one standard way to connect a model to tools and data. Here LM Studio is the MCP host: it starts the local servers and connects to the remote servers of its <code>mcp.json</code>, gives their tools to the LLM, and runs each tool call. This page sends your message and shows each step. Steps that the API does not show are marked <i>emulated</i>.
       <details class="more"><summary>How it works</summary>
         <div class="roles">
-          <div><b>Host</b>The application that the user works in, here LM Studio. It runs the model and has one client for each server.</div>
-          <div><b>Client</b>A part of the host. It holds one connection to one server and sends it JSON-RPC messages.</div>
-          <div><b>Server</b>A program that gives tools, resources and prompts. Local (stdio: the host starts it as a child process) or remote (Streamable HTTP: a URL).</div>
+          <div><b>MCP host</b>The AI application that coordinates and manages one MCP client for each server. Here LM Studio.</div>
+          <div><b>MCP client</b>A part of the host. It holds one connection to one server and sends it JSON-RPC messages.</div>
+          <div><b>MCP server</b>A program that gives context: tools, resources and prompts. Local (stdio: the host starts it as a child process) or remote (Streamable HTTP: a URL).</div>
+          <div><b>LLM</b>The model. It only reads and writes text. MCP does not say how the host uses the LLM. LM Studio calls it two times when it uses a tool.</div>
         </div>
         <p>A server has three kinds of capabilities. <b>Tools</b> are model-controlled: the model selects one and writes the call. <b>Resources</b> are application-controlled: data, like a file, that the host reads and adds to the context. <b>Prompts</b> are user-controlled: ready messages that you select, like a slash command.</p>
         <ol class="how">
-          <li><b>Connect</b> · the host starts or calls each server and asks which tools it has (<code>tools/list</code>).</li>
-          <li><b>Prompt and tools</b> · the host puts your message and the tool definitions into the prompt of the model.</li>
-          <li><b>Tool selection</b> · the model selects a tool and writes the call, or answers at once.</li>
-          <li><b>Tool call</b> · the host sends <code>tools/call</code> to the server of that tool. The server calls its API or reads its files.</li>
-          <li><b>Result</b> · the server returns the result to the host, and the host adds it to the prompt.</li>
-          <li><b>Answer</b> · the model reads the result and writes the answer.</li>
+          <li><b>Discovery</b> · each MCP client connects to its server (<code>initialize</code>) and asks for the tools (<code>tools/list</code>). In the next turn of the same chat, it asks only for the tools.</li>
+          <li><b>Prompt and tools</b> · the MCP host puts your message and the tool definitions into the prompt of the LLM.</li>
+          <li><b>Tool selection</b> · the LLM selects a tool and writes the call, or answers at once.</li>
+          <li><b>Tool execution</b> · the MCP host routes the call to the MCP client of that server, which sends <code>tools/call</code>. The server calls its API or reads its files.</li>
+          <li><b>Result</b> · the server returns the result to the MCP client.</li>
+          <li><b>Prompt and tool output</b> · the MCP host adds the tool call and the result to the prompt, and calls the LLM again.</li>
+          <li><b>Answer</b> · the LLM reads the result and writes the answer.</li>
         </ol>
-        <p>The model never talks to a server. It only writes text; the host does the rest. Over the API, LM Studio runs each tool call at once: there is no approval step.</p>
+        <p>The LLM never talks to a server. It only writes text; the MCP host does the rest. Over the API, LM Studio runs each tool call at once: there is no approval step.</p>
       </details></div>
   </section>
 
@@ -1035,6 +1048,10 @@
       <div class="ctl">
         <div class="ctl-label"><label for="maxTok">Max tokens</label><span class="info" tabindex="0" data-tip-title="Max tokens" data-tip="The most tokens the model can write in one model call, its thinking included (max_output_tokens). A turn with a tool has two or more model calls, so the turn can have more tokens. A low limit cuts the reply.">i</span></div>
         <div class="ctl-row"><input type="range" id="maxTok" min="0" max="9" step="1" aria-describedby="maxTokV"><output id="maxTokV"></output></div>
+      </div>
+      <div class="ctl">
+        <div class="ctl-label"><label for="ctxLen">Context length</label><span class="info" tabindex="0" data-tip-title="Context length" data-tip="The most tokens that fit in one model call: the prompt (system prompt, tool definitions, messages, tool results) and the reply. It is a load setting: LM Studio must unload the model and load it again (POST /api/v1/models/load). A larger context uses more memory.">i</span><span class="ctx-state" id="ctxState"></span></div>
+        <div class="ctl-row"><input type="range" id="ctxLen" min="0" max="6" step="1" aria-describedby="ctxLenV"><output id="ctxLenV"></output><button type="button" class="btn sm" id="ctxReload" hidden>Reload</button></div>
       </div>
     </div>
   </section>
@@ -1382,7 +1399,7 @@ function connState(v, d) {
   if (!d.version) return "";
   const log = d.log || [], end = log.length ? log[log.length - 1].ms : 0;
   const tip = `LM Trace connected as a host does (${d.mode === "discover" ? "server/discover" : "initialize"}), listed what the server has, then closed the connection. LM Studio makes its own connection when a chat uses the server.`;
-  return `<div class="conn ok"><span class="dot"></span><span>Online</span>${d.serverInfo?.name ? `<span class="sep">·</span><span>${esc(d.serverInfo.name)} ${esc(d.serverInfo.version || "")}</span>` : ""}`
+  return `<div class="conn ok"><span class="dot"></span><span>Online</span>${d.serverInfo?.name ? `<span class="sep">·</span><span data-tip-title="Server name" data-tip="The name that the server reports in serverInfo. The title above is the name in LM Trace.">${esc(d.serverInfo.name)} ${esc(d.serverInfo.version || "")}</span>` : ""}`
     + `<span class="sep">·</span><span data-tip-title="Protocol version" data-tip="${d.mode === "discover" ? "The server knows version 2026-07-28: no handshake; each request carries the version." : "The server does not know server/discover, so the client uses the initialize handshake of the older version."}">MCP ${esc(d.version)}</span>`
     + `<span class="sep">·</span><span>${end} ms</span><span class="info" tabindex="0" data-tip-title="Details" data-tip="${esc(tip)}">i</span></div>`;
 }
@@ -1422,9 +1439,8 @@ function renderInspect(p) {
   const nMsg = (d.log || []).filter(e => e.dir !== "note").length;
   p.innerHTML = `<div class="insp">
     <button type="button" class="back" data-act="back">${IC.back}Back</button>
-    <div class="insp-hd"><span class="av">${s ? iconOf(s) : IC.plug}</span><h3>${esc(titleOf(v.name))}</h3>${s ? typeBadge(s) : ""}
-      <span style="margin-left:auto"></span><button type="button" class="btn ghost" data-inspect="${esc(v.name)}"${v.loading ? " disabled" : ""} title="Stop the server and start it again: a new process (stdio) or a new session (HTTP). Then list what it has. LM Studio has its own copy of the server; this does not restart it.">${v.loading ? '<span class="busy-dot"></span>Restarting…' : "Force Restart"}</button></div>
-    ${connState(v, d)}
+    <div class="insp-hd"><span class="av">${s ? iconOf(s) : IC.plug}</span><div class="insp-ttl"><div class="insp-name"><h3>${esc(titleOf(v.name))}</h3>${s ? typeBadge(s) : ""}</div>${connState(v, d)}</div>
+      <button type="button" class="btn ghost" data-inspect="${esc(v.name)}"${v.loading ? " disabled" : ""} title="Stop the server and start it again: a new process (stdio) or a new session (HTTP). Then list what it has. LM Studio has its own copy of the server; this does not restart it.">${v.loading ? '<span class="busy-dot"></span>Restarting…' : "Force Restart"}</button></div>
     ${d.auth ? authCard(d.auth, v.name) : ""}
     <div class="cap-box"><div class="cap-tabs" role="tablist">${TABS.map(([k, l, tip]) => `<button type="button" role="tab" data-cap="${k}" aria-selected="${k === tab}" title="${esc(tip)}">${l} <span class="n">${lists[k] ? lists[k].length : "–"}</span></button>`).join("")}</div>
       <div class="cap-list">${body}</div>
@@ -1609,12 +1625,13 @@ document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("plusMe
 // ---------------------------------------------------------------- Chat: the run
 // The steps of MCP, as in the How it works list. The step of the newest event is marked.
 const FLOW = [
-  ["Connect", "The host starts or calls each server and asks for its tools (tools/list)."],
-  ["Prompt and tools", "The host puts your message and the tool definitions into the prompt of the model."],
-  ["Tool selection", "The model selects a tool and writes the call, or answers at once."],
-  ["Tool call", "The host sends tools/call to the server of that tool."],
-  ["Result", "The server returns the result. The host adds it to the prompt."],
-  ["Answer", "The model reads the result and writes the answer."],
+  ["Discovery", "Each MCP client connects to its server and asks for the tools (tools/list)."],
+  ["Prompt and tools", "The MCP host puts your message and the tool definitions into the prompt of the LLM."],
+  ["Tool selection", "The LLM selects a tool and writes the call, or answers at once."],
+  ["Tool execution", "The MCP client sends tools/call to the server. The server runs the tool."],
+  ["Result", "The server returns the result to the MCP client."],
+  ["Prompt and tool output", "The MCP host adds the tool call and the result to the prompt, and calls the LLM again."],
+  ["Answer", "The LLM reads the result and writes the answer."],
 ];
 let flowStep = -1;
 function renderFlow() {
@@ -1644,14 +1661,192 @@ function md(t) {
   }
   return html + (list ? `</${list}>` : "");
 }
+const plural = (n, w) => `${n.toLocaleString()} ${w}${n === 1 ? "" : "s"}`;
 const argText = a => Object.entries(a || {}).map(([k, v]) => `${k}: ${JSON.stringify(v)}`).join(", ");
 const labelOf = pi => pi?.type === "plugin" ? (pi.plugin_id || "").replace(/^mcp\//, "") : pi?.server_label || "server";
 
 function newTurn(text, req) { return { user: text, req, rows: [], calls: 0, answer: "", t0: Date.now(), stats: null, error: "", seq0: null, rpc: [] }; }
 // A row: {call, who, what (html), meta, body (html), cls}. Rows with the same call number share a card.
 function addRow(turn, r) { turn.rows.push({ call: turn.calls, ...r }); return turn.rows.at(-1); }
+// ---- The prompt, as on the Tools page: Formatted (blocks, tags as chips) or Raw (the exact text).
+// The same code as tools.html. The answer of LM Studio has no thinking in it, so cleanText only trims.
+const cleanText = t => (t || "").trim();
+const TAG_RE = /(<[^<>\s]{1,40}>|\[(?:END_)?TOOL_[A-Z]+\])/;
+// No names per model: a tag is one special token, or plain text in several tokens. The tokenizer of the model decides.
+const SPECIAL = ["Special token · 1 token", "One token from the vocabulary of the model. The model learned it in training."];
+const tokCounts = new Map();  // model -> Map(tag -> number of tokens), null when the tokenizer is not available
+async function countTags(model, texts) {
+  const tags = [...new Set(texts.flatMap(t => (t || "").split(TAG_RE).filter((p, i) => i % 2)))];
+  let m = tokCounts.get(model);
+  if (m === null) return;
+  if (!m) tokCounts.set(model, m = new Map());
+  const miss = tags.filter(t => !m.has(t));
+  if (!miss.length) return;
+  try {
+    const j = await post("/tokenize", { model, texts: miss, count: true });
+    miss.forEach((t, i) => m.set(t, j.counts[i]));
+  } catch { tokCounts.set(model, null); }
+}
+function renderRaw(text, model) {
+  const m = tokCounts.get(model);
+  return (text || "").split(TAG_RE).map((part, i) => {
+    if (!(i % 2)) return esc(part).replace(/\n/g, '<span class="nl">↵</span>\n');
+    const n = m?.get(part);
+    if (n === 1 || (m === null && part.startsWith("<"))) {
+      return `<span class="sp${part === "<bos>" ? " bos" : ""}" tabindex="0" data-tip-title="${SPECIAL[0]}" data-tip="${SPECIAL[1]}">${esc(part)}</span>`;
+    }
+    const tip = n ? `Not a special token: the model reads this tag as ${n} ordinary tokens of text. It learned nothing special about it; it must follow the note.` : "Text in the prompt.";
+    return `<span class="tx" tabindex="0" data-tip-title="Plain text${n ? ` · ${n} tokens` : ""}" data-tip="${esc(tip)}">${esc(part)}</span>`;
+  }).join("");
+}
+
+// ---- Formatted view of a prompt or a reply, for any model. No list of model tags: the page finds the data that
+// it knows (the messages of the request, the fields of the reply) in the exact text. All other text is what the chat
+// template adds. Display only: the indentation is added for reading. ↵ marks a line break that is really in the text.
+function chip(tag, model) {
+  const m = tokCounts.get(model), n = m?.get(tag), one = n === 1 || (m === null && tag.startsWith("<"));
+  const tip = one ? SPECIAL : [`Plain text${n ? ` · ${n} tokens` : ""}`, n ? `Not a special token: the model reads this tag as ${n} ordinary tokens of text. It must follow the note to use it.` : "Text in the prompt."];
+  return `<span class="${one ? "sp" : "tx"} c-other" tabindex="0" data-tip-title="${esc(tip[0])}" data-tip="${esc(tip[1])}">${esc(tag)}</span>`;
+}
+// Text: real line breaks get ↵. "json": the keys are grey. U+2028 marks a break added for reading, with no ↵.
+const txt = (t, keys) => (keys === "json" ? esc(t).replace(/(&quot;[^&\n]*?&quot;)(:)/g, '<span class="key">$1</span>$2') : keys ? esc(t).replace(/(^|[{,\s])([A-Za-z_]\w*):(?!\/\/)/g, '$1<span class="key">$2:</span>') : esc(t))
+  .replace(/\n/g, '<span class="nl">↵</span>\n').replace(/\u2028/g, "\n");
+// Code with braces that is not JSON: a line per key, inside braces.
+function braces(units, model) {
+  const close = new Map(), stack = [];
+  units.forEach((u, i) => { if (u.c === "{") stack.push(i); else if (u.c === "}" && stack.length) close.set(stack.pop(), i); });
+  const leaf = i => { const j = close.get(i); if (j == null || j - i > 70) return false; for (let x = i + 1; x < j; x++) if (units[x].c === "{") return false; return true; };
+  let out = "", buf = "", depth = 0, sq = 0, inline = 0;
+  const flush = () => { if (buf) { out += txt(buf, true); buf = ""; } }, nl = () => { flush(); out += "\n" + "  ".repeat(depth); };
+  units.forEach((u, i) => {
+    if (u.tag) { flush(); out += chip(u.tag, model); return; }
+    const c = u.c;
+    if (inline) { buf += c; if (c === "{") inline++; if (c === "}") inline--; return; }
+    if (c === "{") { if (leaf(i)) { buf += c; inline = 1; return; } buf += c; depth++; nl(); return; }
+    if (c === "}") { depth = Math.max(0, depth - 1); nl(); buf += c; return; }
+    if (c === "[") sq++; if (c === "]") sq = Math.max(0, sq - 1);
+    if (c === "," && !sq) { buf += c; nl(); return; }
+    buf += c;
+  });
+  flush();
+  return out;
+}
+// Each line that is JSON is indented.
+const jsonPretty = t => t.split("\n").map(line => { const x = line.trim(); if (!/^[{\[]/.test(x)) return line; try { return JSON.stringify(JSON.parse(x), null, 2).replace(/\n/g, "\u2028"); } catch { return line; } }).join("\n");
+// A piece of exact text: tags are chips; JSON lines are indented.
+function code(t, model) {
+  const items = t.split(TAG_RE).map((x, i) => i % 2 ? { tag: x } : { t: x }).filter(x => x.tag || x.t);
+  const plain = items.filter(x => x.t).map(x => x.t).join("");
+  const json = plain.split("\n").some(l => { const x = l.trim(); if (!/^[{\[]/.test(x)) return false; try { JSON.parse(x); return true; } catch { return false; } });
+  // Braces get a line per key only when the code is on one long line; code that has its own lines stays as it is.
+  if (!json && /\{/.test(plain) && Math.max(...plain.split("\n").map(l => l.length)) > 100) return braces(items.flatMap(x => x.tag ? [{ tag: x.tag }] : [...x.t].map(c => ({ c }))), model);
+  return items.map(x => x.tag ? chip(x.tag, model) : txt(json ? jsonPretty(x.t) : x.t, json ? "json" : false)).join("");
+}
+const tagsLine = (t, model) => t.split(TAG_RE).map((x, i) => !x ? "" : i % 2 ? chip(x, model) : esc(x).replace(/\n/g, '<span class="nl">↵</span>')).join("");
+const LBL_REPLY = { think: "Reasoning · reasoning_content" };
+const LBL_MSG = { system: ["sys", "System message"], developer: ["sys", "System message"], user: ["user", "User message"], assistant: ["ans", "Model · text from an earlier reply"], tool: ["resp", "Tool result · from the harness"] };
+// The prompt: each message of the request, found in the exact text, in order. The text between two messages comes
+// from the chat template. If it has the name of a tool, it is the tools (LM Studio writes them from the JSON schema,
+// before the first user message), or an earlier tool call. After a user message, it is a tool call, and also the tool
+// result when the template rewrote the result so the page cannot find it as a message. null: no message is in the text.
+function promptView(text, model, body) {
+  const msgs = body?.messages || [], names = (body?.tools || []).map(t => t.function?.name).filter(Boolean), parts = [];
+  let pos = 0;
+  for (const m of msgs) {
+    const t = (m.role === "assistant" ? cleanText(m.content, model) : typeof m.content === "string" ? m.content : "").trim();
+    const at = t ? text.indexOf(t, pos) : -1;
+    if (at >= 0) { parts.push({ s: at, e: at + t.length, m }); pos = at + t.length; }
+  }
+  if (!parts.length) return null;
+  let out = "", at = 0;
+  // The tags at the two ends of a gap (and a short word between them, as a role name) go on their own line.
+  const edge = x => x.tag || (/^\s*[A-Za-z_]{0,12}\s*$/.test(x.t) && !names.includes(x.t.trim()));  // a tool name is not an edge
+  const gap = (g, next, prev) => {
+    if (!g.trim()) return;
+    const items = g.split(TAG_RE).map((x, i) => i % 2 ? { tag: x } : { t: x }).filter(x => x.tag || x.t), join = a => a.map(x => x.tag ?? x.t).join("");
+    let i = 0, j = items.length;
+    while (i < j && edge(items[i])) i++;
+    while (j > i && edge(items[j - 1])) j--;
+    const head = join(items.slice(0, i)), mid = join(items.slice(i, j)), tail = join(items.slice(j));
+    const line = t => { if (t.trim()) out += `<div class="pl">${tagsLine(t, model)}</div>`; };
+    line(head);
+    const tool = names.some(n => mid.includes(n));
+    if (mid && !tool && (mid.match(/[A-Za-z]/g) || []).length < 3) line(mid);  // only a brace or a mark
+    else if (mid) {
+      const later = prev && prev.role !== "system" && prev.role !== "developer";  // after the conversation started
+      const lbl = tool && next?.role === "tool" ? ["call", "Tool call · from an earlier reply, as the chat template writes it"]
+        : tool && later ? ["call", "Tool call and tool result · LM Studio writes them in the format of the chat template"]
+        : tool ? ["tool", "Tools · LM Studio writes them from the tool definitions, in the format of the chat template"] : ["sys", "Chat template · text that the template adds"];
+      out += `<div class="pb k-${lbl[0]}"><div class="pb-lbl">${lbl[1]}</div>${code(mid, model)}</div>`;
+    }
+    line(tail);
+  };
+  let prev = null;
+  for (const p of parts) {
+    gap(text.slice(at, p.s), p.m, prev);
+    prev = p.m;
+    const [k, lbl] = LBL_MSG[p.m.role] || ["sys", p.m.role];
+    out += `<div class="pb k-${k}"><div class="pb-lbl">${esc(lbl)}</div>${code(text.slice(p.s, p.e), model)}</div>`;
+    at = p.e;
+  }
+  gap(text.slice(at), null, prev);
+  return `<div class="pv">${out}</div>`;
+}
+// No data to find: the exact text, with tags as chips.
+const plainView = (text, model) => `<div class="pv"><div class="pb k-sys">${code(text || "", model)}</div></div>`;
+const rawKeys = new Set();  // the views switched to Raw; each view has its own switch
+function textView(text, model, key, body) {
+  const fmt = !rawKeys.has(key);
+  return `<div class="view-bar" data-anchor="${esc(key)}"><span class="seg sm" role="group" aria-label="View"><button type="button" data-view="fmt" aria-pressed="${fmt}">Formatted</button><button type="button" data-view="raw" aria-pressed="${!fmt}">Raw</button></span>
+    <span class="hint-s">${fmt ? "Blocks and indentation are added for reading. ↵ is a real line break." : "The exact text, as LM Studio logged it."}</span></div>`
+    + (fmt ? (body && promptView(text, model, body)) || plainView(text, model) : `<pre class="raw">${renderRaw(text, model)}</pre>`)
+    + `<div class="legend"><span class="raw"><span class="sp c-other">&lt;tag&gt;</span></span> one special token <span class="raw"><span class="tx c-other">&lt;tag&gt;</span></span> plain text: several tokens</div>`;
+}
+// The prompt of a row: the text from the LM Studio log. An archived chat from before this view has only the HTML.
+function promptOf(r) {
+  if (r.prompt) return r.prompt;
+  if (r.what !== "Applying chat template" || !/^<pre class="raw cap">/.test(r.body || "")) return null;
+  const el = document.createElement("div"); el.innerHTML = r.body;
+  return { text: el.textContent };
+}
+// What the prompt has in it, for the Formatted view: the messages of the conversation up to this turn, and the tool names.
+function promptBody(ti) {
+  const t = chat[ti], msgs = [];
+  if (t.req?.system_prompt) msgs.push({ role: "system", content: t.req.system_prompt });
+  let first = ti; while (first > 0 && chat[first].req?.previous_response_id) first--;  // the turns that LM Studio keeps
+  for (let i = first; i <= ti; i++) {
+    msgs.push({ role: "user", content: chat[i].req?.input ?? chat[i].user });
+    if (i < ti && chat[i].answer) msgs.push({ role: "assistant", content: chat[i].answer });
+  }
+  const names = new Set();
+  for (const x of chat) for (const r of x.rows) if (r.tool) names.add(r.tool);
+  for (const s of enabled()) for (const tl of toolCache[s.name]?.tools || []) names.add(tl.name);
+  return { messages: msgs, tools: [...names].map(name => ({ function: { name } })) };
+}
+// The tokenizer tells which tags are one special token. The view draws again when the answer comes.
+const counting = new Set();
+function needCounts(model, text) {
+  if (!model || tokCounts.has(model) && [...new Set((text.split(TAG_RE).filter((p, i) => i % 2)))].every(x => tokCounts.get(model) === null || tokCounts.get(model).has(x))) return;
+  const k = model + "\u0000" + text.length; if (counting.has(k)) return; counting.add(k);
+  countTags(model, [text]).then(() => renderChat());
+}
+// Formatted / Raw: the switch that you clicked stays at the same place on the screen.
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-view]"); if (!b) return;
+  const bar = b.closest("[data-anchor]"), key = bar?.dataset.anchor, log = $("log"), y = bar?.getBoundingClientRect().top, winY = scrollY;
+  b.dataset.view === "raw" ? rawKeys.add(key) : rawKeys.delete(key);
+  renderChat();
+  const el = [...log.querySelectorAll("[data-anchor]")].find(x => x.dataset.anchor === key);
+  if (el) log.scrollTop += el.getBoundingClientRect().top - y;
+  scrollTo(scrollX, winY);
+});
 let openKeys = new Set();
 function rowHtml(r, key) {
+  const pr = promptOf(r);
+  if (pr) { const ti = +key.split(".")[0], model = pr.model || chat[ti]?.req?.model; needCounts(model, pr.text); r = { ...r, body: textView(pr.text, model, key + "f", promptBody(ti)) }; }
+  if (r.out) { needCounts(r.out.model, r.out.text); r = { ...r, body: textView(r.out.text, r.out.model, key + "o", null) }; }
+  if (r.emu) r = { ...r, what: r.what + ` <span class="emu" tabindex="0" data-tip-title="Emulated" data-tip="The API does not show this step, but LM Studio does it. The page shows the messages that the MCP protocol and LM Studio's MCP client send. Run the LM Trace server to see the real messages.">emulated</span>` };
+  if (r.what === "Thinking" && !r.tip) r = { ...r, tip: THINK_TIP };  // archived chats from before the tip
   const head = `<span class="who">${r.who}</span><span class="what">${r.what}${r.tip ? ` <span class="info ev-i" tabindex="0" data-tip="${esc(r.tip)}">i</span>` : ""}</span><span class="meta">${r.meta || ""}</span>`;
   return r.body ? `<details class="ev${r.cls ? " " + r.cls : ""}" data-key="${key}"${openKeys.has(key) ? " open" : ""}><summary>${head}<span class="more">Details<span class="chev"></span></span></summary><div class="ev-bd">${r.body}</div></details>`
     : `<div class="ev${r.cls ? " " + r.cls : ""}"><div class="ev-row">${head}<span></span></div></div>`;
@@ -1660,18 +1855,18 @@ function turnHtml(turn, ti) {
   let out = `<div class="bubble user">${esc(turn.user)}</div>`;
   if (turn.attached?.length) out += `<div class="tok-meta user">+ ${turn.attached.map(a => esc(a.title)).join(", ")} (resource${turn.attached.length > 1 ? "s" : ""})</div>`;
   const groups = [];
-  for (const [i, r] of turn.rows.entries()) { const g = groups.at(-1); if (g && g.call === r.call) g.rows.push([i, r]); else groups.push({ call: r.call, rows: [[i, r]] }); }
+  for (const [i, r] of turn.rows.entries()) { const g = groups.at(-1); if (g && g.call === r.call && g.grp === r.grp) g.rows.push([i, r]); else groups.push({ call: r.call, grp: r.grp, rows: [[i, r]] }); }
   for (const g of groups) {
     const rows = g.rows.map(([i, r]) => rowHtml(r, `${ti}.${i}`)).join("");
-    out += `<section class="callcard"><div class="callcard-hd">${g.rows[0][1].kind === "close" ? "After the turn" : g.call ? `Model call ${g.call}` : "Request"}</div>${rows}</section>`;
+    out += `<section class="callcard"><div class="callcard-hd">${g.rows[0][1].kind === "close" ? "After the turn" : g.grp === "disc" ? "Discovery" : g.call ? `Model call ${g.call}` : "Request"}</div>${rows}</section>`;
   }
   if (turn.answer) out += `<div class="bubble assistant md">${md(turn.answer.trim())}</div>`;
-  if (turn.stats) { const s = turn.stats; out += `<div class="tok-meta assistant" data-tip-title="Tokens" data-tip="The stats that LM Studio reports for the turn: input_tokens, total_output_tokens (reasoning_output_tokens of them are thinking) and tokens_per_second. The time is measured by this page.">${s.input_tokens?.toLocaleString()} prompt tokens · ${s.total_output_tokens?.toLocaleString()} output tokens${s.reasoning_output_tokens ? ` (${s.reasoning_output_tokens} thinking)` : ""} · ${s.tokens_per_second ? s.tokens_per_second.toFixed(1) + " tok/s" : ""} · ${fmtS(turn.ms || 0)}</div>`; }
-  if (turn.error) out += `<div class="error">${esc(turn.error)}</div>`;
+  if (turn.stats) { const s = turn.stats, pr = promptToks(turn); out += `<div class="tok-meta assistant" data-tip-title="Tokens" data-tip="Prompt tokens of each model call. Call 1: input_tokens, from LM Studio. LM Studio reports only the first call, so this page counts the prompt of each later call with the tokenizer of the model (~). Output tokens: total_output_tokens (reasoning_output_tokens of them are thinking) and tokens_per_second, from LM Studio. The time is measured by this page.">${pr.length > 1 ? "Prompt tokens: " + pr.map((n, i) => `call ${i + 1} ${i ? (n == null ? "…" : "~" + n.toLocaleString()) : s.input_tokens?.toLocaleString()}`).join(" + ") : s.input_tokens?.toLocaleString() + " prompt tokens"} · ${s.total_output_tokens?.toLocaleString()} output tokens${s.reasoning_output_tokens ? ` (${s.reasoning_output_tokens} thinking)` : ""} · ${s.tokens_per_second ? s.tokens_per_second.toFixed(1) + " tok/s" : ""} · ${fmtS(turn.ms || 0)}</div>`; }
+  if (turn.error) out += `<div class="error">${esc(turn.error)}${turn.fix && !busy ? ` <button type="button" class="linkbtn" data-act="ctx" data-model="${esc(turn.fix.model)}" data-n="${turn.fix.n}">Reload ${esc(turn.fix.model)} with ${turn.fix.n.toLocaleString()} tokens</button>` : ""}</div>`;
   return out;
 }
 function renderChat() {
-  renderPlus(); renderStarters();
+  renderPlus(); renderStarters(); renderCtx();
   const on = enabled();
   renderStats(); renderMcpList(); renderViewBar();
   const log = $("log");
@@ -1682,6 +1877,7 @@ function renderChat() {
 }
 $("log").addEventListener("toggle", e => { const k = e.target.dataset?.key; if (k) e.target.open ? openKeys.add(k) : openKeys.delete(k); }, true);
 $("log").addEventListener("click", e => { if (e.target.closest(".ev-i")) e.preventDefault(); }, true);  // the i shows its tooltip; it does not open the row
+$("log").addEventListener("click", e => { const c = e.target.closest("[data-act=ctx]"); if (c) reloadCtx(c.dataset.model, +c.dataset.n); });
 $("log").addEventListener("click", e => { if (e.target.closest("[data-act=setup]")) { view.mode = "list"; setTab("servers"); } if (e.target.closest("#runAgain")) runAgain(); });
 // Run again: a new chat with the settings of the archived chat, then its messages again, one by one. Not a replay:
 // the model and the servers run again.
@@ -1719,15 +1915,45 @@ function renderStarters() {
 }
 $("starters").onclick = e => { const b = e.target.closest(".starter"); if (b) { $("msg").value = b.textContent; $("msg").dispatchEvent(new Event("input")); $("msg").focus(); } };
 
+var THINK_TIP = "The LLM reasons before it answers or calls a tool. LM Studio sends the reasoning as its own part of the output.";
+// Prompt tokens of each model call. LM Studio's input_tokens counts only call 1, so the page counts each prompt from the log.
+const promptCount = new Map();  // prompt text -> number of tokens, or null while counting / when not available
+function promptToks(turn) {
+  const rows = turn.rows.filter(r => r.what === "Applying chat template");
+  return rows.map((r, i) => {
+    const p = r.prompt; if (!i || !p?.text) return null;
+    if (!promptCount.has(p.text)) { promptCount.set(p.text, null); countText(p.model || turn.req?.model, p.text).then(n => { promptCount.set(p.text, n); if (n != null) renderChat(); }); }
+    return promptCount.get(p.text);
+  });
+}
+async function countText(model, text) {
+  const parts = []; for (let i = 0; i < text.length; i += 3000) parts.push(text.slice(i, i + 3000));
+  let total = 0;
+  try { for (let i = 0; i < parts.length; i += 15) { const j = await post("/tokenize", { model, texts: parts.slice(i, i + 15), count: true }); total += j.counts.reduce((a, b) => a + b, 0); } }
+  catch { return null; }
+  return total;
+}
 // The formatted prompt of a model call: what LM Studio gave the model (from its log), with the tool definitions in it.
 async function fillPrompt(turn, row, since) {
   for (let i = 0; i < 6; i++) {
     try {
       const j = await getJ(`/model-input?since=${since}&first=1`);
-      if (j.entry) { row.body = `<pre class="raw cap">${esc(j.entry.input)}</pre>`; renderChat(); return; }
+      if (j.entry) { row.prompt = { text: j.entry.input, model: turn.req?.model }; row.body = " "; renderChat(); return; }
       if (!j.available) { row.body = `<p class="hint-s">The LM Studio log is not available.</p>`; renderChat(); return; }
     } catch {}
     await new Promise(r => setTimeout(r, 700));
+  }
+}
+// The raw output of a model call: what the LLM generated, from the LM Studio log.
+async function fillOutput(row, since) {
+  if (row.outFill) return; row.outFill = true;
+  for (let i = 0; i < 8; i++) {
+    try {
+      const j = await getJ(`/model-output?since=${since}&first=1`);
+      if (j.entry) { row.out = { text: j.entry.output, model: chat.find(t => t.rows.includes(row))?.req?.model }; row.body = " "; renderChat(); return; }
+      if (!j.available) return;
+    } catch {}
+    await new Promise(r => setTimeout(r, 500));
   }
 }
 // The messages of the LM Trace server during the turn: what LM Studio (the host) asked it.
@@ -1741,25 +1967,24 @@ async function fillRpc(turn) {
   const isClose = e => e.msg?.method === "notifications/cancelled";
   const setup = turn.rpc.filter(e => !isClose(e) && !(e.msg?.method === "tools/call") && !(e.dir === "out" && calls.some(c => c.msg.id === e.msg?.id && c.n < e.n)));
   const close = turn.rpc.filter(isClose);
-  if (close.length && !turn.rows.some(r => r.kind === "close")) {
-    turn.calls++;
-    addRow(turn, { kind: "close", who: "LM Studio", what: "Cancelling tools/list", meta: "notification",
-      tip: "LM Studio sends notifications/cancelled for its tools/list request. The server does not answer a notification. The session stays open for the next message.",
-      body: close.map(e => `<pre class="raw cap">${esc(JSON.stringify(e.msg, null, 2))}</pre>`).join("") });
-  }
-  const r0 = turn.rows.find(r => r.kind === "connect");
+  const pre = e => `<div class="lbl-s">${e.dir === "in" ? "MCP client → lm-trace" : "lm-trace → MCP client"}</div><pre class="raw cap">${esc(JSON.stringify(e.msg, null, 2))}</pre>`;
+  const rC = turn.rows.find(r => r.kind === "close" && r.server === "lm-trace");
+  if (rC && close.length) { rC.emu = false; rC.body = close.map(pre).join(""); }
+  const r0 = turn.rows.find(r => r.kind === "connect" && (r.server === "lm-trace" || r.server == null));
+  const r1 = turn.rows.find(r => r.kind === "tools" && r.server === "lm-trace");
   if (r0 && setup.length) {
     const methods = setup.filter(e => e.dir === "in").map(e => e.msg?.method).filter(Boolean);
-    r0.meta = esc([...new Set(methods.filter(m => !m.startsWith("notifications/")))].join(", "));
-    r0.body = setup.map(e => `<div class="lbl-s">${e.dir === "in" ? "LM Studio → lm-trace" : "lm-trace → LM Studio"}</div><pre class="raw cap">${esc(JSON.stringify(e.msg, null, 2))}</pre>`).join("");
+    r0.emu = false; r0.meta = esc([...new Set(methods.filter(m => !m.startsWith("notifications/")))].join(", "));
+    r0.body = setup.filter(e => e.dir === "in" || !r1).map(pre).join("");
+    if (r1) { r1.emu = false; r1.body = setup.filter(e => e.dir === "out").map(pre).join(""); }
   }
   for (const r of turn.rows.filter(r => r.kind === "call" && r.server === "lm-trace" && !r.rpcDone)) {
     const req = calls.find(c => c.msg.params?.name === r.tool && JSON.stringify(c.msg.params?.arguments || {}) === JSON.stringify(r.args || {}) && !turn.rows.some(o => o !== r && o.rpcN === c.n));
     if (!req) continue;
     const res = turn.rpc.find(e => e.dir === "out" && e.msg?.id === req.msg.id && e.n > req.n);
-    r.rpcN = req.n; r.rpcDone = true;
+    r.rpcN = req.n; r.rpcDone = true; r.emu = false;
     // The answer says if the tool failed: isError true. Mark the result row of this call.
-    const resRow = turn.rows[turn.rows.indexOf(r) + 1];
+    const resRow = turn.rows.slice(turn.rows.indexOf(r) + 1).find(o => o.kind === "result");
     if (res?.msg?.result?.isError && resRow && resRow.kind === "result") { resRow.cls = "bad"; resRow.what = "Returning error"; resRow.meta = "isError: true"; }
     r.body = `<div class="lbl-s">Request</div><pre class="raw cap">${esc(JSON.stringify(req.msg, null, 2))}</pre>` + (res ? `<div class="lbl-s">Answer</div><pre class="raw cap">${esc(JSON.stringify(res.msg, null, 2))}</pre>` : "");
   }
@@ -1787,56 +2012,90 @@ async function send() {
   $("msg").value = ""; $("msg").dispatchEvent(new Event("input"));
   busy = true; ctrl = new AbortController(); Composer.setSend($("sendBtn"), true); chatPick.setDisabled(true);
   try { turn.seq0 = (await getJ("/mcp-log?since=999999999")).last; } catch {}
-  addRow(turn, { who: "LM Trace", what: "Sending request", meta: on.length ? `${on.length} MCP server${on.length > 1 ? "s" : ""}` : "no MCP server",
-    tip: `POST /api/v1/chat. integrations names the MCP servers; LM Studio connects to them.${lastResponseId ? " previous_response_id: LM Studio keeps the conversation." : ""}`,
+  // The rows follow the MCP flow diagram: the same actors (Harness, MCP host, MCP client, LLM, MCP server) and the
+  // same step names. A step that the API does not show is emulated: the page writes the messages that the MCP
+  // protocol and LM Studio's MCP client send (verified with the LM Trace server). For lm-trace, the log replaces them.
+  const isNew = !req.previous_response_id;  // a new chat: LM Studio connects; the next turn of the chat: only tools/list
+  addRow(turn, { who: "Harness", what: "Sending request", meta: on.length ? `${on.length} MCP server${on.length > 1 ? "s" : ""}` : "no MCP server",
+    tip: `POST /api/v1/chat. integrations names the MCP servers; there is no tool list in the request.${lastResponseId ? " previous_response_id: LM Studio keeps the conversation." : ""}`,
     body: `<pre class="raw cap">${esc(JSON.stringify(req, null, 2))}</pre>` });
-  if (on.length) { addRow(turn, { kind: "connect", who: "LM Studio", what: "Connecting to servers", meta: "tools/list",
-    tip: "LM Studio starts each stdio server or calls each HTTP server, then asks tools/list. The API does not show these messages; Details shows the ones that the LM Trace server logged." }); setFlow(0); }
+  if (on.length) {
+    addRow(turn, { emu: true, who: "MCP host", what: "Receiving request", meta: `${on.length} MCP client${on.length > 1 ? "s" : ""}`,
+      tip: "LM Studio finds each server of integrations in its mcp.json, and creates one MCP client for each server.",
+      body: `<pre class="raw cap">${esc(on.map(s => `${s.name}  →  ${lineOf(s)}`).join("\n"))}</pre>` });
+    for (const s of on) {
+      const n = s.name, tools = (toolCache[n]?.tools || []).filter(t => !allowedOf(n) || allowedOf(n).includes(t.name));
+      const msgs = isNew ? [{ jsonrpc: "2.0", id: 0, method: "initialize", params: { protocolVersion: "2025-11-25", capabilities: {}, clientInfo: { name: "lmstudio-mcp-server-session", version: "1.0.0" } } },
+        { jsonrpc: "2.0", method: "notifications/initialized" }, { jsonrpc: "2.0", id: 1, method: "tools/list", params: {} }]
+        : [{ jsonrpc: "2.0", id: "…", method: "tools/list", params: {} }];
+      addRow(turn, { kind: "connect", grp: "disc", server: n, emu: n !== "lm-trace", who: "MCP client",
+        what: `${isNew ? "Connecting to the server" : "Listing tools"} <span class="srv-tag">${esc(titleOf(n))}</span>`, meta: isNew ? "initialize, tools/list" : "tools/list",
+        tip: isNew ? "A new chat: the MCP client opens a session (initialize, notifications/initialized), then asks for the tools (tools/list)." : "The next turn of the same chat: the session is open, so the MCP client asks only for the tools (tools/list).",
+        body: msgs.map(m => `<pre class="raw cap">${esc(JSON.stringify(m, null, 2)).replace(/&quot;…&quot;/g, "…")}</pre>`).join("") });
+      addRow(turn, { kind: "tools", grp: "disc", server: n, emu: n !== "lm-trace", who: "MCP server",
+        what: `Returning tools <span class="srv-tag">${esc(titleOf(n))}</span>`, meta: tools.length ? plural(tools.length, "tool") : "",
+        tip: "The result of tools/list: each tool with a name, a description and an input schema. LM Studio gives only the tools with a check (allowed_tools) to the LLM.",
+        body: tools.length ? `<pre class="raw cap">${esc(tools.map(t => { const p = t.inputSchema?.properties || {}, rq = t.inputSchema?.required || []; return `${t.name}(${Object.keys(p).map(k => rq.includes(k) ? k : k + "?").join(", ")})`; }).join("\n"))}</pre><p class="hint-s">? = optional</p>` : "" });
+    }
+    setFlow(0);
+  }
   renderChat();
-  let cur = null, promptRow = null, buf = "", tStep = Date.now();
-  // The time to read the prompt: until the model writes its first token.
-  const endPrompt = () => { if (promptRow && !promptRow.meta) promptRow.meta = fmtS(Date.now() - promptRow.t); };
+  let cur = null, gen = null, promptRow = null, buf = "", tStep = Date.now(), wrote = false;
+  // The time to read the prompt: until the LLM writes its first token.
+  const endPrompt = () => { wrote = true; if (promptRow && !promptRow.meta) promptRow.meta = fmtS(Date.now() - promptRow.t); };
+  // One "Generating tokens" row for each model call; the raw output comes from the LM Studio log.
+  const genRow = now => { if (!gen || gen.call !== turn.calls) { gen = addRow(turn, { t: now, who: "LLM", what: "Generating tokens", tip: "The LLM generates the reply, one token at a time. The raw text is from the LM Studio log." }); } return gen; };
   const onEvent = (type, d) => {
     const now = Date.now();
     switch (type) {
-      case "model_load.start": cur = addRow(turn, { who: "LM Studio", what: "Loading model" }); break;
+      case "model_load.start": cur = addRow(turn, { who: "MCP host", what: "Loading model" }); break;
       case "model_load.end": if (cur) cur.meta = d.load_time_seconds ? `${d.load_time_seconds.toFixed(1)} s` : ""; break;
       case "prompt_processing.start":
-        turn.calls++; tStep = now; setFlow(turn.calls === 1 ? 1 : 4);
-        promptRow = addRow(turn, { t: now, who: "LM Studio", what: "Applying chat template", tip: turn.calls === 1 ? "The prompt: your message and the tool definitions, in the chat template of the model. From the LM Studio log." : "The prompt again, now with the tool result. From the LM Studio log.", body: `<p class="hint-s">Loading…</p>` });
+        if (promptRow && !wrote) { promptRow.t = now; break; }  // LM Studio can send this event two times for one model call
+        turn.calls++; tStep = now; wrote = false; setFlow(turn.calls === 1 ? 1 : 5);
+        promptRow = addRow(turn, { t: now, who: "MCP host", what: "Applying chat template", tip: turn.calls === 1 ? "The prompt: your message and the tool definitions, in the chat template of the model. From the LM Studio log." : "The prompt again, now with the tool call and the tool result. From the LM Studio log.", body: `<p class="hint-s">Loading…</p>` });
         fillPrompt(turn, promptRow, now - 1500); break;
       case "prompt_processing.end": endPrompt(); break;
-      case "reasoning.start": endPrompt(); cur = addRow(turn, { who: "Model", what: "Thinking", text: "", body: "" }); tStep = now; setFlow(2); break;
+      case "reasoning.start": endPrompt(); cur = addRow(turn, { who: "LLM", what: "Thinking", tip: THINK_TIP, text: "", body: "" }); tStep = now; setFlow(turn.calls === 1 ? 2 : 6); break;
       case "reasoning.delta": if (cur) { cur.text += d.content || ""; cur.body = `<pre class="raw cap">${esc(cur.text.trim())}</pre>`; } break;
       case "reasoning.end": if (cur) { if (!cur.text.trim()) turn.rows.splice(turn.rows.indexOf(cur), 1); else cur.meta = fmtS(now - tStep); } break;
-      case "tool_call.start": endPrompt(); cur = addRow(turn, { who: "Model", what: "Writing tool call…" }); tStep = now; setFlow(2); break;
-      case "tool_call.name": if (cur) { cur.tool = d.tool_name; cur.server = labelOf(d.provider_info); cur.what = `Calling <code>${esc(d.tool_name)}</code> <span class="srv-tag">${esc(titleOf(cur.server))}</span>`; } break;
+      case "tool_call.start": endPrompt(); genRow(now); setFlow(2); break;
+      case "tool_call.name": break;
       case "tool_call.arguments": {
-        const sv = labelOf(d.provider_info);
-        if (cur) { cur.what = `Calling <code>${esc(d.tool)}</code> <span class="srv-tag">${esc(titleOf(sv))}</span>`; cur.meta = fmtS(now - tStep);
-          cur.tip = "LM Studio parsed the tool call from the output of the model. provider_info names the server.";
-          cur.body = `<pre class="raw cap">${esc(JSON.stringify({ tool: d.tool, arguments: d.arguments, provider_info: d.provider_info }, null, 2))}</pre>`; }
-        cur = addRow(turn, { kind: "call", who: "LM Studio", what: `Sending <code>tools/call</code>`, server: sv, tool: d.tool, args: d.arguments,
-          tip: sv === "lm-trace" ? "The JSON-RPC request to the server, as the LM Trace server logged it." : "The JSON-RPC request to the server. The API does not show it.",
-          body: sv === "lm-trace" ? `<p class="hint-s">Loading…</p>` : "" });
-        tStep = now; setFlow(3); break; }
+        const sv = labelOf(d.provider_info), g = genRow(now), tag = `<span class="srv-tag">${esc(titleOf(sv))}</span>`;
+        g.meta = fmtS(now - g.t); fillOutput(g, promptRow?.t || now);
+        addRow(turn, { who: "MCP host", what: `Parsing output: <code>${esc(d.tool)}</code> ${tag}`,
+          tip: "LM Studio finds the tool call in the output of the LLM, and routes it to the MCP client of the server. provider_info names the server. Over the API, there is no approval step.",
+          body: `<pre class="raw cap">${esc(JSON.stringify({ tool: d.tool, arguments: d.arguments, provider_info: d.provider_info }, null, 2))}</pre>` });
+        addRow(turn, { kind: "call", emu: sv !== "lm-trace", who: "MCP client", what: `Sending <code>tools/call</code> ${tag}`, server: sv, tool: d.tool, args: d.arguments,
+          tip: "The JSON-RPC request to the server. The API does not show it: the form is from the MCP spec, the name and the arguments are from the run.",
+          body: `<pre class="raw cap">${esc(JSON.stringify({ jsonrpc: "2.0", id: "…", method: "tools/call", params: { name: d.tool, arguments: d.arguments } }, null, 2)).replace(/&quot;…&quot;/g, "…")}</pre>` });
+        cur = addRow(turn, { kind: "run", t: now, emu: sv !== "lm-trace", who: "MCP server", what: `<span class="busy-dot" aria-hidden="true"></span>Running <code>${esc(d.tool)}</code> ${tag}`, tool: d.tool,
+          tip: "The server runs the tool: it calls its API or reads its files. The host does not see this work." });
+        setFlow(3); break; }
       case "tool_call.success": {
         const sv = labelOf(d.provider_info), out = outputText(d.output);
-        if (cur?.kind === "call") cur.meta = fmtS(now - tStep);
-        addRow(turn, { kind: "result", who: `<span title="${esc(titleOf(sv))}">${esc(sv)}</span>`, what: "Returning result", meta: `${(d.output || "").length.toLocaleString()} chars`,
-          tip: "The content of the tools/call answer. LM Studio adds it to the prompt.", body: `<pre class="raw cap">${esc(out)}</pre>` });
+        const run = [...turn.rows].reverse().find(r => r.kind === "run" && !r.meta);
+        if (run) { run.meta = fmtS(now - run.t); run.what = run.what.replace('<span class="busy-dot" aria-hidden="true"></span>', ""); }
+        addRow(turn, { kind: "result", who: "MCP server", what: `Returning result <span class="srv-tag">${esc(titleOf(sv))}</span>`, meta: `${(d.output || "").length.toLocaleString()} chars`,
+          tip: "The content of the tools/call result. LM Studio adds it to the prompt.", body: `<pre class="raw cap">${esc(out)}</pre>` });
         setFlow(4); if (sv === "lm-trace") fillRpc(turn); break; }
       case "tool_call.failure":
-        addRow(turn, { who: "LM Studio", cls: "bad", what: "Tool call failed", meta: esc(preview(d.reason || "", 60)), body: `<pre class="raw cap">${esc(JSON.stringify(d, null, 2))}</pre>` }); break;
-      case "message.start": endPrompt(); cur = addRow(turn, { who: "Model", what: "Writing answer" }); tStep = now; setFlow(5); break;
+        addRow(turn, { who: "MCP host", cls: "bad", what: "Tool call failed", meta: esc(preview(d.reason || "", 60)), body: `<pre class="raw cap">${esc(JSON.stringify(d, null, 2))}</pre>` }); break;
+      case "message.start": endPrompt(); genRow(now); setFlow(6); break;
       case "message.delta": turn.answer += d.content || ""; break;
-      case "message.end": if (cur) cur.meta = fmtS(now - tStep); break;
-      case "error": turn.error = d.error?.message || JSON.stringify(d.error || d); addRow(turn, { who: "LM Studio", cls: "bad", what: esc(turn.error) + (/requires authentication/i.test(turn.error) ? ` <span class="q">· needs an API key: open Details on MCP Servers</span>` : "") }); break;
+      case "message.end": if (gen) { gen.meta = fmtS(now - gen.t); fillOutput(gen, promptRow?.t || now); } break;
+      case "error": turn.error = d.error?.message || JSON.stringify(d.error || d); addRow(turn, { who: "MCP host", cls: "bad", what: esc(turn.error) + (/requires authentication/i.test(turn.error) ? ` <span class="q">· needs an API key: open Details on MCP Servers</span>` : "") }); break;
       case "chat.end": {
         const r = d.result || {}; turn.stats = r.stats; if (r.response_id && !turn.error) lastResponseId = r.response_id; turn.ms = now - turn.t0;
-        const rRow = turn.rows.find(x => x.kind !== "connect" && x.who === "LM Trace");
-        addRow(turn, { who: "LM Studio", what: "Ending turn", meta: r.stats ? `${(r.stats.total_output_tokens ?? 0).toLocaleString()} tokens` : "",
+        addRow(turn, { who: "MCP host", what: "Ending turn", meta: r.stats ? `${(r.stats.total_output_tokens ?? 0).toLocaleString()} tokens` : "",
           tip: "The final result, as a request without stream returns it: each step in output, and response_id for the next message.", body: `<pre class="raw cap">${esc(JSON.stringify(r, null, 2))}</pre>` });
+        if (on.length && !turn.rows.some(x => x.kind === "close")) {
+          turn.calls++;
+          for (const s of on) addRow(turn, { kind: "close", server: s.name, emu: s.name !== "lm-trace", who: "MCP client", what: `Sending <code>notifications/cancelled</code> <span class="srv-tag">${esc(titleOf(s.name))}</span>`, meta: "notification",
+            tip: "At the end of the turn, the MCP client cancels its tools/list request (requestId = the id of tools/list). A notification has no id and gets no answer. The session stays open for the next turn of the chat.",
+            body: `<pre class="raw cap">${esc(JSON.stringify({ jsonrpc: "2.0", method: "notifications/cancelled", params: { requestId: "…", reason: "AbortError: This operation was aborted" } }, null, 2)).replace(/&quot;…&quot;/g, "…")}</pre>` });
+        }
         break; }
     }
   };
@@ -1863,7 +2122,25 @@ async function send() {
     turn.error = e.name === "AbortError" ? "Stopped." : e.message;
     if (/ermission denied/.test(turn.error)) { turn.error += " — In LM Studio: Developer › Server Settings › turn on Require Authentication and Allow calling servers from mcp.json, and save an API token in LM Trace Settings."; on.forEach(s => { checks[s.name] = { state: "denied", message: e.message }; }); }
   }
+  // No chat.end and no error: LM Studio can close the stream with no error event (seen when the prompt is longer than
+  // the context length of the model). The same request without stream returns the error. max_output_tokens 1: the LLM
+  // cannot write a tool call, so no tool runs again.
+  if (turn.ms == null && !turn.error) {
+    const none = "LM Studio ended the stream without a result and without an error.";
+    try {
+      const r = await fetch("/api/v1/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...req, stream: false, max_output_tokens: 1 }) });
+      const j = await r.json().catch(() => ({}));
+      turn.error = j.error?.message ? `LM Studio: ${j.error.message}` : none;
+    } catch { turn.error = none; }
+    if (/context length/i.test(turn.error)) {
+      const need = await toolTokens(req.model, on);
+      turn.error += ` — The tool definitions of the servers that are on are in the prompt${need ? ` (${need.toLocaleString()} tokens)` : ""}. Turn off tools in the MCP list, or load the model with a larger context length.`;
+      const n = CTX_STEPS.find(x => x >= (need || 0) + S.maxTokens + 2048 && x <= (Composer.info(req.model)?.max_context_length || Infinity));
+      if (n && n > (loadedCtx(req.model) || 0)) turn.fix = { model: req.model, n };
+    }
+  }
   busy = false; ctrl = null; Composer.setSend($("sendBtn"), false, { key: "Enter" }); chatPick.setDisabled(false); setFlow(-1);
+  Composer.load().then(renderCtx);  // LM Studio can load the model at the run (JIT)
   if (turn.ms == null) turn.ms = Date.now() - turn.t0;
   renderChat(); fillRpc(turn); setStatus(""); saveChat();
   setTimeout(async () => { await fillRpc(turn); saveChat(); }, 1500);  // LM Studio closes its session with the servers just after the turn
@@ -1894,7 +2171,49 @@ async function loadModels() {
     $("chatModel").value = keys.includes(saved) ? saved : keys.find(k => k === "google/gemma-4-12b") || keys.find(k => modelInfo.find(m => m.key === k)?.capabilities?.trained_for_tool_use) || keys[0];
   } catch (e) { $("error").textContent = `LM Studio unreachable: ${e.message || e}`; }
 }
-$("chatModel").onchange = () => { try { localStorage.setItem("mcpModel", $("chatModel").value); } catch {} };
+$("chatModel").onchange = () => { try { localStorage.setItem("mcpModel", $("chatModel").value); } catch {} ctxWant = null; renderCtx(); };
+
+// ---- Context length: a load setting. The page unloads the model and loads it again with context_length.
+var CTX_STEPS = [4096, 8192, 16384, 32768, 65536, 131072, 262144];
+var ctxWant = null;  // the value of the slider; null: the loaded value
+const loadedCtx = k => Composer.info(k)?.loaded_instances?.[0]?.config?.context_length || null;
+function ctxSteps(k) { const max = Composer.info(k)?.max_context_length; return CTX_STEPS.filter(x => !max || x <= max); }
+function renderCtx() {
+  if (!CTX_STEPS || !$("ctxLen")) return;  // renderChat can run before this part of the script
+  const k = $("chatModel").value, steps = ctxSteps(k), loaded = loadedCtx(k), r = $("ctxLen");
+  const want = ctxWant ?? loaded ?? steps.find(x => x >= 8192) ?? steps[0];
+  let i = steps.indexOf(want); if (i < 0) i = steps.findIndex(x => x >= want); if (i < 0) i = steps.length - 1;
+  r.max = steps.length - 1; r.value = i; r.style.setProperty("--fill", (i / Math.max(1, steps.length - 1) * 100) + "%");
+  $("ctxLenV").textContent = (steps[i] || 0).toLocaleString();
+  $("ctxState").textContent = loaded ? `loaded ${loaded.toLocaleString()}` : "not loaded";
+  const b = $("ctxReload"); b.hidden = !!viewing || steps[i] === loaded; b.textContent = loaded ? "Reload" : "Load"; b.disabled = busy;
+}
+$("ctxLen").oninput = e => { ctxWant = ctxSteps($("chatModel").value)[+e.target.value]; renderCtx(); };
+$("ctxReload").onclick = () => reloadCtx($("chatModel").value, ctxSteps($("chatModel").value)[+$("ctxLen").value]);
+async function reloadCtx(model, n) {
+  if (busy || !model || !n) return;
+  busy = true; $("ctxReload").disabled = true; $("error").textContent = "";
+  setStatus(`Loading ${esc(model)} with a context length of ${n.toLocaleString()} tokens…`);
+  try {
+    for (const inst of Composer.info(model)?.loaded_instances || []) await post("/api/v1/models/unload", { instance_id: inst.id });
+    await post("/api/v1/models/load", { model, context_length: n });
+    await Composer.load(); Composer.renderAll?.();
+    ctxWant = null; setStatus("");
+    for (const t of chat) if (t.fix?.model === model) delete t.fix;
+  } catch (e) { setStatus(""); $("error").textContent = `Model not loaded: ${e.message}`; await Composer.load(); }
+  busy = false; renderCtx(); renderChat();
+}
+// The tokens of the tool definitions of the servers that are on (only the allowed tools), with the tokenizer of the model.
+async function toolTokens(model, on) {
+  const parts = on.flatMap(s => (toolCache[s.name]?.tools || []).filter(t => !allowedOf(s.name) || allowedOf(s.name).includes(t.name)).map(t => JSON.stringify(t)));
+  let total = 0, batch = [], size = 0;
+  const flush = async () => { if (!batch.length) return; const j = await post("/tokenize", { model, texts: batch, count: true }); total += j.counts.reduce((a, b) => a + b, 0); batch = []; size = 0; };
+  try {
+    for (const p of parts) { if (size + p.length > 55000 || batch.length >= 300) await flush(); batch.push(p); size += p.length; }
+    await flush();
+  } catch { return null; }
+  return total || null;
+}
 const chatPick = Composer.picker({ select: $("chatModel"), mount: $("chatPick"), label: "Chat model", isBusy: () => busy, onError: m => { $("error").textContent = m; } });
 Composer.setSend($("sendBtn"), false, { key: "Enter" });
 

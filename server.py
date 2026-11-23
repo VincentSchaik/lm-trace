@@ -1046,7 +1046,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     def do_POST(self):
         if self._blocked(write=True):
             return
-        if self.path.startswith("/v1/") or self.path in ("/api/v1/models/unload", "/api/v1/chat"):  # unload: Eject; chat: the MCP page
+        if self.path.startswith("/v1/") or self.path in ("/api/v1/models/unload", "/api/v1/models/load", "/api/v1/chat"):  # unload: Eject; load: Context length; chat: the MCP page
             return self._proxy("POST")
         if self.path == "/mcp":
             return self._mcp_server()
