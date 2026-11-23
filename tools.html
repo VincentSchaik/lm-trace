@@ -1316,17 +1316,60 @@ function chatSettings() {
     temp: S.temp, maxTokens: S.maxTokens, maxCalls: S.maxCalls, tools: active().map(t => t.title || t.name), toolNames: active().map(t => t.name),
     noteText: S.noteBy === "page" ? noteText : undefined, ctxSize: ctxSize() };
 }
-// Copy the answer, or export the whole chat as Markdown: your messages, the tool calls and the answers.
+// Copy the answer, or export the whole chat as Markdown: the settings, and for each message every step as the page
+// shows it (who, what, meta), grouped by model call, with its full Details from the step data: the messages and
+// tool definitions sent, the prompt and the output tokens (exact text), the JSON of LM Studio, the checks, and the
+// tool request and result.
 function chatMd() {
-  const st = viewing || chatSettings(), d = new Date(chat[0]?.t0 || Date.now());
-  const out = [`# Tools chat · LM Trace`, "", `- Date: ${d.toLocaleString()}`, `- Model: ${st.model || ""}`, `- Tools on: ${(st.toolNames || st.tools || []).join(", ") || "none"}`, `- Permissions: ${st.perm || ""}`];
-  if (st.system) out.push(`- System prompt: ${st.system}`);
-  for (const t of chat.filter(t => t.user)) {
-    out.push("", "## You", "", t.user);
-    const runs = t.steps.filter(x => x.type === "run");
-    if (runs.length) { out.push("", "**Tool calls**", ""); runs.forEach(r => out.push(`- \`${r.c?.name}\`: \`${JSON.stringify(r.args || {})}\``)); }
-    out.push("", `## ${st.model || "Model"}`, "", (t.answer || "").trim() || (t.stopped ? "_Stopped._" : "_No answer._"));
-  }
+  const plain = h => { const el = document.createElement("div"); el.innerHTML = h || ""; return el.textContent.replace(/\s+/g, " ").trim(); };
+  const fence = (t, lang = "") => `~~~~${lang}\n${String(t ?? "").replace(/\s+$/, "")}\n~~~~`;
+  const json = v => fence(JSON.stringify(v, null, 2), "json");
+  const msgText = ms => ms.map(m => {
+    let t = `[${m.role}]`;
+    if (m.reasoning_content) t += `\nreasoning_content: ${m.reasoning_content}`;
+    if (m.content) t += `\n${m.content}`;
+    if (m.tool_calls?.length) t += "\n" + m.tool_calls.map(c => `tool_calls: ${c.function.name}(${c.function.arguments})`).join("\n");
+    if (m.tool_call_id) t += `\n(tool_call_id: ${m.tool_call_id})`;
+    return t;
+  }).join("\n\n");
+  // The data of a step, below its row line.
+  const data = st => {
+    switch (st.type) {
+      case "request": { const { messages, tools, ...rest } = st.body; return [`Messages (${messages.length})`, fence(msgText(messages)), ...(tools?.length ? [`Tool list (${tools.length})`, json(tools)] : []), "Parameters", json(rest)]; }
+      case "template": return st.req?.formatted ? ["Prompt (exact text)", fence(st.req.formatted)] : [];
+      case "reply": return st.wait ? [] : [st.raw != null ? "Output tokens (exact text)" : "Output (text from the API)", fence(st.raw ?? st.msg?.content ?? "")];
+      case "json": return ["Response message", json(st.msg)];
+      case "parse": return st.calls?.length ? [fence(st.calls.map(c => `${c.name || "?"} ${c.args ? JSON.stringify(c.args) : c.raw || ""}`).join("\n"))] : (st.text ? [fence(st.text)] : []);
+      case "check": return [fence(st.checks.map((ck, i) => `${ck.errors.length ? "✗" : "✓"} ${st.calls[i].name || "?"}: ${ck.errors.length ? ck.errors.join(" ") : "matches the schema of the tool."}${ck.fixes.map(f => `\n  Fixed by the harness: ${f}`).join("")}`).join("\n"))];
+      case "skip": return [fence(st.text)];
+      case "run": return st.r ? ["Request", fence(st.r.request || ""), `Result (${String(st.r.result).length} characters)`, fence(st.r.result)] : [];
+      case "back": return [fence(msgText(st.added))];
+      default: return [];
+    }
+  };
+  const st0 = viewing || chatSettings(), d = new Date(chat[0]?.t0 || Date.now());
+  const out = [`# Tools chat · LM Trace`, "", `- Date: ${d.toLocaleString()}`, `- Model: ${st0.model || ""}`, `- Tools on: ${(st0.toolNames || st0.tools || []).join(", ") || "none"}`,
+    `- Permissions: ${st0.perm || ""} · Harness: ${st0.harness || ""} · Temperature: ${st0.temp ?? ""} · Max tokens: ${st0.maxTokens ?? ""} · Max model calls: ${st0.maxCalls ?? ""}`];
+  if (st0.system) out.push(`- System prompt: ${st0.system}`);
+  chat.forEach((t, ti) => {
+    if (!t.user) return;
+    out.push("", "---", "", "## You", "", t.user);
+    let head = null;
+    t.steps.forEach((st, si) => {
+      const h = `Model call ${st.call ?? 1}`;
+      if (h !== head) { out.push("", `### ${h}`); head = h; }
+      const el = document.createElement("div"); el.innerHTML = rowHtml(st, `x${ti}.${si}`);
+      el.querySelectorAll(".ev").forEach(ev => {
+        const who = plain(ev.querySelector(".who")?.innerHTML), what = plain(ev.querySelector(".what")?.innerHTML), meta = plain(ev.querySelector(".meta")?.innerHTML);
+        if (who || what) out.push("", `**${who}** · ${what}${meta ? ` · ${meta}` : ""}`);
+      });
+      const extra = data(st);
+      if (extra.length) out.push("", ...extra.flatMap(x => [x.startsWith("~~~~") ? x : `_${x}_`, ""]).slice(0, -1));  // labels in italics
+    });
+    out.push("", "### Answer", "", (t.answer || "").trim() || (t.stopped ? "_Stopped._" : "_No answer._"));
+    const used = t.steps.filter(x => x.type === "reply" && x.usage).map(x => x.usage);
+    if (used.length) out.push("", `_${used[0].prompt_tokens ?? "?"} prompt tokens (call 1) · ${used.reduce((a, u) => a + (u.completion_tokens || 0), 0)} output tokens · ${t.t1 ? ((t.t1 - t.t0) / 1000).toFixed(1) + " s" : ""}_`);
+  });
   return out.join("\n") + "\n";
 }
 $("log").addEventListener("click", e => {

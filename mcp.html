@@ -1854,15 +1854,31 @@ function rowHtml(r, key) {
   return r.body ? `<details class="ev${r.cls ? " " + r.cls : ""}" data-key="${key}"${openKeys.has(key) ? " open" : ""}><summary>${head}<span class="more">Details<span class="chev"></span></span></summary><div class="ev-bd">${r.body}</div></details>`
     : `<div class="ev${r.cls ? " " + r.cls : ""}"><div class="ev-row">${head}<span></span></div></div>`;
 }
+const liveSecs = t => `${Math.max(0, Math.round((Date.now() - t) / 1000))} s`;
+const liveText = turn => { const x = (Date.now() - turn.t0) / 1000; return `Running… (${x < 10 ? x.toFixed(1) : Math.round(x)} s)`; };
+setInterval(() => {
+  if (!busy) return;
+  document.querySelectorAll("[data-live]").forEach(el => { el.textContent = liveSecs(+el.dataset.live); });
+  const el = document.getElementById("liveMeta"), t = chat.at(-1); if (el && t) el.textContent = liveText(t);
+}, 250);
 function turnHtml(turn, ti) {
   let out = `<div class="bubble user">${esc(turn.user)}</div>`;
   if (turn.attached?.length) out += `<div class="tok-meta user">+ ${turn.attached.map(a => esc(a.title)).join(", ")} (resource${turn.attached.length > 1 ? "s" : ""})</div>`;
   const groups = [];
   for (const [i, r] of turn.rows.entries()) { const g = groups.at(-1); if (g && g.call === r.call && g.grp === r.grp) g.rows.push([i, r]); else groups.push({ call: r.call, grp: r.grp, rows: [[i, r]] }); }
+  // While it runs, as on the Tools page: the step in progress gets a blinking dot and its seconds, and a line under
+  // the steps counts the time of the message.
+  const live = busy && ti === chat.length - 1;
+  const liveIdx = live ? turn.rows.findLastIndex(r => r.t && !r.meta) : -1;
+  // The chat is drawn again for each streamed chunk, so a new dot would restart its blink each time and never dim:
+  // a negative delay from the clock keeps the blink in step across redraws.
+  const dot = `<span class="busy-dot" aria-hidden="true" style="animation-delay:-${Date.now() % 1000}ms"></span>`;
+  const liveRow = r => ({ ...r, what: dot + r.what.replace('<span class="busy-dot" aria-hidden="true"></span>', ""), meta: `<span data-live="${r.t}">${liveSecs(r.t)}</span>` });
   for (const g of groups) {
-    const rows = g.rows.map(([i, r]) => rowHtml(r, `${ti}.${i}`)).join("");
+    const rows = g.rows.map(([i, r]) => rowHtml(i === liveIdx ? liveRow(r) : r, `${ti}.${i}`)).join("");
     out += `<section class="callcard"><div class="callcard-hd">${g.rows[0][1].kind === "close" ? "After the turn" : g.grp === "disc" ? "Discovery" : g.call ? `Model call ${g.call}` : "Request"}</div>${rows}</section>`;
   }
+  if (live) out += `<div class="tok-meta assistant" id="liveMeta">${liveText(turn)}</div>`;
   if (turn.answer) out += `<div class="bubble assistant md">${md(turn.answer.trim())}</div>`;
   if (turn.stats) { const s = turn.stats, pr = promptToks(turn); const meta = `<div class="tok-meta assistant" data-tip-title="Tokens" data-tip="Prompt tokens of each model call. Call 1: input_tokens, from LM Studio. LM Studio reports only the first call, so this page counts the prompt of each later call with the tokenizer of the model (~). Output tokens: total_output_tokens (reasoning_output_tokens of them are thinking) and tokens_per_second, from LM Studio. The time is measured by this page.">${pr.length > 1 ? "Prompt tokens: " + pr.map((n, i) => `call ${i + 1} ${i ? (n == null ? "…" : "~" + n.toLocaleString()) : s.input_tokens?.toLocaleString()}`).join(" + ") : s.input_tokens?.toLocaleString() + " prompt tokens"} · ${s.total_output_tokens?.toLocaleString()} output tokens${s.reasoning_output_tokens ? ` (${s.reasoning_output_tokens} thinking)` : ""} · ${s.tokens_per_second ? s.tokens_per_second.toFixed(1) + " tok/s" : ""} · ${fmtS(turn.ms || 0)}</div>`; out += turn.answer ? Composer.ansBar(ti, meta) : meta; }
   if (turn.error) out += `<div class="error">${esc(turn.error)}${turn.fix && !busy ? ` <button type="button" class="linkbtn" data-act="ctx" data-model="${esc(turn.fix.model)}" data-n="${turn.fix.n}">Reload ${esc(turn.fix.model)} with ${turn.fix.n.toLocaleString()} tokens</button>` : ""}</div>`;
@@ -1880,18 +1896,35 @@ function renderChat() {
 }
 $("log").addEventListener("toggle", e => { const k = e.target.dataset?.key; if (k) e.target.open ? openKeys.add(k) : openKeys.delete(k); }, true);
 $("log").addEventListener("click", e => { if (e.target.closest(".ev-i")) e.preventDefault(); }, true);
-// Copy the answer, or export the whole chat as Markdown: your messages, the tool calls and the answers.
+// Copy the answer, or export the whole chat as Markdown: the settings, and for each message every step as the page
+// shows it (who, what, time) with its full Details: the request, the prompt, the thinking, the raw output, the
+// JSON-RPC messages, the tool results and the final result. Prompts and outputs are the exact (Raw) text.
 function chatMd() {
+  const plain = h => { const el = document.createElement("div"); el.innerHTML = h || ""; return el.textContent.trim(); };
+  const fence = (t, lang = "") => { const f = "~~~~"; return `${f}${lang}\n${t.replace(/\s+$/, "")}\n${f}`; };
+  // Details text: one line per block (a <pre>, a note, a label), so blocks do not run together.
+  const blockText = h => { const el = document.createElement("div"); el.innerHTML = h || ""; return [...el.children].map(c => c.textContent.trim()).filter(Boolean).join("\n\n") || el.textContent.trim(); };
   const t0 = chat[0], req = t0?.req || {}, d = new Date(t0?.t0 || Date.now());
-  const servers = (req.integrations || []).map(x => typeof x === "string" ? x : x.id).join(", ") || "none";
-  const out = [`# MCP chat · LM Trace`, "", `- Date: ${d.toLocaleString()}`, `- Model: ${req.model || ""}`, `- MCP servers: ${servers}`];
+  // Each server, with the tools that LM Studio gave to the model (allowed_tools), or all of its tools.
+  const servers = (req.integrations || []).map(x => typeof x === "string" ? `${x} (all tools)` : `${x.id} (tools: ${(x.allowed_tools || []).join(", ") || "none"})`).join("; ") || "none";
+  const out = [`# MCP chat · LM Trace`, "", `- Date: ${d.toLocaleString()}`, `- Model: ${req.model || ""}`, `- MCP servers: ${servers}`,
+    `- Temperature: ${req.temperature ?? ""} · Max tokens: ${req.max_output_tokens ?? ""}`];
   if (req.system_prompt) out.push(`- System prompt: ${req.system_prompt}`);
-  for (const t of chat) {
-    out.push("", "## You", "", t.user);
-    const calls = t.rows.filter(r => r.kind === "call");
-    if (calls.length) { out.push("", "**Tool calls**", ""); calls.forEach(c => out.push(`- \`${c.tool}\` (${c.server}): \`${JSON.stringify(c.args || {})}\``)); }
-    out.push("", `## ${t.req?.model || "Model"}`, "", (t.answer || "").trim() || (t.error ? `_Error: ${t.error}_` : "_No answer._"));
-  }
+  chat.forEach((t, ti) => {
+    out.push("", "---", "", `## You`, "", t.user);
+    let head = null;
+    t.rows.forEach(r => {
+      const h = r.kind === "close" ? "After the turn" : r.grp === "disc" ? "Discovery" : r.call ? `Model call ${r.call}` : "Request";
+      if (h !== head) { out.push("", `### ${h}`); head = h; }
+      const who = r.who === "Harness" ? "LM Trace" : r.who;
+      out.push("", `**${who}** · ${plain(r.what)}${plain(r.meta) ? ` · ${plain(r.meta)}` : ""}`);
+      const pr = promptOf(r), text = pr ? pr.text : r.out ? r.out.text : blockText(r.body);
+      if (text) out.push("", fence(text, /^[\[{]/.test(text) ? "json" : ""));
+    });
+    if (t.answer) out.push("", `### Answer`, "", t.answer.trim());
+    if (t.error) out.push("", `**Error:** ${t.error}`);
+    if (t.stats) { const s = t.stats; out.push("", `_${s.input_tokens ?? "?"} prompt tokens (call 1) · ${s.total_output_tokens ?? "?"} output tokens (${s.reasoning_output_tokens ?? 0} thinking) · ${s.tokens_per_second ? s.tokens_per_second.toFixed(1) + " tok/s" : ""} · ${((t.ms || 0) / 1000).toFixed(1)} s_`); }
+  });
   return out.join("\n") + "\n";
 }
 $("log").addEventListener("click", e => {
@@ -2113,7 +2146,7 @@ async function send() {
         promptRow = addRow(turn, { t: now, who: "MCP host", what: "Applying chat template", tip: turn.calls === 1 ? "The prompt: your message and the tool definitions, in the chat template of the model. From the LM Studio log." : "The prompt again, now with the tool call and the tool result. From the LM Studio log.", body: `<p class="hint-s">Loading…</p>` });
         fillPrompt(turn, promptRow, now - 1500); break;
       case "prompt_processing.end": endPrompt(); break;
-      case "reasoning.start": endPrompt(); cur = addRow(turn, { who: "LLM", what: "Thinking", tip: THINK_TIP, text: "", body: "" }); tStep = now; setFlow(turn.calls === 1 ? 2 : 6); break;
+      case "reasoning.start": endPrompt(); cur = addRow(turn, { t: now, who: "LLM", what: "Thinking", tip: THINK_TIP, text: "", body: "" }); tStep = now; setFlow(turn.calls === 1 ? 2 : 6); break;
       case "reasoning.delta": if (cur) { cur.text += d.content || ""; cur.body = `<pre class="raw cap">${esc(cur.text.trim())}</pre>`; } break;
       case "reasoning.end": if (cur) { if (!cur.text.trim()) turn.rows.splice(turn.rows.indexOf(cur), 1); else cur.meta = fmtS(now - tStep); } break;
       case "tool_call.start": endPrompt(); genRow(now); setFlow(2); break;
