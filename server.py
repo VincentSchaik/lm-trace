@@ -46,7 +46,7 @@ def lms_headers():
 PORT = int(os.environ.get("PORT", "8765"))
 # Saved lists: user prompts and system prompts, one JSON file each.
 LISTS = {k: os.path.join(ROOT, k.strip("/") + ".json") for k in ("/prompts", "/system-prompts", "/few-shot", "/schemas", "/presets",
-                                                                   "/embed-texts", "/rag-docs", "/rag-questions", "/tools", "/model-formats", "/embed-prefixes", "/tool-prompts", "/mcp-meta")}
+                                                                   "/embed-texts", "/rag-docs", "/rag-questions", "/tools", "/model-formats", "/embed-prefixes", "/tool-prompts", "/mcp-prompts", "/mcp-meta")}
 # Saved chats of the Tools page: one JSON file each, view only. The id is the file name.
 CHATS = os.path.join(ROOT, "chats")
 # Saved chats of the MCP page: the same format, in their own folder.
@@ -588,6 +588,27 @@ def mem_clear():
 card_cache = {}
 
 
+MONTHS = "January|February|March|April|May|June|July|August|September|October|November|December"
+CUTOFF_RE = re.compile(r"(?i)(?:knowledge|data|training)[^.\n]{0,80}?(?:cutoff|cut-off|freshness)[^.\n]{0,60}?\b((?:" + MONTHS + r")\s+20\d\d)"
+                       r"|(?:cutoff|cut-off)\s+(?:date\s+)?(?:of|is|was)\s+((?:" + MONTHS + r")\s+20\d\d)")
+
+
+def readme_cutoff(repo):
+    """The knowledge cutoff as the model card (README.md) on Hugging Face states it: {"date", "text"}, or None.
+    Not all cards state one; LM Studio does not report it."""
+    try:
+        req = urllib.request.Request(f"https://huggingface.co/{repo}/resolve/main/README.md", headers={"User-Agent": UA})
+        with urllib.request.urlopen(req, timeout=10) as r:
+            t = r.read(400_000).decode("utf-8", "replace")
+    except Exception:
+        return None
+    m = CUTOFF_RE.search(t)
+    if not m:
+        return None
+    a, b = t.rfind("\n", 0, m.start()) + 1, t.find("\n", m.end())
+    return {"date": m.group(1) or m.group(2), "text": " ".join(t[a:b if b > 0 else None].split())[:300]}
+
+
 def model_card(key):
     info = lms_models().get(key)
     if not info:
@@ -606,6 +627,7 @@ def model_card(key):
             h = hf(repo)
             base = h["base_model"][0] if isinstance(h["base_model"], list) and h["base_model"] else h["base_model"]
             b = hf(base) if isinstance(base, str) else None
+            (b or h)["cutoff"] = readme_cutoff((b or h)["id"])  # from the card of the original model
             card_cache[repo] = (h, b)
         except Exception as e:
             card_cache[repo] = ({"id": repo, "url": f"https://huggingface.co/{repo}", "error": str(e)}, None)
@@ -802,6 +824,47 @@ def tool_run(tool, args):
 
 
 # ---- MCP page
+# Permissions of the LM Trace MCP server (the shield on the MCP page, section Tools). LM Studio is the harness there
+# and its API cannot ask, but each call of these tools reaches this server first, so the server checks it:
+# allow: run it; deny: answer "denied" as the tool result; ask: hold the call until the page answers Allow or Deny.
+# LM Studio waits 60 s for a tool result, then cancels the call and ends the chat (tested 2026-11-23), so an
+# unanswered ask is denied after ASK_S seconds.
+MCP_PERM = {"mode": "allow"}
+ASK_S = 50
+ASKS = {}  # id -> {"id", "tool", "args", "deadline", "event", "ok"}
+ASK_LOCK = threading.Lock()
+
+
+def denied(tool, why):
+    return {"ok": False, "result": f"Tool '{tool['name']}' was denied {why}.", "request": ""}
+
+
+def gated_run(tool, args):
+    mode = MCP_PERM["mode"]
+    if mode == "deny":
+        return denied(tool, "by the LM Trace MCP server (Permissions: Deny all)")
+    if mode == "ask":
+        aid = f"{time.time_ns():x}"
+        a = {"id": aid, "tool": tool["name"], "title": tool.get("title") or tool["name"], "args": args,
+             "deadline": time.time() + ASK_S, "event": threading.Event(), "ok": None}
+        with ASK_LOCK:
+            ASKS[aid] = a
+        answered = a["event"].wait(ASK_S)
+        with ASK_LOCK:
+            ASKS.pop(aid, None)
+        if not answered:
+            return denied(tool, f"because nobody answered within {ASK_S} seconds")
+        if not a["ok"]:
+            return denied(tool, "by the user")
+    return tool_run(tool, args)
+
+
+def mcp_asks():
+    with ASK_LOCK:
+        return [{"id": a["id"], "tool": a["tool"], "title": a["title"], "args": a["args"],
+                 "left": max(0, round(a["deadline"] - time.time()))} for a in ASKS.values()]
+
+
 def mcp_tools():
     """The tools of the Tools page (tools.json) that are on: the same switches as on the Tools page and in Tools ›."""
     try:
@@ -942,6 +1005,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         if self.path == "/mcp-config":  # plus what the suggested servers need: the sample folder, npx, this server's URL
             return self._json(200, {**mcp_lab.config_view(), "sampleDir": os.path.join(ROOT, "mcp-files"),
                                     "npx": shutil.which("npx"), "lmTraceUrl": f"http://localhost:{PORT}/mcp"})
+        if self.path == "/mcp-ask":  # the tool calls that wait for Allow or Deny, and the current mode
+            return self._json(200, {"mode": MCP_PERM["mode"], "asks": mcp_asks()})
         if self.path.startswith("/mcp-log"):
             q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
             return self._json(200, {"entries": mcp_lab.log_since(int(q.get("since", ["0"])[0] or 0)), "last": mcp_lab.seq[0]})
@@ -1113,7 +1178,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         tools = mcp_tools()
         for m in batch:
             mcp_lab.log_msg("in", m, ua)
-            a = mcp_lab.handle(m, tools, tool_run, mcp_resources())
+            a = mcp_lab.handle(m, tools, gated_run, mcp_resources())
             if a is not None:
                 mcp_lab.log_msg("out", a, ua)
                 answers.append(a)
@@ -1134,6 +1199,16 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return self._json(400, {"error": {"message": "expected a JSON object"}})
         name = req.get("name")
         try:
+            if action == "perm" and req.get("mode") in ("allow", "ask", "deny"):
+                MCP_PERM["mode"] = req["mode"]
+                return self._json(200, {"mode": MCP_PERM["mode"]})
+            if action == "ask" and isinstance(req.get("id"), str) and isinstance(req.get("ok"), bool):
+                with ASK_LOCK:
+                    a = ASKS.get(req["id"])
+                    if a:
+                        a["ok"] = req["ok"]
+                        a["event"].set()
+                return self._json(200 if a else 404, {"done": bool(a)})
             if action == "config":
                 return self._json(200, mcp_lab.save_server(req))
             if action == "config/delete" and isinstance(name, str):

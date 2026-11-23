@@ -293,7 +293,7 @@
   #tip b { display: block; font-weight: 600; margin-bottom: 4px; }
   #tip span { display: block; color: var(--tip-sub); }
 
-  /* ---- Tools page: one chat; under each message, the steps of the harness as cards */
+  /* ---- One chat; under each message, the steps of the MCP flow as cards */
   .app { height: auto; min-height: 100vh; grid-template-rows: auto; align-self: flex-start; align-content: start; }
   .panel { flex: none; }
   html, body { height: auto; min-height: 100vh; }
@@ -361,7 +361,7 @@
   .panel-head .stats { margin-left: auto; }
   .panel-head .btn { height: 32px; padding: 0 14px; font-size: 13px; border-radius: 8px; }
 
-  /* The steps of the harness, as in the book: a strip on top, the current step marked */
+  /* The steps of the MCP flow: a strip on top, the current step marked */
   .flow { display: flex; align-items: center; gap: 6px 8px; flex-wrap: wrap; padding: 10px 18px; border-bottom: 1px solid var(--paper-2); }
   .flow .fs { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink-2); padding: 2px 8px 2px 3px; border-radius: 12px; }
   .flow .fs.on { background: rgba(var(--red-rgb), .1); color: var(--ink); }
@@ -622,6 +622,8 @@
   .cbox.archived .cbox-input:disabled { cursor: not-allowed; background: transparent; }
   .cbox.archived .send-round:disabled { opacity: .4; cursor: not-allowed; }
   .chats-wrap { margin-left: -12px; }
+  .perm-menu button[aria-disabled="true"] { opacity: .45; cursor: not-allowed; }
+  .perm-menu button[aria-disabled="true"]:hover { background: transparent; }
   .perm-menu.chats-menu { top: calc(100% + 6px); bottom: auto; width: 420px; max-height: 420px; overflow-y: auto; }
   .chats-menu .chat-row { display: flex; align-items: center; gap: 4px; }
   .chats-menu .chat-row > button:first-child { display: block; flex: 1; min-width: 0; }
@@ -746,7 +748,7 @@
   .auth-card code { font: 12.5px var(--mono); overflow-wrap: anywhere; }
   .auth-kv { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 14px; margin: 0; font-size: 13px; }
   .auth-kv dt { color: var(--ink-3); }
-  pre.raw.cap { max-height: 280px; overflow: auto; }
+  pre.raw.cap { max-height: 280px; overflow: auto; cursor: auto; }  /* cap = capped height; not the .cap chip, which has a tooltip */
   .ico { display: inline-block; width: 18px; height: 18px; background: currentColor; -webkit-mask: var(--i) center / contain no-repeat; mask: var(--i) center / contain no-repeat; }
   .icon-row { display: flex; align-items: center; gap: 10px; }
   .icon-row .field { flex: 1; min-width: 0; }
@@ -1061,12 +1063,14 @@
   <section class="panel sendbar" aria-label="Your message">
     <div class="cbox">
       <div class="attach" id="attach" hidden></div>
-      <div class="cbox-top"><textarea id="msg" class="cbox-input" rows="1" placeholder="Ask something, or select an example." title="Enter sends the message. Shift + Enter adds a line."></textarea></div>
+      <div class="cbox-top"><textarea id="msg" class="cbox-input" rows="1" placeholder="Ask something, or select an example." title="Enter sends the message. Shift + Enter adds a line."></textarea><div class="input-tools"><button type="button" class="copy" id="saveMsg" title="Save as an example: it shows below the message box" aria-label="Save as an example"></button><button type="button" class="copy" id="copyMsg" title="Copy the message" aria-label="Copy the message"></button></div></div>
       <div class="cbox-bar">
         <div class="perm-wrap plus-wrap"><button type="button" class="perm-btn" id="plusBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="plusMenu" title="Tools and MCP servers" aria-label="Tools and MCP servers"></button>
           <div class="perm-menu plus-menu" id="plusMenu" role="menu" aria-label="Add" hidden></div>
           <div class="perm-menu tools-menu" id="toolsMenu" role="menu" aria-label="Tools" hidden></div>
           <div class="perm-menu mcp-menu" id="mcpMenu" role="menu" aria-label="MCP servers" hidden></div></div>
+        <div class="perm-wrap"><button type="button" class="perm-btn" id="permBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="permMenu"></button>
+          <div class="perm-menu" id="permMenu" role="menu" aria-label="Permissions" hidden></div></div>
         <div id="chatPick" class="grow"></div>
         <button id="sendBtn" class="send-round" title="Send the message (Enter)" aria-label="Send"></button>
       </div>
@@ -1108,7 +1112,7 @@ const IC = {
 };
 
 // ---------------------------------------------------------------- State
-const S_DEFAULT = { tab: "chat", on: {}, system: "", temp: 0, maxTokens: 1500, allowed: {} };
+const S_DEFAULT = { tab: "chat", on: {}, system: "", temp: 0, maxTokens: 1500, allowed: {}, perm: "allow" };
 const S = { ...S_DEFAULT };
 try { Object.assign(S, JSON.parse(localStorage.getItem("mcpPage") || "{}")); } catch {}
 if (!S.allowed || typeof S.allowed !== "object") S.allowed = {};
@@ -1577,12 +1581,12 @@ function renderPlus() {
     + `<button type="button" role="menuitem" class="sub" id="plusMcp" aria-haspopup="menu" aria-expanded="${!$("mcpMenu").hidden}">${IC.plug}<span>MCP${n ? ` <span style="color:var(--ink-3)">· ${n} on</span>` : ""}</span>${IC.chev}</button>`;
 }
 function renderToolsMenu() {
-  const lt = srv("lm-trace");
+  const lt = srv("lm-trace"), off = !lt || !S.on["lm-trace"];  // server off: LM Studio does not get these tools
   $("toolsMenu").innerHTML = `<div class="hd">The tools of the Tools page, through the LM Trace MCP server</div>`
     + (!lt ? `<button type="button" role="menuitem" data-act="add-lt">${IC.plus}<span>Add the LM Trace server to mcp.json</span><span></span></button>`
       : !S.on["lm-trace"] ? `<button type="button" role="menuitemcheckbox" class="tl" aria-checked="false" data-mcp="lm-trace">${IC.wrench}<span class="nm">Turn on the LM Trace server</span><span class="sw" aria-hidden="true"></span></button>` : "")
     + `<button type="button" role="menuitem" data-act="manage-tools">${IC.manage}<span>Manage tools</span><span></span></button><div class="sep"></div>`
-    + (tools.map((t, i) => `<button type="button" role="menuitemcheckbox" class="tl" aria-checked="${!!t.on}" data-tool="${i}" title="${esc(t.name)}: ${esc(t.description)}">${IC.wrench}<span class="nm">${esc(t.title || t.name)}</span><span class="sw" aria-hidden="true"></span></button>`).join("") || `<div class="none">No tools. Create one on the Tools page.</div>`);
+    + (tools.map((t, i) => `<button type="button" role="menuitemcheckbox" class="tl" aria-checked="${!!t.on}" data-tool="${i}"${off ? ' aria-disabled="true"' : ""} title="${off ? "Turn on the LM Trace server first. " : ""}${esc(t.name)}: ${esc(t.description)}">${IC.wrench}<span class="nm">${esc(t.title || t.name)}</span><span class="sw" aria-hidden="true"></span></button>`).join("") || `<div class="none">No tools. Create one on the Tools page.</div>`);
 }
 function renderMcpMenu() {
   $("mcpMenu").innerHTML = `<button type="button" role="menuitem" data-act="custom">${IC.plus}<span>Custom MCP</span><span></span></button>`
@@ -1607,7 +1611,7 @@ $("plusMenu").onmouseover = e => { if (e.target.closest("#plusTools") && $("tool
 async function saveTools() { try { await post("/tools", tools, "PUT"); } catch (e) { setStatus(`Not saved: ${e.message}`); } }
 $("toolsMenu").onclick = async e => {
   const t = e.target.closest("[data-tool]"), a = e.target.closest("[data-act]")?.dataset.act, m = e.target.closest("[data-mcp]");
-  if (t && !busy) { const tool = tools[+t.dataset.tool]; tool.on = !tool.on; await saveTools(); if (toolCache["lm-trace"]) loadServerTools("lm-trace", true); renderToolsMenu(); renderChat(); }
+  if (t && !busy && !t.getAttribute("aria-disabled")) { const tool = tools[+t.dataset.tool]; tool.on = !tool.on; await saveTools(); if (toolCache["lm-trace"]) loadServerTools("lm-trace", true); renderToolsMenu(); renderChat(); }
   else if (m) { S.on["lm-trace"] = true; keep(); renderToolsMenu(); renderPlus(); renderChat(); if (!checks["lm-trace"]) check("lm-trace"); }
   else if (a === "add-lt") { openPlus(false); const x = suggested()[0]; openForm({ type: "http", newName: x.name, def: x.def, note: esc(x.desc) }); }
   else if (a === "manage-tools") location.href = "/tools.html";
@@ -1743,7 +1747,7 @@ function code(t, model) {
 }
 const tagsLine = (t, model) => t.split(TAG_RE).map((x, i) => !x ? "" : i % 2 ? chip(x, model) : esc(x).replace(/\n/g, '<span class="nl">↵</span>')).join("");
 const LBL_REPLY = { think: "Reasoning · reasoning_content" };
-const LBL_MSG = { system: ["sys", "System message"], developer: ["sys", "System message"], user: ["user", "User message"], assistant: ["ans", "Model · text from an earlier reply"], tool: ["resp", "Tool result · from the harness"] };
+const LBL_MSG = { system: ["sys", "System message"], developer: ["sys", "System message"], user: ["user", "User message"], assistant: ["ans", "Model · text from an earlier reply"], tool: ["resp", "Tool result · from the MCP host"] };
 // The prompt: each message of the request, found in the exact text, in order. The text between two messages comes
 // from the chat template. If it has the name of a tool, it is the tools (LM Studio writes them from the JSON schema,
 // before the first user message), or an earlier tool call. After a user message, it is a tool call, and also the tool
@@ -1841,11 +1845,12 @@ document.addEventListener("click", e => {
 });
 let openKeys = new Set();
 function rowHtml(r, key) {
+  if (r.kind === "ask" && !r.state) return `<div class="ev pending"><div class="ev-row"><span class="who">MCP server</span><span class="what">Waiting for your approval: <code>${esc(r.tool)}</code> <span class="info ev-i" tabindex="0" data-tip="Permissions: Ask every time. The LM Trace MCP server holds the tools/call request until you answer. LM Studio waits 60 s for a tool result, so the server denies the call after ${ASK_S} s.">i</span></span><span class="meta" data-ask-left="${esc(r.ask)}">${askLeft(r)} s</span><span class="more btns"><button type="button" class="btn ghost" data-ask="${esc(r.ask)}" data-ok="0" title="Do not run the tool. The model gets: the tool was denied.">Deny</button><button type="button" class="btn" data-ask="${esc(r.ask)}" data-ok="1">Allow</button></span></div></div>`;
   const pr = promptOf(r);
   if (pr) { const ti = +key.split(".")[0], model = pr.model || chat[ti]?.req?.model; needCounts(model, pr.text); r = { ...r, body: textView(pr.text, model, key + "f", promptBody(ti)) }; }
   if (r.out) { needCounts(r.out.model, r.out.text); r = { ...r, body: textView(r.out.text, r.out.model, key + "o", null) }; }
   if (r.what === "Thinking" && !r.tip) r = { ...r, tip: THINK_TIP };  // archived chats from before the tip
-  const head = `<span class="who">${r.who}</span><span class="what">${r.what}${r.tip ? ` <span class="info ev-i" tabindex="0" data-tip="${esc(r.tip)}">i</span>` : ""}</span><span class="meta">${r.meta || ""}</span>`;
+  const head = `<span class="who">${r.who === "Harness" ? "LM Trace" : r.who}</span><span class="what">${r.what}${r.tip ? ` <span class="info ev-i" tabindex="0" data-tip="${esc(r.tip)}">i</span>` : ""}</span><span class="meta">${r.meta || ""}</span>`;
   return r.body ? `<details class="ev${r.cls ? " " + r.cls : ""}" data-key="${key}"${openKeys.has(key) ? " open" : ""}><summary>${head}<span class="more">Details<span class="chev"></span></span></summary><div class="ev-bd">${r.body}</div></details>`
     : `<div class="ev${r.cls ? " " + r.cls : ""}"><div class="ev-row">${head}<span></span></div></div>`;
 }
@@ -1859,12 +1864,12 @@ function turnHtml(turn, ti) {
     out += `<section class="callcard"><div class="callcard-hd">${g.rows[0][1].kind === "close" ? "After the turn" : g.grp === "disc" ? "Discovery" : g.call ? `Model call ${g.call}` : "Request"}</div>${rows}</section>`;
   }
   if (turn.answer) out += `<div class="bubble assistant md">${md(turn.answer.trim())}</div>`;
-  if (turn.stats) { const s = turn.stats, pr = promptToks(turn); out += `<div class="tok-meta assistant" data-tip-title="Tokens" data-tip="Prompt tokens of each model call. Call 1: input_tokens, from LM Studio. LM Studio reports only the first call, so this page counts the prompt of each later call with the tokenizer of the model (~). Output tokens: total_output_tokens (reasoning_output_tokens of them are thinking) and tokens_per_second, from LM Studio. The time is measured by this page.">${pr.length > 1 ? "Prompt tokens: " + pr.map((n, i) => `call ${i + 1} ${i ? (n == null ? "…" : "~" + n.toLocaleString()) : s.input_tokens?.toLocaleString()}`).join(" + ") : s.input_tokens?.toLocaleString() + " prompt tokens"} · ${s.total_output_tokens?.toLocaleString()} output tokens${s.reasoning_output_tokens ? ` (${s.reasoning_output_tokens} thinking)` : ""} · ${s.tokens_per_second ? s.tokens_per_second.toFixed(1) + " tok/s" : ""} · ${fmtS(turn.ms || 0)}</div>`; }
+  if (turn.stats) { const s = turn.stats, pr = promptToks(turn); const meta = `<div class="tok-meta assistant" data-tip-title="Tokens" data-tip="Prompt tokens of each model call. Call 1: input_tokens, from LM Studio. LM Studio reports only the first call, so this page counts the prompt of each later call with the tokenizer of the model (~). Output tokens: total_output_tokens (reasoning_output_tokens of them are thinking) and tokens_per_second, from LM Studio. The time is measured by this page.">${pr.length > 1 ? "Prompt tokens: " + pr.map((n, i) => `call ${i + 1} ${i ? (n == null ? "…" : "~" + n.toLocaleString()) : s.input_tokens?.toLocaleString()}`).join(" + ") : s.input_tokens?.toLocaleString() + " prompt tokens"} · ${s.total_output_tokens?.toLocaleString()} output tokens${s.reasoning_output_tokens ? ` (${s.reasoning_output_tokens} thinking)` : ""} · ${s.tokens_per_second ? s.tokens_per_second.toFixed(1) + " tok/s" : ""} · ${fmtS(turn.ms || 0)}</div>`; out += turn.answer ? Composer.ansBar(ti, meta) : meta; }
   if (turn.error) out += `<div class="error">${esc(turn.error)}${turn.fix && !busy ? ` <button type="button" class="linkbtn" data-act="ctx" data-model="${esc(turn.fix.model)}" data-n="${turn.fix.n}">Reload ${esc(turn.fix.model)} with ${turn.fix.n.toLocaleString()} tokens</button>` : ""}</div>`;
   return out;
 }
 function renderChat() {
-  renderPlus(); renderStarters(); renderCtx();
+  renderPlus(); renderStarters(); syncSave(); renderCtx();
   const on = enabled();
   renderStats(); renderMcpList(); renderViewBar();
   const log = $("log");
@@ -1874,7 +1879,25 @@ function renderChat() {
   if (atEnd || busy) log.scrollTop = log.scrollHeight;
 }
 $("log").addEventListener("toggle", e => { const k = e.target.dataset?.key; if (k) e.target.open ? openKeys.add(k) : openKeys.delete(k); }, true);
-$("log").addEventListener("click", e => { if (e.target.closest(".ev-i")) e.preventDefault(); }, true);  // the i shows its tooltip; it does not open the row
+$("log").addEventListener("click", e => { if (e.target.closest(".ev-i")) e.preventDefault(); }, true);
+// Copy the answer, or export the whole chat as Markdown: your messages, the tool calls and the answers.
+function chatMd() {
+  const t0 = chat[0], req = t0?.req || {}, d = new Date(t0?.t0 || Date.now());
+  const servers = (req.integrations || []).map(x => typeof x === "string" ? x : x.id).join(", ") || "none";
+  const out = [`# MCP chat · LM Trace`, "", `- Date: ${d.toLocaleString()}`, `- Model: ${req.model || ""}`, `- MCP servers: ${servers}`];
+  if (req.system_prompt) out.push(`- System prompt: ${req.system_prompt}`);
+  for (const t of chat) {
+    out.push("", "## You", "", t.user);
+    const calls = t.rows.filter(r => r.kind === "call");
+    if (calls.length) { out.push("", "**Tool calls**", ""); calls.forEach(c => out.push(`- \`${c.tool}\` (${c.server}): \`${JSON.stringify(c.args || {})}\``)); }
+    out.push("", `## ${t.req?.model || "Model"}`, "", (t.answer || "").trim() || (t.error ? `_Error: ${t.error}_` : "_No answer._"));
+  }
+  return out.join("\n") + "\n";
+}
+$("log").addEventListener("click", e => {
+  const c = e.target.closest("[data-ans-copy]"); if (c) { Composer.copyAns(c, (chat[+c.dataset.ansCopy]?.answer || "").trim()); return; }
+  if (e.target.closest("[data-ans-export]")) Composer.download(`mcp-chat-${Composer.stamp()}.md`, chatMd());
+});  // the i shows its tooltip; it does not open the row
 $("log").addEventListener("click", e => { const c = e.target.closest("[data-act=ctx]"); if (c) reloadCtx(c.dataset.model, +c.dataset.n); });
 $("log").addEventListener("click", e => { if (e.target.closest("[data-act=setup]")) { view.mode = "list"; setTab("servers"); } if (e.target.closest("#runAgain")) runAgain(); });
 // Run again: a new chat with the settings of the archived chat, then its messages again, one by one. Not a replay:
@@ -1905,13 +1928,48 @@ const EXAMPLES = {
   "filesystem": ["Which files are in my folder?", "What is the total budget of my trip plan?", "Add up my expenses by category."],
   "lm-trace": ["What is 123.4 times 56?", "Convert 100 US dollars to Canadian dollars.", "What is the price of Bitcoin in CAD now?"],
 };
-function renderStarters() {
-  const ex = enabled().flatMap(s => EXAMPLES[s.name] || []);
-  const list = [...ex, "No tool needed: what is the capital of Canada?"];
-  $("starters").hidden = chat.length > 0;
-  $("starters").innerHTML = list.map(x => `<button type="button" class="starter">${esc(x)}</button>`).join("");
+// Examples: the built-in examples of the servers that are on, then your saved examples (/mcp-prompts, with a
+// delete button). A click puts the message into the box; you send it.
+let savedMsgs = [];
+const builtInMsgs = () => [...enabled().flatMap(s => EXAMPLES[s.name] || []), "No tool needed: what is the capital of Canada?"];
+const useMsg = text => { if (busy || viewing) return; $("msg").value = text; $("msg").dispatchEvent(new Event("input")); $("msg").focus(); };
+// The Save button changes with the message: a saved message → Delete; a built-in example → off; else → Save.
+function syncSave() {
+  const v = $("msg").value.trim(), b = $("saveMsg");
+  const saved = !!v && savedMsgs.some(p => p.text === v), builtIn = !!v && builtInMsgs().includes(v);
+  b.innerHTML = saved ? ICON_DEL : ICON_SAVE;
+  b.classList.toggle("del", saved);
+  b.disabled = builtIn || busy || !!viewing;
+  b.title = saved ? "Delete this saved example" : builtIn ? "Already an example" : "Save as an example: it shows below the message box";
+  b.setAttribute("aria-label", b.title);
 }
-$("starters").onclick = e => { const b = e.target.closest(".starter"); if (b) { $("msg").value = b.textContent; $("msg").dispatchEvent(new Event("input")); $("msg").focus(); } };
+function renderStarters() {
+  const chip = (label, title, text) => {
+    const b = Object.assign(document.createElement("button"), { type: "button", className: "starter", textContent: label, title });
+    b.onclick = () => useMsg(text);
+    return b;
+  };
+  const saved = savedMsgs.map((p, i) => {
+    const w = Object.assign(document.createElement("span"), { className: "starter-saved" });
+    const del = Object.assign(document.createElement("button"), { type: "button", className: "starter starter-del", innerHTML: ICON_DEL, title: "Delete this saved example" });
+    del.setAttribute("aria-label", `Delete the saved example: ${p.name}`);
+    del.onclick = async () => {
+      if (busy) return;
+      const [gone] = savedMsgs.splice(i, 1);
+      try { await storeMsgs(); } catch (e) { savedMsgs.splice(i, 0, gone); $("error").textContent = e.message; }
+      renderStarters(); syncSave();
+    };
+    w.append(chip(p.name, p.text, p.text), del);
+    return w;
+  });
+  $("starters").hidden = false;  // the examples stay below the message box, as on the Tools page
+  $("starters").replaceChildren(...builtInMsgs().map(x => chip(x, "", x)), ...saved);
+  if (busy || viewing) document.querySelectorAll(".starter").forEach(b => b.disabled = true);
+}
+async function storeMsgs() {
+  const r = await fetch("/mcp-prompts", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(savedMsgs) });
+  if (!r.ok) throw new Error("Could not save the example.");
+}
 
 var THINK_TIP = "The LLM reasons before it answers or calls a tool. LM Studio sends the reasoning as its own part of the output.";
 // Prompt tokens of each model call. LM Studio's input_tokens counts only call 1, so the page counts each prompt from the log.
@@ -2009,12 +2067,13 @@ async function send() {
   chat.push(turn);
   $("msg").value = ""; $("msg").dispatchEvent(new Event("input"));
   busy = true; ctrl = new AbortController(); Composer.setSend($("sendBtn"), true); chatPick.setDisabled(true);
+  await sendPerm(); askPoll(turn);
   try { turn.seq0 = (await getJ("/mcp-log?since=999999999")).last; } catch {}
-  // The rows follow the MCP flow diagram: the same actors (Harness, MCP host, MCP client, LLM, MCP server) and the
+  // The rows follow the MCP flow diagram: the same actors (LM Trace, MCP host, MCP client, LLM, MCP server) and the
   // same step names. A step that the API does not show is emulated: the page writes the messages that the MCP
   // protocol and LM Studio's MCP client send (verified with the LM Trace server). For lm-trace, the log replaces them.
   const isNew = !req.previous_response_id;  // a new chat: LM Studio connects; the next turn of the chat: only tools/list
-  addRow(turn, { who: "Harness", what: "Sending request", meta: on.length ? `${on.length} MCP server${on.length > 1 ? "s" : ""}` : "no MCP server",
+  addRow(turn, { who: "LM Trace", what: "Sending request", meta: on.length ? `${on.length} MCP server${on.length > 1 ? "s" : ""}` : "no MCP server",
     tip: `POST /api/v1/chat. integrations names the MCP servers; there is no tool list in the request.${lastResponseId ? " previous_response_id: LM Studio keeps the conversation." : ""}`,
     body: `<pre class="raw cap">${esc(JSON.stringify(req, null, 2))}</pre>` });
   if (on.length) {
@@ -2137,7 +2196,7 @@ async function send() {
       if (n && n > (loadedCtx(req.model) || 0)) turn.fix = { model: req.model, n };
     }
   }
-  busy = false; ctrl = null; Composer.setSend($("sendBtn"), false, { key: "Enter" }); chatPick.setDisabled(false); setFlow(-1);
+  askPoll(null); busy = false; ctrl = null; Composer.setSend($("sendBtn"), false, { key: "Enter" }); chatPick.setDisabled(false); setFlow(-1);
   Composer.load().then(renderCtx);  // LM Studio can load the model at the run (JIT)
   if (turn.ms == null) turn.ms = Date.now() - turn.t0;
   renderChat(); fillRpc(turn); setStatus(""); saveChat();
@@ -2331,13 +2390,106 @@ async function copyText(b, text) {
   b.innerHTML = ICON_DONE; b.classList.add("done"); clearTimeout(b._t);
   b._t = setTimeout(() => { b.innerHTML = ICON_COPY; b.classList.remove("done"); }, 1000);
 }
+$("saveMsg").innerHTML = ICON_SAVE; $("copyMsg").innerHTML = ICON_COPY;
+[$("saveMsg"), $("copyMsg")].forEach(b => b.addEventListener("mousedown", e => e.preventDefault()));
+$("copyMsg").onclick = () => copyText($("copyMsg"), $("msg").value);
+$("saveMsg").onclick = async () => {
+  const v = $("msg").value.trim(), b = $("saveMsg");
+  if (!v || busy || viewing || builtInMsgs().includes(v)) return;
+  const i = savedMsgs.findIndex(p => p.text === v);
+  if (i >= 0) {  // already saved: delete it
+    const [gone] = savedMsgs.splice(i, 1);
+    try { await storeMsgs(); } catch (e) { savedMsgs.splice(i, 0, gone); $("error").textContent = e.message; return; }
+    renderStarters(); syncSave();
+    return;
+  }
+  savedMsgs.push({ name: v.replace(/\s+/g, " ").slice(0, 40) + (v.length > 40 ? "…" : ""), text: v });
+  try { await storeMsgs(); } catch (e) { savedMsgs.pop(); $("error").textContent = e.message; return; }
+  renderStarters();
+  b.classList.add("done"); clearTimeout(b._t); b._t = setTimeout(() => { b.classList.remove("done"); syncSave(); }, 1000);
+};
+$("msg").addEventListener("input", syncSave);
+fetch("/mcp-prompts").then(r => r.json()).then(list => { if (Array.isArray(list)) { savedMsgs = list.filter(p => p && typeof p.text === "string" && typeof p.name === "string"); renderStarters(); syncSave(); } }).catch(() => {});
+// ---------------------------------------------------------------- Permissions: the shield, in two sections.
+// Tools (the LM Trace MCP server): each call of these tools reaches LM Trace as MCP server, so the server checks it:
+// Deny all, Ask every time or Allow all (server.py gated_run). Other MCP servers: LM Studio is the harness and its API
+// has no approval step (verified on LM Studio 0.4.26), so they are always Allow all.
+const ASK_S = 50;  // the server denies an unanswered call after 50 s: LM Studio waits 60 s for a tool result
+const PERMS = [
+  { v: "deny", label: "Deny all", desc: "The server denies every tool call", icon: SVG('<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/>') },
+  { v: "ask", label: "Ask every time", desc: "Allow or deny each tool call yourself", icon: SVG('<path d="M18 11V6a2 2 0 0 0-4 0v5M14 10V4a2 2 0 0 0-4 0v6M10 10.5V6a2 2 0 0 0-4 0v8a8 8 0 0 0 16 0v-3a2 2 0 0 0-4 0"/>') },
+  { v: "allow", label: "Allow all", desc: "The server runs every tool call", icon: SVG('<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6l8-3z"/><path d="M9 12l2 2 4-4"/>') },
+];
+if (!PERMS.some(p => p.v === S.perm)) S.perm = "allow";
+const sendPerm = () => fetch("/mcp-perm", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode: S.perm }) }).catch(() => {});
+function renderPerm() {
+  const btn = $("permBtn"), cur = PERMS.find(p => p.v === S.perm);
+  btn.innerHTML = cur.icon; btn.title = `Permissions: Tools: ${cur.label} · MCP: Allow all`; btn.setAttribute("aria-label", btn.title);
+  const item = (p, on, dis, desc) => `<button type="button" role="menuitemradio" aria-checked="${on}"${dis ? ' aria-disabled="true"' : ` data-perm="${p.v}"`}>${p.icon}<span>${p.label}</span>${on ? '<span class="ck">✓</span>' : "<span></span>"}<span class="d">${desc}</span></button>`;
+  $("permMenu").innerHTML = `<div class="hd" title="The tools of the Tools page reach LM Studio through the LM Trace MCP server. That server checks each call before the tool runs.">Tools: the LM Trace MCP server checks each call</div>`
+    + PERMS.map(p => item(p, p === cur, false, p.desc)).join("")
+    + `<div class="sep"></div><div class="hd" title="LM Studio is the harness: it sends each call straight to the MCP server. Only the LM Studio app can ask before a tool call; its API cannot.">Other MCP servers: LM Studio is the harness</div>`
+    + item(PERMS[2], true, true, "LM Studio runs every MCP tool call. Its API cannot ask.")
+    + `<div class="sep"></div><div class="hd">To block a tool, clear its check in the MCP list.</div>`;
+}
+(() => {
+  const btn = $("permBtn"), menu = $("permMenu");
+  const open = o => { menu.hidden = !o; btn.setAttribute("aria-expanded", o); if (o) menu.querySelector('[aria-checked="true"]')?.focus(); };
+  btn.onclick = () => open(menu.hidden);
+  menu.onclick = e => { const b = e.target.closest("[data-perm]"); if (!b) return; S.perm = b.dataset.perm; keep(); sendPerm(); renderPerm(); open(false); btn.focus(); };
+  document.addEventListener("click", e => { if (!btn.parentElement.contains(e.target)) open(false); });
+  menu.addEventListener("keydown", e => {
+    const items = [...menu.querySelectorAll("[data-perm]")], i = items.indexOf(document.activeElement);
+    if (e.key === "Escape") { open(false); btn.focus(); }
+    else if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); items[(i + (e.key === "ArrowDown" ? 1 : items.length - 1)) % items.length].focus(); }
+  });
+  renderPerm();  // the mode goes to the server when you change it and before each message, not on load (another tab may use it)
+})();
+// Ask every time: while a message runs, the page asks the server which tool calls wait. Each one gets a row with
+// Allow and Deny and the seconds left, before the Running row of its call.
+let askTimer = null;
+const askLeft = r => Math.max(0, Math.round((r.until - Date.now()) / 1000));
+function askPoll(turn) {
+  clearInterval(askTimer); askTimer = null;
+  if (!turn) return;
+  askTimer = setInterval(async () => {
+    document.querySelectorAll("[data-ask-left]").forEach(el => { const r = turn.rows.find(x => x.ask === el.dataset.askLeft); if (r) el.textContent = askLeft(r) + " s"; });
+    if (S.perm !== "ask") return;
+    let j; try { j = await getJ("/mcp-ask"); } catch { return; }
+    let changed = false;
+    for (const a of j.asks) if (!turn.rows.some(r => r.ask === a.id)) {
+      const run = [...turn.rows].reverse().find(r => r.kind === "run" && !r.meta), row = { call: turn.calls, kind: "ask", ask: a.id, tool: a.tool, until: Date.now() + a.left * 1000 };
+      turn.rows.splice(run ? turn.rows.indexOf(run) : turn.rows.length, 0, row); changed = true;
+    }
+    for (const r of turn.rows) if (r.kind === "ask" && !r.state && !j.asks.some(a => a.id === r.ask)) {  // gone without an answer from this page
+      Object.assign(r, { state: "timeout", who: "MCP server", cls: "bad", what: `Denied: no answer in ${ASK_S} s`, tip: "The server denied the call, so LM Studio does not cancel the chat. The model gets: the tool was denied." }); changed = true;
+    }
+    if (changed) renderChat();
+  }, 500);
+}
+$("log").addEventListener("click", async e => {
+  const b = e.target.closest("[data-ask]"); if (!b) return;
+  const turn = chat.at(-1), r = turn?.rows.find(x => x.ask === b.dataset.ask); if (!r || r.state) return;
+  const ok = b.dataset.ok === "1";
+  Object.assign(r, { state: ok ? "ok" : "no", who: "You", what: ok ? "Allowed" : "Denied", cls: ok ? "" : "bad", meta: `${ASK_S - askLeft(r)} s`,
+    tip: ok ? "You allow the tool call, so the LM Trace MCP server runs the tool." : "You deny the tool call. The LM Trace MCP server returns: the tool was denied." });
+  const run = turn.rows.slice(turn.rows.indexOf(r)).find(x => x.kind === "run" && !x.meta); if (run) run.t = Date.now();  // Running starts now, not at the call
+  renderChat();
+  fetch("/mcp-ask", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: r.ask, ok }) }).catch(() => {});
+});
 const fit = (t, max = 160) => { t.style.height = "auto"; t.style.height = Math.min(t.scrollHeight + 2, max) + "px"; };
+// Today's date and time zone, from this computer, when the page loads. Without it a model judges live data against
+// its training year (a test with Gemma 4: "Today is May 2024", so a November 2026 IPO looked made up).
+const TODAY = (() => {
+  const d = new Date(), tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  return `Current date: ${d.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}. Time zone: ${tz}.`;
+})();
 const SYSTEM_EXAMPLES = [
   ["Helpful assistant", "You are a helpful assistant."],
   ["Be concise", "You are a helpful assistant. Be concise. Answer in one sentence."],
   ["Tools only when needed", "You are a helpful assistant. Use a tool only when the question needs current or exact data. Otherwise, answer from what you know.", "Guardrails"],
   ["Give the source and the date", "You are a helpful assistant. When you use data from a tool, always say where the data comes from and the date of the data.", "Guardrails"],
-  ["Report tool errors", "You are a helpful assistant. If a tool returns an error, tell the user what went wrong. Never guess the result.", "Guardrails"],
+  ["Report tool errors", "You are a helpful assistant. If a tool returns an error, tell the user what went wrong. Never guess the result.", "Guardrails"],  ["Date and knowledge cutoff", `You are a helpful assistant. ${TODAY} Your knowledge comes from training data that ends before this date. Tool results can describe events after your training. Do not reject a fact only because it is newer than what you know: check it against the current date and the other sources.`, "Context"],
 ];
 const sysPrompt = (() => {
   const box = $("system"), select = $("sysExamples"), saveBtn = $("saveSystem"), delBtn = $("delSystem"), copyBtn = $("copySystem");
