@@ -689,6 +689,8 @@
   .srv-list { display: grid; gap: 10px; padding: 14px 18px 18px; }
   .srv { border: 1px solid var(--line); border-radius: 8px; background: var(--field); overflow: hidden; }
   .srv-hd { display: flex; align-items: center; gap: 10px 12px; flex-wrap: wrap; padding: 10px 12px; }
+  .srv:not(.sug) > .srv-hd { background: var(--paper); }  /* the header shade of the tool cards */
+  .srv.open > .srv-hd { border-bottom: 1px solid var(--line); }
   .srv-hd .av { width: 34px; height: 34px; flex: none; display: grid; place-items: center; border-radius: 8px; background: var(--paper-2); color: var(--ink-2); font: 600 14px var(--sans); }
   .srv-hd .av svg { width: 18px; height: 18px; }
   .srv-hd .nmw { display: grid; gap: 1px; min-width: 0; flex: 1 1 260px; }
@@ -768,7 +770,7 @@
   .srv-open .chev { margin-left: 4px; }
   .srv.open .srv-open .chev { transform: rotate(90deg); }
   .srv { overflow: visible; }
-  .srv .ml-tools, .srv > .ml-none { margin: 0; padding: 8px 14px 10px 58px; border-top: 1px solid var(--paper-2); }
+  .srv .ml-tools, .srv > .ml-none { margin: 0; padding: 8px 14px 12px; }
   .srv-open .nmw { flex: 1 1 auto; }
   .srv-open .ml-count { margin-left: auto; padding-left: 8px; }
   .more-wrap { position: relative; }
@@ -798,6 +800,33 @@
   .cap-i[open] > summary .chev { transform: rotate(90deg); }
   .cap-i code, .cap-r code { font: 13px var(--mono); color: var(--ink); white-space: nowrap; }
   .cap-bd { padding: 0 14px 12px 40px; display: grid; gap: 6px; }
+  /* An MCP tool: the same look as a tool on the Tools page. A switch (allowed_tools), then Function and Definition. */
+  /* An MCP tool in Details: a card like a tool on the Tools page. A grey header (switch, name, read only); opened,
+     Function and Definition below it. The cards stack with a gap, as on the Tools page. */
+  .mt-list { display: grid; gap: 10px; padding: 12px; }
+  .mt-list > .mt-edit { justify-self: start; }
+  .mt { min-width: 0; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--field); }
+  .mt.cap-i:last-child { border-bottom: 1px solid var(--line); }  /* .cap-i:last-child drops it */
+  .mt > summary { background: var(--paper); padding: 9px 12px; gap: 12px; }
+  .mt > summary:focus { outline: none; }
+  .mt > summary:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+  .mt[open] > summary { border-bottom: 1px solid var(--line); }
+  .mt > summary .clamp1 { display: none; }  /* no description in the header: it is in Function, in full */
+  .mt > summary .badge { margin-left: auto; }
+  .mt > summary .sw-btn { padding: 0; }
+  .mt.off > summary code { opacity: .55; }
+  .mt-bd { display: grid; grid-template-columns: 110px minmax(0, 1fr); padding: 0 16px; font-size: 13px; }
+  .mt-bd > * { padding: 12px 0; }
+  .mt-bd > :nth-child(n+3) { border-top: 1px solid var(--paper-2); }
+  .mt-bd > .k { color: var(--ink); font-weight: 500; }
+  .mt-bd .sig { font: 12.5px/1.6 var(--mono); color: var(--ink); margin: 0 0 6px; white-space: pre-wrap; }
+  .mt-bd .desc { color: var(--ink-2); line-height: 1.55; white-space: pre-wrap; }
+  .mt-bd details > summary { cursor: pointer; color: var(--ink); list-style: none; display: inline-flex; align-items: center; gap: 6px; }
+  .mt-bd details > summary::-webkit-details-marker { display: none; }
+  .mt-bd details[open] > summary .chev { transform: rotate(90deg); }
+  .mt-bd details pre { margin-top: 10px; background: var(--paper); border-color: transparent; color: var(--ink-3); }  /* as .pre.gen on the Tools page */
+  .mt-edit { font: 500 12px var(--sans); text-transform: none; letter-spacing: 0; }
+  @media (max-width: 640px) { .mt-bd { grid-template-columns: 1fr; padding-left: 14px; } }
   .cap-bd pre { max-height: 260px; overflow: auto; white-space: pre-wrap; }
   .cap-r { display: flex; align-items: center; gap: 10px; padding: 8px 14px; border-bottom: 1px solid var(--paper-2); font-size: 13px; color: var(--ink-3); min-width: 0; flex-wrap: wrap; }
   .cap-r .clamp1, .cap-i .clamp1 { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -819,7 +848,15 @@
   .log-head .stats > span + span { margin-left: 12px; }
   /* MCP list: one row per server, its tools below when open */
   .mcp-list { padding: 4px 18px 14px; display: grid; gap: 6px; }
-  .ml-srv { border: 1px solid var(--line); border-radius: 8px; background: var(--field); }
+  .ml-srv { border: 1px solid var(--line); border-radius: 8px; background: var(--field); overflow: hidden; }
+  .ml-srv .ml-hd { background: var(--paper); }  /* the header shade of a tool card on the Tools page */
+  .ml-srv.open .ml-hd { border-bottom: 1px solid var(--line); }
+  .ml-hd .btn.sm { height: 28px; padding: 0 10px; font-size: 12.5px; flex: none; }
+  .mt-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 4px 16px; padding: 2px 0; }
+  .mt-s { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 3px 0; }
+  .mt-s .sw-btn { padding: 0; }
+  .mt-s code { font: 13px var(--mono); color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mt-s.off code { color: var(--ink-3); }
   .ml-hd { display: flex; align-items: center; gap: 10px; padding: 6px 10px; }
   .ml-name { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; border: 0; background: none; padding: 4px 0; cursor: pointer; color: var(--ink); font: 13.5px var(--sans); text-align: left; }
   .ml-name code { font: 13px var(--mono); }
@@ -828,10 +865,15 @@
   .ml-count { margin-left: auto; color: var(--ink-3); font-size: 12.5px; white-space: nowrap; }
   .ml-name .chev { flex: none; }
   .ml-srv.open .ml-name .chev { transform: rotate(90deg); }
-  .ml-tools { border-top: 1px solid var(--paper-2); padding: 6px 12px 10px 56px; display: grid; gap: 2px; }
+  .ml-tools { padding: 8px 14px 12px; display: grid; gap: 4px; }
   .ml-th { display: flex; gap: 14px; align-items: baseline; font: 600 12px var(--sans); color: var(--ink-3); text-transform: uppercase; letter-spacing: .05em; padding: 4px 0; }
   .ml-th span { margin-right: auto; }
   .ml-th .linkish { font: 500 12.5px var(--sans); text-transform: none; letter-spacing: 0; }
+  .ml-th { align-items: center; }
+  .icon-btn { width: 28px; height: 28px; display: inline-grid; place-items: center; border: 1px solid var(--line); border-radius: 7px; background: var(--field); color: var(--ink-2); cursor: pointer; padding: 0; }
+  .icon-btn svg { width: 15px; height: 15px; }
+  .icon-btn:hover { color: var(--ink); background: var(--paper); }
+  .icon-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
   .ml-tool { display: flex; align-items: baseline; gap: 8px; padding: 3px 0; font-size: 13px; color: var(--ink-3); cursor: pointer; min-width: 0; }
   .ml-tool input { transform: translateY(2px); accent-color: var(--primary); }
   .ml-tool code { font: 13px var(--mono); color: var(--ink); white-space: nowrap; }
@@ -1097,6 +1139,7 @@ const post = async (url, body, method = "POST") => {
 };
 const SVG = (d, w = 1.8) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
 const IC = {
+  reload: SVG('<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/>'),
   plus: SVG('<path d="M5 12h14M12 5v14"/>', 2), chev: SVG('<path d="M9 6l6 6-6 6"/>'), back: SVG('<path d="M19 12H5M12 19l-7-7 7-7"/>'),
   blocks: SVG('<path d="M10 22V7a1 1 0 0 0-1-1H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5a1 1 0 0 0-1-1H2"/><rect width="8" height="8" x="14" y="2" rx="1"/>'),
   plug: '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M19.97 11.84c.66-.66 1.02-1.53 1.02-2.46s-.36-1.8-1.02-2.46l-.04-.04a3.45 3.45 0 0 0-2.46-1.02c-.17 0-.34.03-.51.05c.02-.17.05-.33.05-.51c0-.93-.36-1.8-1.02-2.46s-1.53-1.02-2.46-1.02s-1.8.36-2.46 1.02L3.2 10.81a.694.694 0 0 0 .98.98l7.87-7.87c.39-.39.92-.61 1.47-.61A2.08 2.08 0 0 1 15.6 5.4c0 .56-.22 1.08-.61 1.48l-5.86 5.86l-.08.08c-.27.27-.27.71 0 .98c.14.14.31.2.49.2s.36-.07.49-.2l5.94-5.94a2.09 2.09 0 0 1 2.95 0l.04.04c.39.39.61.92.61 1.47s-.22 1.08-.61 1.48l-7.11 7.11c-.63.63-.63 1.66 0 2.29l1.46 1.46c.14.14.31.2.49.2s.36-.07.49-.2c.27-.27.27-.71 0-.98l-1.46-1.46a.235.235 0 0 1 0-.33l7.11-7.11Z"/><path d="M17.96 9.83a.694.694 0 0 0-.98-.98l-5.82 5.82c-.81.81-2.14.81-2.95 0s-.81-2.14 0-2.95l5.82-5.82a.694.694 0 0 0-.98-.98l-5.82 5.82a3.476 3.476 0 0 0 0 4.92c.68.68 1.57 1.02 2.46 1.02s1.78-.34 2.46-1.02l5.82-5.82Z"/></svg>',
@@ -1246,10 +1289,10 @@ function renderServers() {
     ${cfg.servers.length ? setupCard() : ""}
     <div class="srv-list">
       ${cfg.servers.length ? "" : `<p class="hint">No servers in mcp.json yet. Add one of the suggested servers below, or your own.</p>`}
-      ${cfg.servers.map(s => { const open = mlOpen.has(s.name); return `<div class="srv${open ? " open" : ""}"><div class="srv-hd">
+      ${cfg.servers.map(s => { const open = mlOpen.has(s.name); return `<div class="srv${open ? " open" : ""}"><div class="srv-hd">${sw(!!S.on[s.name], `data-on="${esc(s.name)}" title="Use this server in the chat" aria-label="Use ${esc(s.name)} in the chat"`)}
           <button type="button" class="srv-open" data-ml-open="${esc(s.name)}" aria-expanded="${open}" title="${open ? "Hide" : "Show"} the tools of mcp/${esc(s.name)}"><span class="av">${iconOf(s)}</span>
             <span class="nmw"><span class="nm">${esc(titleOf(s.name))} ${typeBadge(s)}</span><span class="ln${metaOf(s.name).description ? " desc" : ""}" title="${esc(lineOf(s))}">${esc(metaOf(s.name).description || lineOf(s))}</span></span><span class="ml-count">${mlCount(s)}</span><span class="chev"></span></button>
-          <div class="right">${sw(!!S.on[s.name], `data-on="${esc(s.name)}" title="Use this server in the chat" aria-label="Use ${esc(s.name)} in the chat"`)}
+          <div class="right">
             ${view.del === s.name ? `<button type="button" class="btn danger" data-del="${esc(s.name)}" data-confirm="1" title="Remove ${esc(s.name)} from mcp.json. LM Studio then removes its plugin mcp/${esc(s.name)}. LM Trace keeps a copy of the old file.">Uninstall</button><button type="button" class="btn ghost" data-act="del-cancel">Keep</button>`
               : `<button type="button" class="btn ghost" data-inspect="${esc(s.name)}" title="Connect to the server and show its tools, resources, prompts and messages">Details</button>
             <div class="more-wrap"><button type="button" class="more-btn" data-more="${esc(s.name)}" aria-haspopup="menu" aria-expanded="${view.more === s.name}" aria-label="More for ${esc(s.name)}">⋯</button>
@@ -1431,8 +1474,7 @@ function renderInspect(p) {
   let body;
   if (!items) body = `<div class="none">${none}</div>`;
   else if (!items.length) body = `<div class="none">The server has no ${tab}.</div>`;
-  else if (tab === "tools") body = items.map(t => `<details class="cap-i"><summary><span class="chev"></span><code>${esc(t.name)}</code><span class="clamp1">${esc((t.description || "").split("\n")[0])}</span>${t.annotations?.readOnlyHint ? `<span class="badge">read only</span>` : ""}</summary>
-      <div class="cap-bd"><pre class="raw">${esc(t.description || "")}</pre><div class="lbl-s">inputSchema</div><pre class="raw">${esc(JSON.stringify(t.inputSchema || {}, null, 2))}</pre></div></details>`).join("");
+  else if (tab === "tools") body = `<div class="mt-list">${editLink(v.name)}${items.map(t => mcpToolRow(v.name, t, !!viewing || busy)).join("")}</div>`;
   else if (tab === "resources") body = items.map(r => `<div class="cap-r"><code>${esc(r.title || r.name)}</code><span class="clamp1">${esc(r.uri)}</span>
       <button type="button" class="btn ghost sm" data-read="${esc(r.uri)}">Read</button><button type="button" class="btn ghost sm" data-attach="${esc(r.uri)}" data-attach-name="${esc(r.title || r.name)}" title="Read it and add it to your next message">Attach to chat</button></div>`).join("")
       + (d.resourceTemplates?.length ? d.resourceTemplates.map(r => `<div class="cap-r"><code>${esc(r.title || r.name)}</code><span class="clamp1">${esc(r.uriTemplate)} · template</span></div>`).join("") : "");
@@ -2335,15 +2377,40 @@ function mlCount(s) {
   const c = toolCache[s.name], a = allowedOf(s.name), all = c?.state === "ok" ? c.tools : null;
   return a ? (all ? `${a.length} of ${all.length} tools` : `${a.length} tool${a.length === 1 ? "" : "s"}`) : all ? `all ${all.length} tools` : "all tools";
 }
-// The tools of one server, with a check for each: the same on the MCP list and on the MCP Servers tab
+// One MCP tool, in the look of a tool on the Tools page: a switch (does LM Studio give it to the model: allowed_tools),
+// the name and the description; opened, Function (the signature and the full description) and Definition (the
+// JSON schema). No Edit or Delete: the server owns its tools. The same row on the MCP list, the MCP Servers tab and
+// in Details, so a switch shows the same setting everywhere.
+// A long signature: one parameter per line, as code is written, so it reads top-down.
+const sigBlock = t => { const one = sigOf(t); if (one.length <= 90) return one; const i = one.indexOf("("); return one.slice(0, i + 1) + "\n  " + one.slice(i + 1, -1).split(", ").join(",\n  ") + "\n)"; };
+const toolOn = (n, name) => { const a = allowedOf(n); return !a || a.includes(name); };
+function mcpToolRow(n, t, lock) {
+  const on = toolOn(n, t.name);
+  return `<details class="cap-i mt${on ? "" : " off"}"><summary>${sw(on, `data-mt-sw="${esc(n)}" data-mt-tool="${esc(t.name)}" title="Give this tool to the model" aria-label="Give ${esc(t.name)} to the model"${lock ? " disabled" : ""}`)}<span class="chev"></span><code>${esc(t.name)}</code><span class="clamp1">${esc((t.description || "").split("\n")[0])}</span>${t.annotations?.readOnlyHint ? `<span class="badge">read only</span>` : ""}</summary>
+    <div class="mt-bd"><span class="k">Function</span><div><div class="sig">${esc(sigBlock(t))}</div><div class="desc">${esc(t.description || "")}</div></div>
+    <span class="k">Definition</span><details><summary><span class="chev"></span>JSON schema</summary><pre class="raw">${esc(JSON.stringify(t.inputSchema || {}, null, 2))}</pre></details></div></details>`;
+}
+// Switch one tool on or off: allowed_tools for the server. All on again = no allowed_tools (all its tools).
+function setToolOn(n, name, all) {
+  const set = new Set(allowedOf(n) || all);
+  set.has(name) ? set.delete(name) : set.add(name);
+  const list = all.filter(x => set.has(x));
+  if (list.length === all.length) delete S.allowed[n]; else S.allowed[n] = list;
+  keep(); refreshMl(); if (S.tab === "servers" && view.mode === "inspect") renderServers();
+}
+const editLink = n => n === "lm-trace" ? `<a class="linkish mt-edit" href="/tools.html" title="LM Trace tools are the tools of the Tools page: create, edit and delete them there">Edit on the Tools page</a>` : "";
+// On the MCP list and the MCP Servers cards: only the name of each tool and its switch. The full tool (description,
+// signature, JSON schema) is in Details.
+const toolSwitch = (n, t, lock) => { const on = toolOn(n, t.name); return `<div class="mt-s${on ? "" : " off"}">${sw(on, `data-mt-sw="${esc(n)}" data-mt-tool="${esc(t.name)}" aria-label="Give ${esc(t.name)} to the model"${lock ? " disabled" : ""}`)}<code>${esc(t.name)}</code></div>`; };
+// The tools of one server, with a switch for each: the same on the MCP list and on the MCP Servers tab
 function mlToolsHtml(s, lock) {
   const c = toolCache[s.name], a = allowedOf(s.name);
   if (!c && S.on[s.name]) setTimeout(() => loadServerTools(s.name));
   if (!S.on[s.name]) return `<div class="ml-none">Turn the server on to select its tools.</div>`;
   if (!c || c.state === "loading") return `<div class="ml-none"><span class="busy-dot"></span>Asking the server for its tools…</div>`;
   if (c.state === "error") return `<div class="ml-none bad">${esc(c.error)} <button type="button" class="linkish" data-inspect-ml="${esc(s.name)}">Details</button></div>`;
-  return `<div class="ml-tools"><div class="ml-th"><span>Tools</span><button type="button" class="linkish" data-ml-all="${esc(s.name)}"${lock ? " disabled" : ""}>${a ? "Select all" : "Clear all"}</button><button type="button" class="linkish" data-ml-reload="${esc(s.name)}" title="Ask the server for its tools again">Reload</button></div>`
-    + (c.tools.length ? c.tools.map(t => `<label class="ml-tool" title="${esc(t.description || "")}"><input type="checkbox" data-ml-tool="${esc(s.name)}" value="${esc(t.name)}"${!a || a.includes(t.name) ? " checked" : ""}${lock ? " disabled" : ""}><code>${esc(t.name)}</code><span class="clamp1">${esc((t.description || "").split("\n")[0])}</span>${t.annotations?.readOnlyHint ? `<span class="badge" title="The server says that the tool only reads (readOnlyHint)">read only</span>` : ""}</label>`).join("") : `<div class="ml-none">The server has no tools.</div>`)
+  return `<div class="ml-tools"><div class="ml-th"><span>Tools</span>${editLink(s.name)}<button type="button" class="icon-btn" data-ml-reload="${esc(s.name)}" title="Reload: ask the server for its tools again" aria-label="Reload the tools of ${esc(s.name)}">${IC.reload}</button></div>`
+    + (c.tools.length ? `<div class="mt-grid">${c.tools.map(t => toolSwitch(s.name, t, lock)).join("")}</div>` : `<div class="ml-none">The server has no tools.</div>`)
     + (a && !a.length ? `<div class="ml-none bad">No tool has a check: LM Studio does not get this server.</div>` : "") + `</div>`;
 }
 const refreshMl = () => { renderChat(); if (S.tab === "servers" && view.mode === "list") renderServers(); };
@@ -2359,7 +2426,7 @@ function renderMcpList() {
   box.innerHTML = cfg.servers.map(s => {
     const isOn = !!S.on[s.name], open = mlOpen.has(s.name);
     return `<div class="ml-srv${open ? " open" : ""}"><div class="ml-hd">${sw(isOn, `data-ml-on="${esc(s.name)}" title="Use this server in the chat" aria-label="Use ${esc(s.name)} in the chat"${lock ? " disabled" : ""}`)}
-      <button type="button" class="ml-name" data-ml-open="${esc(s.name)}" aria-expanded="${open}"><span class="av">${iconOf(s)}</span><code>mcp/${esc(s.name)}</code>${typeBadge(s)}<span class="ml-count">${mlCount(s)}</span><span class="chev"></span></button></div>${open ? mlToolsHtml(s, lock) : ""}</div>`;
+      <button type="button" class="ml-name" data-ml-open="${esc(s.name)}" aria-expanded="${open}"><span class="av">${iconOf(s)}</span><code>mcp/${esc(s.name)}</code>${typeBadge(s)}<span class="ml-count">${mlCount(s)}</span><span class="chev"></span></button><button type="button" class="btn ghost sm" data-inspect-ml="${esc(s.name)}" title="Open this server on the MCP Servers tab: its tools, resources, prompts and messages">Details</button></div>${open ? mlToolsHtml(s, lock) : ""}</div>`;
   }).join("") + `<div class="ml-note">Over the API, LM Studio runs each tool with a check at once: there is no ask step. <span class="info" tabindex="0" data-tip-title="Permission" data-tip="In its own chat, LM Studio can ask before each tool call (Ask before running, or Always allow). The API has no such setting. To block a tool here, clear its check.">i</span></div>`;
 }
 // Clicks on the tools of a server: on the MCP list and on the MCP Servers tab. Returns true when handled.
@@ -2367,8 +2434,7 @@ function mlClick(t) {
   const ins = t.closest("[data-inspect-ml]"); if (ins) { openInspect(ins.dataset.inspectMl); return true; }
   const op = t.closest("[data-ml-open]"); if (op) { const n = op.dataset.mlOpen; mlOpen.has(n) ? mlOpen.delete(n) : mlOpen.add(n); if (mlOpen.has(n) && S.on[n]) loadServerTools(n); refreshMl(); return true; }
   const rl = t.closest("[data-ml-reload]"); if (rl) { loadServerTools(rl.dataset.mlReload, true); return true; }
-  if (viewing || busy) return !!t.closest("[data-ml-all], [data-ml-on]");
-  const al = t.closest("[data-ml-all]"); if (al) { const n = al.dataset.mlAll; if (S.allowed[n]) delete S.allowed[n]; else S.allowed[n] = []; keep(); refreshMl(); return true; }
+  if (viewing || busy) return !!t.closest("[data-ml-on]");
   const on = t.closest("[data-ml-on]"); if (on) { const n = on.dataset.mlOn; S.on[n] = !S.on[n]; keep(); if (S.on[n]) { mlOpen.add(n); loadServerTools(n); if (!checks[n]) check(n); } refreshMl(); return true; }
   return false;
 }
@@ -2376,15 +2442,13 @@ $("mcpList").addEventListener("click", e => {
   if (e.target.closest("[data-act=setup]")) { view.mode = "list"; setTab("servers"); return; }
   mlClick(e.target);
 });
-document.addEventListener("change", e => {
-  const cb = e.target.closest("[data-ml-tool]"); if (!cb) return;
-  const n = cb.dataset.mlTool, all = toolCache[n]?.tools?.map(t => t.name) || [];
-  const set = new Set(allowedOf(n) || all);
-  cb.checked ? set.add(cb.value) : set.delete(cb.value);
-  const list = all.filter(x => set.has(x));
-  if (list.length === all.length) delete S.allowed[n]; else S.allowed[n] = list;
-  keep(); refreshMl();
-});
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-mt-sw]"); if (!b) return;
+  e.preventDefault(); e.stopPropagation();  // in a summary: switch the tool, do not open the row
+  if (b.disabled) return;
+  const n = b.dataset.mtSw, all = (toolCache[n]?.tools || view.insp?.data?.tools || []).map(t => t.name);
+  if (all.length) setToolOn(n, b.dataset.mtTool, all);
+}, true);
 
 // The numbers of the chat, as on the Tools page
 function renderStats() {
