@@ -97,3 +97,12 @@
   .mp-btn .ld { display: none; }  /* "loaded", "Reasoning on": the menu shows them */
   .mcard-bd { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+/* Under each answer: Copy and Export, then the time and tokens */
+.ans-bar { display: flex; align-items: center; gap: 4px; align-self: flex-start; margin-top: -6px; }
+.ans-bar .tok-meta { margin: 0 0 0 6px; }
+.ans-btn { width: 28px; height: 28px; display: inline-grid; place-items: center; border: 1px solid transparent; border-radius: 7px; background: none; color: var(--ink-3); cursor: pointer; padding: 0; }
+.ans-btn svg { width: 15px; height: 15px; }
+.ans-btn:hover { color: var(--ink); background: var(--paper-2); }
+.ans-btn:focus-visible { outline: 2px solid var(--red); outline-offset: 1px; }
+.ans-btn.done { color: var(--primary); }

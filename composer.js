@@ -76,6 +76,7 @@
         ${!cards.has(key) ? `<div class="spec"><span>Hugging Face</span><b class="ph">loading…</b></div>` : ""}
         ${hf && !hf.error ? spec("License", esc(hf.license || base?.license || "")) : ""}
         ${base ? spec("Base model", link(base), "The original model. The file in LM Studio is a converted copy of it.") : ""}
+        ${hf && !hf.error ? spec("Knowledge cutoff", esc((base || hf).cutoff?.date || "Not in the model card"), (base || hf).cutoff ? `From the model card on Hugging Face: "${(base || hf).cutoff.text}"` : "The model card on Hugging Face does not state a training cutoff. LM Studio does not report one.") : ""}
         ${base?.downloads ? spec("Downloads", fmtNum(base.downloads), "Downloads of the base model on Hugging Face in the last 30 days.") : ""}
         ${hf ? spec("Files", link(hf, hf.id.split("/")[0]), "The Hugging Face repository of the file that LM Studio downloaded.") : ""}
       </div>`;
@@ -241,5 +242,21 @@
     return fit;
   }
 
-  window.Composer = { picker, load, models: () => models, info, isLoaded, reasonOf, reasoningFields, setReason, renderAll, setSend, autoGrow, ICON, capIcons };
+  // Under each answer: Copy (the answer, as the model wrote it) and Export (the whole chat, as a Markdown file).
+  // The page handles the clicks: data-ans-copy="<turn index>" and data-ans-export.
+  const ICON_ANS_COPY = svg('<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/>', "", 2);
+  const ICON_ANS_EXPORT = svg('<path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/>', "", 2);
+  const ansBar = (i, meta = "") => `<div class="ans-bar"><button type="button" class="ans-btn" data-ans-copy="${i}" title="Copy the answer" aria-label="Copy the answer">${ICON_ANS_COPY}</button>`
+    + `<button type="button" class="ans-btn" data-ans-export title="Export the chat as Markdown (.md)" aria-label="Export the chat as Markdown">${ICON_ANS_EXPORT}</button>${meta}</div>`;
+  async function copyAns(b, text) {
+    try { await navigator.clipboard.writeText(text); }
+    catch { const ta = Object.assign(document.createElement("textarea"), { value: text }); document.body.append(ta); ta.select(); document.execCommand("copy"); ta.remove(); }
+    b.classList.add("done"); clearTimeout(b._t); b._t = setTimeout(() => b.classList.remove("done"), 1000);
+  }
+  function download(name, text) {
+    const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(new Blob([text], { type: "text/markdown" })), download: name });
+    document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+  const stamp = () => { const d = new Date(), p = n => String(n).padStart(2, "0"); return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}`; };
+  window.Composer = { picker, ansBar, copyAns, download, stamp, load, models: () => models, info, isLoaded, reasonOf, reasoningFields, setReason, renderAll, setSend, autoGrow, ICON, capIcons };
 })();

@@ -1,0 +1,30 @@
+#!/bin/sh
+# LM Trace: start, stop or restart the server in the background. The output goes to lm-trace.log.
+#   ./lmt start | stop | restart | status | log
+# The server runs with uv, so it uses the packages of pyproject.toml (the LM Studio SDK and Chroma).
+cd "$(dirname "$0")" || exit 1
+PORT="${PORT:-8765}"
+pid() { lsof -tiTCP:"$PORT" -sTCP:LISTEN 2>/dev/null; }
+
+start() {
+  if [ -n "$(pid)" ]; then echo "LM Trace already runs on http://localhost:$PORT"; return; fi
+  PORT="$PORT" nohup uv run server.py > lm-trace.log 2>&1 &
+  i=0; while [ -z "$(pid)" ] && [ $i -lt 30 ]; do sleep 0.5; i=$((i + 1)); done
+  if [ -n "$(pid)" ]; then echo "LM Trace runs on http://localhost:$PORT"
+  else echo "LM Trace did not start. The last lines of lm-trace.log:"; tail -5 lm-trace.log; exit 1; fi
+}
+stop() {
+  p="$(pid)"
+  if [ -z "$p" ]; then echo "LM Trace does not run on port $PORT"; return; fi
+  kill $p; i=0; while [ -n "$(pid)" ] && [ $i -lt 20 ]; do sleep 0.25; i=$((i + 1)); done
+  echo "LM Trace stopped"
+}
+
+case "$1" in
+  start) start ;;
+  stop) stop ;;
+  restart) stop; start ;;
+  status) if [ -n "$(pid)" ]; then echo "LM Trace runs on http://localhost:$PORT (PID $(pid))"; else echo "LM Trace does not run on port $PORT"; fi ;;
+  log) tail -f lm-trace.log ;;
+  *) echo "Usage: ./lmt start | stop | restart | status | log"; exit 1 ;;
+esac

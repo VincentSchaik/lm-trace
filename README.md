@@ -139,27 +139,23 @@ cd lm-trace
 uv sync --extra embeddings --extra memory   # LM Studio SDK and Chroma
 ```
 
-**Start** the server in the terminal (`Ctrl+C` stops it):
+**Start, stop or restart** the server with the `lmt` script. It runs the server in the background with `uv run`, and writes the output to `lm-trace.log`:
+
+```sh
+./lmt start      # start the server
+./lmt stop       # stop the server
+./lmt restart    # stop, then start: do this after you change server.py
+./lmt status     # does it run?
+./lmt log        # follow lm-trace.log (Ctrl+C stops following)
+```
+
+Open http://localhost:8765 in your browser. A change to a page (`.html`, `.js`, `.css`) needs only a reload of the page.
+
+Or start it in the terminal instead (`Ctrl+C` stops it):
 
 ```sh
 uv run server.py
 ```
-
-Or start it in the background, with the output in `lm-trace.log`:
-
-```sh
-nohup uv run server.py > lm-trace.log 2>&1 &
-```
-
-Open http://localhost:8765 in your browser.
-
-**Stop** a server that runs in the background:
-
-```sh
-kill $(lsof -tiTCP:8765 -sTCP:LISTEN)
-```
-
-**Restart:** stop the server, then start it again. Do this after you change `server.py`.
 
 Use `uv run`, not `python3 server.py`. `python3` does not use the packages in the project's `.venv`. Without them, the Tokenizer page shows "Tokenizer not available" and the Memory page has no Chroma.
 
