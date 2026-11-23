@@ -921,7 +921,6 @@
   .att button { width: 22px; height: 22px; border: 0; border-radius: 50%; background: none; color: var(--ink-3); cursor: pointer; display: grid; place-items: center; }
   .att button:hover { color: var(--danger); }
   .att svg { width: 13px; height: 13px; }
-  .emu { margin-left: 2px; font: 500 10.5px/16px var(--sans); padding: 0 6px; border: 1px dashed var(--line); border-radius: 8px; color: var(--ink-3); white-space: nowrap; cursor: help; }
   .srv-tag { font: 500 11px/18px var(--sans); padding: 0 7px; border-radius: 9px; background: rgba(var(--red-rgb), .12); color: var(--red); white-space: nowrap; }
   .ev .who b { font-weight: 500; color: var(--ink-2); }
   .bubble.md { white-space: normal; }
@@ -988,7 +987,7 @@
   </header>
 
   <section class="composer" aria-label="About">
-    <div class="lede">A playground for MCP, the Model Context Protocol: one standard way to connect a model to tools and data. Here LM Studio is the MCP host: it starts the local servers and connects to the remote servers of its <code>mcp.json</code>, gives their tools to the LLM, and runs each tool call. This page sends your message and shows each step. Steps that the API does not show are marked <i>emulated</i>.
+    <div class="lede">A playground for MCP, the Model Context Protocol: one standard way to connect a model to tools and data. Here LM Studio is the MCP host: it starts the local servers and connects to the remote servers of its <code>mcp.json</code>, gives their tools to the LLM, and runs each tool call. This page sends your message and shows each step.
       <details class="more"><summary>How it works</summary>
         <div class="roles">
           <div><b>MCP host</b>The AI application that coordinates and manages one MCP client for each server. Here LM Studio.</div>
@@ -1845,7 +1844,6 @@ function rowHtml(r, key) {
   const pr = promptOf(r);
   if (pr) { const ti = +key.split(".")[0], model = pr.model || chat[ti]?.req?.model; needCounts(model, pr.text); r = { ...r, body: textView(pr.text, model, key + "f", promptBody(ti)) }; }
   if (r.out) { needCounts(r.out.model, r.out.text); r = { ...r, body: textView(r.out.text, r.out.model, key + "o", null) }; }
-  if (r.emu) r = { ...r, what: r.what + ` <span class="emu" tabindex="0" data-tip-title="Emulated" data-tip="The API does not show this step, but LM Studio does it. The page shows the messages that the MCP protocol and LM Studio's MCP client send. Run the LM Trace server to see the real messages.">emulated</span>` };
   if (r.what === "Thinking" && !r.tip) r = { ...r, tip: THINK_TIP };  // archived chats from before the tip
   const head = `<span class="who">${r.who}</span><span class="what">${r.what}${r.tip ? ` <span class="info ev-i" tabindex="0" data-tip="${esc(r.tip)}">i</span>` : ""}</span><span class="meta">${r.meta || ""}</span>`;
   return r.body ? `<details class="ev${r.cls ? " " + r.cls : ""}" data-key="${key}"${openKeys.has(key) ? " open" : ""}><summary>${head}<span class="more">Details<span class="chev"></span></span></summary><div class="ev-bd">${r.body}</div></details>`
