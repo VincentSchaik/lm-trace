@@ -858,7 +858,7 @@
   .mt-s code { font: 13px var(--mono); color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .mt-s.off code { color: var(--ink-3); }
   .ml-hd { display: flex; align-items: center; gap: 10px; padding: 6px 10px; }
-  .ml-name { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; border: 0; background: none; padding: 4px 0; cursor: pointer; color: var(--ink); font: 13.5px var(--sans); text-align: left; }
+  .ml-name { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; border: 0; background: none; padding: 4px 0; cursor: default; color: var(--ink); font: 13.5px var(--sans); text-align: left; }
   .ml-name code { font: 13px var(--mono); }
   .ml-name .av { width: 18px; height: 18px; display: grid; place-items: center; color: var(--ink-3); }
   .ml-name .av svg { width: 16px; height: 16px; }
@@ -2424,9 +2424,11 @@ function renderMcpList() {
   $("stMcp").classList.toggle("on", on.length > 0);
   if (!cfg.servers.length) { box.innerHTML = `<div class="ml-none">No servers in mcp.json. <button type="button" class="linkish" data-act="setup">Add one on the Servers tab</button>.</div>`; return; }
   box.innerHTML = cfg.servers.map(s => {
-    const isOn = !!S.on[s.name], open = mlOpen.has(s.name);
-    return `<div class="ml-srv${open ? " open" : ""}"><div class="ml-hd">${sw(isOn, `data-ml-on="${esc(s.name)}" title="Use this server in the chat" aria-label="Use ${esc(s.name)} in the chat"${lock ? " disabled" : ""}`)}
-      <button type="button" class="ml-name" data-ml-open="${esc(s.name)}" aria-expanded="${open}"><span class="av">${iconOf(s)}</span><code>mcp/${esc(s.name)}</code>${typeBadge(s)}<span class="ml-count">${mlCount(s)}</span><span class="chev"></span></button><button type="button" class="btn ghost sm" data-inspect-ml="${esc(s.name)}" title="Open this server on the MCP Servers tab: its tools, resources, prompts and messages">Details</button></div>${open ? mlToolsHtml(s, lock) : ""}</div>`;
+    const isOn = !!S.on[s.name];
+    if (isOn && !toolCache[s.name]) setTimeout(() => loadServerTools(s.name));  // for the tool count
+    // The Chat tab only switches servers on or off. Their tools are switched on the MCP Servers tab (Details).
+    return `<div class="ml-srv"><div class="ml-hd">${sw(isOn, `data-ml-on="${esc(s.name)}" title="Use this server in the chat" aria-label="Use ${esc(s.name)} in the chat"${lock ? " disabled" : ""}`)}
+      <span class="ml-name"><span class="av">${iconOf(s)}</span><code>mcp/${esc(s.name)}</code>${typeBadge(s)}<span class="ml-count">${mlCount(s)}</span></span><button type="button" class="btn ghost sm" data-inspect-ml="${esc(s.name)}" title="Open this server on the MCP Servers tab: switch its tools on or off, and see its resources, prompts and messages">Details</button></div></div>`;
   }).join("") + `<div class="ml-note">Over the API, LM Studio runs each tool with a check at once: there is no ask step. <span class="info" tabindex="0" data-tip-title="Permission" data-tip="In its own chat, LM Studio can ask before each tool call (Ask before running, or Always allow). The API has no such setting. To block a tool here, clear its check.">i</span></div>`;
 }
 // Clicks on the tools of a server: on the MCP list and on the MCP Servers tab. Returns true when handled.
@@ -2435,7 +2437,7 @@ function mlClick(t) {
   const op = t.closest("[data-ml-open]"); if (op) { const n = op.dataset.mlOpen; mlOpen.has(n) ? mlOpen.delete(n) : mlOpen.add(n); if (mlOpen.has(n) && S.on[n]) loadServerTools(n); refreshMl(); return true; }
   const rl = t.closest("[data-ml-reload]"); if (rl) { loadServerTools(rl.dataset.mlReload, true); return true; }
   if (viewing || busy) return !!t.closest("[data-ml-on]");
-  const on = t.closest("[data-ml-on]"); if (on) { const n = on.dataset.mlOn; S.on[n] = !S.on[n]; keep(); if (S.on[n]) { mlOpen.add(n); loadServerTools(n); if (!checks[n]) check(n); } refreshMl(); return true; }
+  const on = t.closest("[data-ml-on]"); if (on) { const n = on.dataset.mlOn; S.on[n] = !S.on[n]; keep(); if (S.on[n]) { loadServerTools(n); if (!checks[n]) check(n); } refreshMl(); return true; }
   return false;
 }
 $("mcpList").addEventListener("click", e => {
