@@ -232,6 +232,8 @@
     height: 40px; padding: 0; font-size: 14px;
   }
   .opt > summary::-webkit-details-marker { display: none; }
+  .opt > summary:focus { outline: none; }  /* no ring after a mouse click */
+  .opt > summary:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; border-radius: 6px; }  /* keyboard */
   .opt > summary:hover .opt-title, .opt > summary:hover .chev { color: var(--red); }
   .opt[open] > summary .chev { transform: rotate(90deg); }
   .opt-title { font-weight: 600; color: var(--ink); }

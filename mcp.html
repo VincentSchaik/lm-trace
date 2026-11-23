@@ -131,6 +131,8 @@
     height: 40px; padding: 0; font-size: 14px;
   }
   .opt > summary::-webkit-details-marker { display: none; }
+  .opt > summary:focus { outline: none; }  /* no ring after a mouse click */
+  .opt > summary:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; border-radius: 6px; }  /* keyboard */
   .opt > summary:hover .opt-title, .opt > summary:hover .chev { color: var(--red); }
   .opt[open] > summary .chev { transform: rotate(90deg); }
   .opt-title { font-weight: 600; color: var(--ink); }
@@ -602,8 +604,14 @@
   /* Sliders: as on the Trace page (.ctl), the label above the slider */
   .sampling { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 10px 20px; padding: 12px 18px 14px; }
   .sysrow .sampling { padding: 2px 0 14px 26px; }  /* inside a row: under its title */
-  .ctx-note { font-size: 12px; color: var(--ink-3); white-space: nowrap; }
-  .ctx-note[hidden] { display: none; }
+  #ctxLenV { min-width: 7ch; text-align: right; }  /* up to 262,144: the slider keeps its width */
+  .icon-btn.go { background: var(--primary); border-color: var(--primary); color: var(--on-primary, #fff); }
+  .icon-btn.go:hover { filter: brightness(1.08); background: var(--primary); color: var(--on-primary, #fff); }
+  .icon-btn:disabled { cursor: default; opacity: .5; }
+  .icon-btn.spin:disabled { opacity: 1; }
+  .icon-btn.spin svg { animation: ctxspin 1s linear infinite; }
+  @keyframes ctxspin { to { transform: rotate(-360deg); } }  /* counterclockwise: the way the arrow of the icon points */
+  @media (prefers-reduced-motion: reduce) { .icon-btn.spin svg { animation: none; } }
   .sampling .ctl { flex: 1 1 190px; min-width: 150px; max-width: 300px; }
   .sampling .ctl-label { gap: 8px; }
   .sampling .ctl output { min-width: 52px; }
@@ -662,7 +670,7 @@
   .note-box { padding: 0 0 14px; display: grid; gap: 10px; }
   .opt > summary .sum-ctl { margin-left: auto; display: inline-flex; align-items: center; gap: 10px; cursor: default; }
   .sum-ctl .seg { padding: 2px; } .sum-ctl .seg button { height: 26px; }
-  .opt:has(.sum-ctl)[open] > summary { height: 48px; }
+  /* An open row keeps its height (40px): the control on the right fits, so the rows below do not move. */
   .opt:not([open]) > summary .sum-ctl { display: none; }  /* the switch shows when the row is open */
   .opt-title, .sum-ctl .seg button { white-space: nowrap; }
   /* Phone, row open: the switch goes on its own line under the title; it shows the setting, so the state text hides */
@@ -1101,8 +1109,8 @@
         <div class="ctl-row"><input type="range" id="maxTok" min="0" max="9" step="1" aria-describedby="maxTokV"><output id="maxTokV"></output></div>
       </div>
       <div class="ctl">
-        <div class="ctl-label"><label for="ctxLen">Context length</label><span class="info" tabindex="0" data-tip-title="Context length" data-tip="The most tokens that fit in one model call: the prompt (system prompt, tool definitions, messages, tool results) and the reply. It is a load setting: LM Studio must unload the model and load it again (POST /api/v1/models/load). A larger context uses more memory.">i</span><span class="ctx-state" id="ctxState"></span></div>
-        <div class="ctl-row"><input type="range" id="ctxLen" min="0" max="6" step="1" aria-describedby="ctxLenV"><output id="ctxLenV"></output><button type="button" class="icon-btn" id="ctxReload" hidden></button><span class="ctx-note" id="ctxNote" hidden>needs reload</span></div>
+        <div class="ctl-label"><label for="ctxLen">Context length</label><span class="info" tabindex="0" data-tip-title="Context length" data-tip="The most tokens that fit in one model call: the prompt (system prompt, tool definitions, messages, tool results) and the reply. It is a load setting: LM Studio must unload the model and load it again (POST /api/v1/models/load). A larger context uses more memory.">i</span></div>
+        <div class="ctl-row"><input type="range" id="ctxLen" min="0" max="6" step="1" aria-describedby="ctxLenV"><output id="ctxLenV"></output><button type="button" class="icon-btn" id="ctxReload" hidden></button></div>
       </div>
         </div>
       </details>
@@ -2313,32 +2321,46 @@ function ctxSteps(k) { const max = Composer.info(k)?.max_context_length; return 
 function renderCtx() {
   if (!CTX_STEPS || !$("ctxLen")) return;  // renderChat can run before this part of the script
   const k = $("chatModel").value, steps = ctxSteps(k), loaded = loadedCtx(k), r = $("ctxLen");
-  const want = ctxWant ?? loaded ?? steps.find(x => x >= 8192) ?? steps[0];
+  const want = ctxJob?.n ?? ctxWant ?? loaded ?? steps.find(x => x >= 8192) ?? steps[0];  // while loading: the length it loads
   let i = steps.indexOf(want); if (i < 0) i = steps.findIndex(x => x >= want); if (i < 0) i = steps.length - 1;
   r.max = steps.length - 1; r.value = i; r.style.setProperty("--fill", (i / Math.max(1, steps.length - 1) * 100) + "%");
   $("ctxLenV").textContent = (steps[i] || 0).toLocaleString();
-  $("ctxState").textContent = loaded ? `loaded ${loaded.toLocaleString()}` : "not loaded";
-  $("ctxNote").hidden = !!viewing || !loaded || steps[i] === loaded;
-  ctxSummary = `Context length ${(steps[i] || 0).toLocaleString()}${loaded && steps[i] !== loaded ? " (needs reload)" : ""}`; renderInfState();
+  // No "loaded" label: ↻ shows it (grey = the slider is the loaded length, blue = another length); its tooltip says the size.
+  // ↻ only: grey and off while the slider is at the loaded length; blue when the slider shows another length (click it
+  // to reload); turning while LM Studio loads the model. No text next to it, so the slider keeps its width.
+  const b = $("ctxReload"), job = ctxJob, change = !loaded || steps[i] !== loaded;
+  b.classList.toggle("spin", !!job && !job.end);
+  b.classList.toggle("go", change && !job);
+  ctxSummary = `Context length ${(steps[i] || 0).toLocaleString()}${job && !job.end ? " (loading…)" : loaded && steps[i] !== loaded ? " (not loaded yet)" : ""}`; renderInfState();
   // The same ↻ icon button as Reload on the tool lists, always there: it loads the model again with the length of the
   // slider (the same length reloads the model as it is).
-  const b = $("ctxReload"); b.hidden = !!viewing; b.innerHTML = IC.reload; b.disabled = busy;
-  b.title = `${loaded ? "Reload" : "Load"} ${k} with a context length of ${(steps[i] || 0).toLocaleString()} tokens`; b.setAttribute("aria-label", b.title);
+  b.hidden = !!viewing; if (!b.innerHTML) b.innerHTML = IC.reload; b.disabled = busy || !change;  // set once: a new icon would restart its turn
+  b.title = job && !job.end ? `Loading ${k} with ${job.n.toLocaleString()} tokens…` : change ? `${loaded ? "Reload" : "Load"} ${k} with a context length of ${(steps[i] || 0).toLocaleString()} tokens` : `${k} is loaded with ${loaded.toLocaleString()} tokens. Move the slider to change it.`;
+  b.setAttribute("aria-label", b.title);
 }
 $("ctxLen").oninput = e => { ctxWant = ctxSteps($("chatModel").value)[+e.target.value]; renderCtx(); };
 $("ctxReload").onclick = () => reloadCtx($("chatModel").value, ctxSteps($("chatModel").value)[+$("ctxLen").value]);
+// Reload the model with a new context length. Feedback where you look: the ↻ turns, and the note next to it says
+// what happens (unloading, loading, with the seconds), then the result for a few seconds.
+var ctxJob = null;  // {phase, n, t0} while it runs; {done | error, ms} after. var: renderCtx can run before this line
 async function reloadCtx(model, n) {
   if (busy || !model || !n) return;
-  busy = true; $("ctxReload").disabled = true; $("error").textContent = "";
-  setStatus(`Loading ${esc(model)} with a context length of ${n.toLocaleString()} tokens…`);
+  busy = true; $("error").textContent = "";
+  ctxJob = { phase: "Unloading", n, t0: Date.now() }; renderCtx(); renderChat();
   try {
     for (const inst of Composer.info(model)?.loaded_instances || []) await post("/api/v1/models/unload", { instance_id: inst.id });
+    ctxJob.phase = "Loading"; renderCtx();
     await post("/api/v1/models/load", { model, context_length: n });
     await Composer.load(); Composer.renderAll?.();
-    ctxWant = null; setStatus("");
+    ctxWant = null;
     for (const t of chat) if (t.fix?.model === model) delete t.fix;
-  } catch (e) { setStatus(""); $("error").textContent = `Model not loaded: ${e.message}`; await Composer.load(); }
+    ctxJob = { end: "done", n, ms: Date.now() - ctxJob.t0 };
+  } catch (e) {
+    ctxJob = { end: "error", ms: Date.now() - ctxJob.t0 };
+    $("error").textContent = `Model not loaded: ${e.message}`; await Composer.load();
+  }
   busy = false; renderCtx(); renderChat();
+  ctxJob = null; renderCtx();
 }
 // The tokens of the tool definitions of the servers that are on (only the allowed tools), with the tokenizer of the model.
 async function toolTokens(model, on) {
