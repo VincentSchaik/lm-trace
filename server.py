@@ -824,47 +824,6 @@ def tool_run(tool, args):
 
 
 # ---- MCP page
-# Permissions of the LM Trace MCP server (the shield on the MCP page, section Tools). LM Studio is the harness there
-# and its API cannot ask, but each call of these tools reaches this server first, so the server checks it:
-# allow: run it; deny: answer "denied" as the tool result; ask: hold the call until the page answers Allow or Deny.
-# LM Studio waits 60 s for a tool result, then cancels the call and ends the chat (tested 2026-11-23), so an
-# unanswered ask is denied after ASK_S seconds.
-MCP_PERM = {"mode": "allow"}
-ASK_S = 50
-ASKS = {}  # id -> {"id", "tool", "args", "deadline", "event", "ok"}
-ASK_LOCK = threading.Lock()
-
-
-def denied(tool, why):
-    return {"ok": False, "result": f"Tool '{tool['name']}' was denied {why}.", "request": ""}
-
-
-def gated_run(tool, args):
-    mode = MCP_PERM["mode"]
-    if mode == "deny":
-        return denied(tool, "by the LM Trace MCP server (Permissions: Deny all)")
-    if mode == "ask":
-        aid = f"{time.time_ns():x}"
-        a = {"id": aid, "tool": tool["name"], "title": tool.get("title") or tool["name"], "args": args,
-             "deadline": time.time() + ASK_S, "event": threading.Event(), "ok": None}
-        with ASK_LOCK:
-            ASKS[aid] = a
-        answered = a["event"].wait(ASK_S)
-        with ASK_LOCK:
-            ASKS.pop(aid, None)
-        if not answered:
-            return denied(tool, f"because nobody answered within {ASK_S} seconds")
-        if not a["ok"]:
-            return denied(tool, "by the user")
-    return tool_run(tool, args)
-
-
-def mcp_asks():
-    with ASK_LOCK:
-        return [{"id": a["id"], "tool": a["tool"], "title": a["title"], "args": a["args"],
-                 "left": max(0, round(a["deadline"] - time.time()))} for a in ASKS.values()]
-
-
 def mcp_tools():
     """All the tools of the Tools page (tools.json). The On switches of the Tools page are for that page only: on the
     MCP page, the MCP list checkboxes choose which of these tools LM Studio gives to the model (allowed_tools)."""
@@ -1006,8 +965,6 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         if self.path == "/mcp-config":  # plus what the suggested servers need: the sample folder, npx, this server's URL
             return self._json(200, {**mcp_lab.config_view(), "sampleDir": os.path.join(ROOT, "mcp-files"),
                                     "npx": shutil.which("npx"), "lmTraceUrl": f"http://localhost:{PORT}/mcp"})
-        if self.path == "/mcp-ask":  # the tool calls that wait for Allow or Deny, and the current mode
-            return self._json(200, {"mode": MCP_PERM["mode"], "asks": mcp_asks()})
         if self.path.startswith("/mcp-log"):
             q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
             return self._json(200, {"entries": mcp_lab.log_since(int(q.get("since", ["0"])[0] or 0)), "last": mcp_lab.seq[0]})
@@ -1179,7 +1136,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         tools = mcp_tools()
         for m in batch:
             mcp_lab.log_msg("in", m, ua)
-            a = mcp_lab.handle(m, tools, gated_run, mcp_resources())
+            a = mcp_lab.handle(m, tools, tool_run, mcp_resources())
             if a is not None:
                 mcp_lab.log_msg("out", a, ua)
                 answers.append(a)
@@ -1200,16 +1157,6 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return self._json(400, {"error": {"message": "expected a JSON object"}})
         name = req.get("name")
         try:
-            if action == "perm" and req.get("mode") in ("allow", "ask", "deny"):
-                MCP_PERM["mode"] = req["mode"]
-                return self._json(200, {"mode": MCP_PERM["mode"]})
-            if action == "ask" and isinstance(req.get("id"), str) and isinstance(req.get("ok"), bool):
-                with ASK_LOCK:
-                    a = ASKS.get(req["id"])
-                    if a:
-                        a["ok"] = req["ok"]
-                        a["event"].set()
-                return self._json(200 if a else 404, {"done": bool(a)})
             if action == "config":
                 return self._json(200, mcp_lab.save_server(req))
             if action == "config/delete" and isinstance(name, str):

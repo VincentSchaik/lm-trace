@@ -1111,7 +1111,7 @@ const IC = {
 };
 
 // ---------------------------------------------------------------- State
-const S_DEFAULT = { tab: "chat", on: {}, system: "", temp: 0, maxTokens: 1500, allowed: {}, perm: "allow" };
+const S_DEFAULT = { tab: "chat", on: {}, system: "", temp: 0, maxTokens: 1500, allowed: {} };
 const S = { ...S_DEFAULT };
 try { Object.assign(S, JSON.parse(localStorage.getItem("mcpPage") || "{}")); } catch {}
 if (!S.allowed || typeof S.allowed !== "object") S.allowed = {};
@@ -1833,7 +1833,6 @@ document.addEventListener("click", e => {
 });
 let openKeys = new Set();
 function rowHtml(r, key) {
-  if (r.kind === "ask" && !r.state) return `<div class="ev pending"><div class="ev-row"><span class="who">MCP server</span><span class="what">Waiting for your approval: <code>${esc(r.tool)}</code> <span class="info ev-i" tabindex="0" data-tip="Permissions: Ask every time. The LM Trace MCP server holds the tools/call request until you answer. LM Studio waits 60 s for a tool result, so the server denies the call after ${ASK_S} s.">i</span></span><span class="meta" data-ask-left="${esc(r.ask)}">${askLeft(r)} s</span><span class="more btns"><button type="button" class="btn ghost" data-ask="${esc(r.ask)}" data-ok="0" title="Do not run the tool. The model gets: the tool was denied.">Deny</button><button type="button" class="btn" data-ask="${esc(r.ask)}" data-ok="1">Allow</button></span></div></div>`;
   const pr = promptOf(r);
   if (pr) { const ti = +key.split(".")[0], model = pr.model || chat[ti]?.req?.model; needCounts(model, pr.text); r = { ...r, body: textView(pr.text, model, key + "f", promptBody(ti)) }; }
   if (r.out) { needCounts(r.out.model, r.out.text); r = { ...r, body: textView(r.out.text, r.out.model, key + "o", null) }; }
@@ -2088,7 +2087,6 @@ async function send() {
   chat.push(turn);
   $("msg").value = ""; $("msg").dispatchEvent(new Event("input"));
   busy = true; ctrl = new AbortController(); Composer.setSend($("sendBtn"), true); chatPick.setDisabled(true);
-  await sendPerm(); askPoll(turn);
   try { turn.seq0 = (await getJ("/mcp-log?since=999999999")).last; } catch {}
   // The rows follow the MCP flow diagram: the same actors (LM Trace, MCP host, MCP client, LLM, MCP server) and the
   // same step names. A step that the API does not show is emulated: the page writes the messages that the MCP
@@ -2217,7 +2215,7 @@ async function send() {
       if (n && n > (loadedCtx(req.model) || 0)) turn.fix = { model: req.model, n };
     }
   }
-  askPoll(null); busy = false; ctrl = null; Composer.setSend($("sendBtn"), false, { key: "Enter" }); chatPick.setDisabled(false); setFlow(-1);
+  busy = false; ctrl = null; Composer.setSend($("sendBtn"), false, { key: "Enter" }); chatPick.setDisabled(false); setFlow(-1);
   Composer.load().then(renderCtx);  // LM Studio can load the model at the run (JIT)
   if (turn.ms == null) turn.ms = Date.now() - turn.t0;
   renderChat(); fillRpc(turn); setStatus(""); saveChat();
@@ -2362,7 +2360,7 @@ function renderMcpList() {
     const isOn = !!S.on[s.name], open = mlOpen.has(s.name);
     return `<div class="ml-srv${open ? " open" : ""}"><div class="ml-hd">${sw(isOn, `data-ml-on="${esc(s.name)}" title="Use this server in the chat" aria-label="Use ${esc(s.name)} in the chat"${lock ? " disabled" : ""}`)}
       <button type="button" class="ml-name" data-ml-open="${esc(s.name)}" aria-expanded="${open}"><span class="av">${iconOf(s)}</span><code>mcp/${esc(s.name)}</code>${typeBadge(s)}<span class="ml-count">${mlCount(s)}</span><span class="chev"></span></button></div>${open ? mlToolsHtml(s, lock) : ""}</div>`;
-  }).join("") + `<div class="ml-note">Over the API, LM Studio runs each tool with a check at once: there is no ask step. Only LM Trace tools can ask: the MCP server checks each call (Permissions). <span class="info" tabindex="0" data-tip-title="Permission" data-tip="In its own chat, LM Studio can ask before each tool call (Ask before running, or Always allow). The API has no such setting. To block a tool here, clear its check.">i</span></div>`;
+  }).join("") + `<div class="ml-note">Over the API, LM Studio runs each tool with a check at once: there is no ask step. <span class="info" tabindex="0" data-tip-title="Permission" data-tip="In its own chat, LM Studio can ask before each tool call (Ask before running, or Always allow). The API has no such setting. To block a tool here, clear its check.">i</span></div>`;
 }
 // Clicks on the tools of a server: on the MCP list and on the MCP Servers tab. Returns true when handled.
 function mlClick(t) {
@@ -2431,73 +2429,30 @@ $("saveMsg").onclick = async () => {
 };
 $("msg").addEventListener("input", syncSave);
 fetch("/mcp-prompts").then(r => r.json()).then(list => { if (Array.isArray(list)) { savedMsgs = list.filter(p => p && typeof p.text === "string" && typeof p.name === "string"); renderStarters(); syncSave(); } }).catch(() => {});
-// ---------------------------------------------------------------- Permissions: the shield, in two sections.
-// Tools (the LM Trace MCP server): each call of these tools reaches LM Trace as MCP server, so the server checks it:
-// Deny all, Ask every time or Allow all (server.py gated_run). Other MCP servers: LM Studio is the harness and its API
-// has no approval step (verified on LM Studio 0.4.26), so they are always Allow all.
-const ASK_S = 50;  // the server denies an unanswered call after 50 s: LM Studio waits 60 s for a tool result
+// ---------------------------------------------------------------- Permissions: the same shield as on the Tools page.
+// Here LM Studio is the harness: it runs the tool loop inside one /api/v1/chat request. Its API has no approval
+// step (no such field; verified on LM Studio 0.4.26), so only Allow all can be chosen. The LM Studio app can ask.
 const PERMS = [
-  { v: "deny", label: "Deny all", desc: "The server denies every tool call", icon: SVG('<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/>') },
-  { v: "ask", label: "Ask every time", desc: "Allow or deny each tool call yourself", icon: SVG('<path d="M18 11V6a2 2 0 0 0-4 0v5M14 10V4a2 2 0 0 0-4 0v6M10 10.5V6a2 2 0 0 0-4 0v8a8 8 0 0 0 16 0v-3a2 2 0 0 0-4 0"/>') },
-  { v: "allow", label: "Allow all", desc: "The server runs every tool call", icon: SVG('<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6l8-3z"/><path d="M9 12l2 2 4-4"/>') },
+  { v: "deny", label: "Deny all", desc: "Not in the LM Studio API", icon: SVG('<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/>') },
+  { v: "ask", label: "Ask every time", desc: "Not in the LM Studio API", icon: SVG('<path d="M18 11V6a2 2 0 0 0-4 0v5M14 10V4a2 2 0 0 0-4 0v6M10 10.5V6a2 2 0 0 0-4 0v8a8 8 0 0 0 16 0v-3a2 2 0 0 0-4 0"/>') },
+  { v: "allow", label: "Allow all", desc: "LM Studio runs every MCP tool call", icon: SVG('<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6l8-3z"/><path d="M9 12l2 2 4-4"/>') },
 ];
-if (!PERMS.some(p => p.v === S.perm)) S.perm = "allow";
-const sendPerm = () => fetch("/mcp-perm", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode: S.perm }) }).catch(() => {});
-function renderPerm() {
-  const btn = $("permBtn"), cur = PERMS.find(p => p.v === S.perm);
-  btn.innerHTML = cur.icon; btn.title = `Permissions: LM Trace tools: ${cur.label} · Other MCP servers: Allow all`; btn.setAttribute("aria-label", btn.title);
-  const item = (p, on, dis, desc) => `<button type="button" role="menuitemradio" aria-checked="${on}"${dis ? ' aria-disabled="true"' : ` data-perm="${p.v}"`}>${p.icon}<span>${p.label}</span>${on ? '<span class="ck">✓</span>' : "<span></span>"}<span class="d">${desc}</span></button>`;
-  $("permMenu").innerHTML = `<div class="hd" title="The tools of the Tools page, as an MCP server. LM Studio sends each call of these tools to the LM Trace MCP server, and the server checks it before the tool runs.">LM Trace tools: the MCP server checks each call</div>`
-    + PERMS.map(p => item(p, p === cur, false, p.desc)).join("")
-    + `<div class="sep"></div><div class="hd" title="LM Studio is the harness: it sends each call straight to the MCP server. Only the LM Studio app can ask before a tool call; its API cannot.">Other MCP servers: LM Studio is the harness</div>`
-    + item(PERMS[2], true, true, "LM Studio runs every MCP tool call. Its API cannot ask.")
-    + `<div class="sep"></div><div class="hd">To block a tool, clear its check in the MCP list.</div>`;
-}
 (() => {
-  const btn = $("permBtn"), menu = $("permMenu");
+  const btn = $("permBtn"), menu = $("permMenu"), cur = PERMS[2];
+  btn.innerHTML = cur.icon; btn.title = `Permissions: ${cur.label}`; btn.setAttribute("aria-label", btn.title);
+  menu.innerHTML = `<div class="hd" title="LM Studio runs the tool loop and sends each call to the MCP server. Only the LM Studio app can ask before a tool call; its API cannot.">MCP tools: LM Studio is the harness.</div>`
+    + PERMS.map(p => `<button type="button" role="menuitemradio" aria-checked="${p === cur}"${p === cur ? "" : ' aria-disabled="true"'} data-perm="${p.v}">${p.icon}<span>${p.label}</span>${p === cur ? '<span class="ck">✓</span>' : "<span></span>"}<span class="d">${p.desc}</span></button>`).join("")
+    + `<div class="sep"></div><div class="hd">To block a tool, clear its check in the MCP list.</div>`;
   const open = o => { menu.hidden = !o; btn.setAttribute("aria-expanded", o); if (o) menu.querySelector('[aria-checked="true"]')?.focus(); };
   btn.onclick = () => open(menu.hidden);
-  menu.onclick = e => { const b = e.target.closest("[data-perm]"); if (!b) return; S.perm = b.dataset.perm; keep(); sendPerm(); renderPerm(); open(false); btn.focus(); };
+  menu.onclick = e => { const b = e.target.closest("[data-perm]"); if (!b || b.getAttribute("aria-disabled")) return; open(false); btn.focus(); };
   document.addEventListener("click", e => { if (!btn.parentElement.contains(e.target)) open(false); });
   menu.addEventListener("keydown", e => {
     const items = [...menu.querySelectorAll("[data-perm]")], i = items.indexOf(document.activeElement);
     if (e.key === "Escape") { open(false); btn.focus(); }
     else if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); items[(i + (e.key === "ArrowDown" ? 1 : items.length - 1)) % items.length].focus(); }
   });
-  renderPerm();  // the mode goes to the server when you change it and before each message, not on load (another tab may use it)
 })();
-// Ask every time: while a message runs, the page asks the server which tool calls wait. Each one gets a row with
-// Allow and Deny and the seconds left, before the Running row of its call.
-let askTimer = null;
-const askLeft = r => Math.max(0, Math.round((r.until - Date.now()) / 1000));
-function askPoll(turn) {
-  clearInterval(askTimer); askTimer = null;
-  if (!turn) return;
-  askTimer = setInterval(async () => {
-    document.querySelectorAll("[data-ask-left]").forEach(el => { const r = turn.rows.find(x => x.ask === el.dataset.askLeft); if (r) el.textContent = askLeft(r) + " s"; });
-    if (S.perm !== "ask") return;
-    let j; try { j = await getJ("/mcp-ask"); } catch { return; }
-    let changed = false;
-    for (const a of j.asks) if (!turn.rows.some(r => r.ask === a.id)) {
-      const run = [...turn.rows].reverse().find(r => r.kind === "run" && !r.meta), row = { call: turn.calls, kind: "ask", ask: a.id, tool: a.tool, until: Date.now() + a.left * 1000 };
-      turn.rows.splice(run ? turn.rows.indexOf(run) : turn.rows.length, 0, row); changed = true;
-    }
-    for (const r of turn.rows) if (r.kind === "ask" && !r.state && !j.asks.some(a => a.id === r.ask)) {  // gone without an answer from this page
-      Object.assign(r, { state: "timeout", who: "MCP server", cls: "bad", what: `Denied: no answer in ${ASK_S} s`, tip: "The server denied the call, so LM Studio does not cancel the chat. The model gets: the tool was denied." }); changed = true;
-    }
-    if (changed) renderChat();
-  }, 500);
-}
-$("log").addEventListener("click", async e => {
-  const b = e.target.closest("[data-ask]"); if (!b) return;
-  const turn = chat.at(-1), r = turn?.rows.find(x => x.ask === b.dataset.ask); if (!r || r.state) return;
-  const ok = b.dataset.ok === "1";
-  Object.assign(r, { state: ok ? "ok" : "no", who: "You", what: ok ? "Allowed" : "Denied", cls: ok ? "" : "bad", meta: `${ASK_S - askLeft(r)} s`,
-    tip: ok ? "You allow the tool call, so the LM Trace MCP server runs the tool." : "You deny the tool call. The LM Trace MCP server returns: the tool was denied." });
-  const run = turn.rows.slice(turn.rows.indexOf(r)).find(x => x.kind === "run" && !x.meta); if (run) run.t = Date.now();  // Running starts now, not at the call
-  renderChat();
-  fetch("/mcp-ask", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: r.ask, ok }) }).catch(() => {});
-});
 const fit = (t, max = 160) => { t.style.height = "auto"; t.style.height = Math.min(t.scrollHeight + 2, max) + "px"; };
 // Today's date and time zone, from this computer, when the page loads. Without it a model judges live data against
 // its training year (a test with Gemma 4: "Today is May 2024", so a November 2026 IPO looked made up).
