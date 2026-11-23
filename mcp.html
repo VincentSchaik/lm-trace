@@ -1846,6 +1846,7 @@ function rowHtml(r, key) {
   if (pr) { const ti = +key.split(".")[0], model = pr.model || chat[ti]?.req?.model; needCounts(model, pr.text); r = { ...r, body: textView(pr.text, model, key + "f", promptBody(ti)) }; }
   if (r.out) { needCounts(r.out.model, r.out.text); r = { ...r, body: textView(r.out.text, r.out.model, key + "o", null) }; }
   if (r.emu) r = { ...r, what: r.what + ` <span class="emu" tabindex="0" data-tip-title="Emulated" data-tip="The API does not show this step, but LM Studio does it. The page shows the messages that the MCP protocol and LM Studio's MCP client send. Run the LM Trace server to see the real messages.">emulated</span>` };
+  if (r.what === "Thinking" && !r.tip) r = { ...r, tip: THINK_TIP };  // archived chats from before the tip
   const head = `<span class="who">${r.who}</span><span class="what">${r.what}${r.tip ? ` <span class="info ev-i" tabindex="0" data-tip="${esc(r.tip)}">i</span>` : ""}</span><span class="meta">${r.meta || ""}</span>`;
   return r.body ? `<details class="ev${r.cls ? " " + r.cls : ""}" data-key="${key}"${openKeys.has(key) ? " open" : ""}><summary>${head}<span class="more">Details<span class="chev"></span></span></summary><div class="ev-bd">${r.body}</div></details>`
     : `<div class="ev${r.cls ? " " + r.cls : ""}"><div class="ev-row">${head}<span></span></div></div>`;
@@ -1860,7 +1861,7 @@ function turnHtml(turn, ti) {
     out += `<section class="callcard"><div class="callcard-hd">${g.rows[0][1].kind === "close" ? "After the turn" : g.grp === "disc" ? "Discovery" : g.call ? `Model call ${g.call}` : "Request"}</div>${rows}</section>`;
   }
   if (turn.answer) out += `<div class="bubble assistant md">${md(turn.answer.trim())}</div>`;
-  if (turn.stats) { const s = turn.stats; out += `<div class="tok-meta assistant" data-tip-title="Tokens" data-tip="The stats that LM Studio reports for the turn: input_tokens, total_output_tokens (reasoning_output_tokens of them are thinking) and tokens_per_second. The time is measured by this page.">${s.input_tokens?.toLocaleString()} prompt tokens · ${s.total_output_tokens?.toLocaleString()} output tokens${s.reasoning_output_tokens ? ` (${s.reasoning_output_tokens} thinking)` : ""} · ${s.tokens_per_second ? s.tokens_per_second.toFixed(1) + " tok/s" : ""} · ${fmtS(turn.ms || 0)}</div>`; }
+  if (turn.stats) { const s = turn.stats, pr = promptToks(turn); out += `<div class="tok-meta assistant" data-tip-title="Tokens" data-tip="Prompt tokens of each model call. Call 1: input_tokens, from LM Studio. LM Studio reports only the first call, so this page counts the prompt of each later call with the tokenizer of the model (~). Output tokens: total_output_tokens (reasoning_output_tokens of them are thinking) and tokens_per_second, from LM Studio. The time is measured by this page.">${pr.length > 1 ? "Prompt tokens: " + pr.map((n, i) => `call ${i + 1} ${i ? (n == null ? "…" : "~" + n.toLocaleString()) : s.input_tokens?.toLocaleString()}`).join(" + ") : s.input_tokens?.toLocaleString() + " prompt tokens"} · ${s.total_output_tokens?.toLocaleString()} output tokens${s.reasoning_output_tokens ? ` (${s.reasoning_output_tokens} thinking)` : ""} · ${s.tokens_per_second ? s.tokens_per_second.toFixed(1) + " tok/s" : ""} · ${fmtS(turn.ms || 0)}</div>`; }
   if (turn.error) out += `<div class="error">${esc(turn.error)}${turn.fix && !busy ? ` <button type="button" class="linkbtn" data-act="ctx" data-model="${esc(turn.fix.model)}" data-n="${turn.fix.n}">Reload ${esc(turn.fix.model)} with ${turn.fix.n.toLocaleString()} tokens</button>` : ""}</div>`;
   return out;
 }
@@ -1914,6 +1915,24 @@ function renderStarters() {
 }
 $("starters").onclick = e => { const b = e.target.closest(".starter"); if (b) { $("msg").value = b.textContent; $("msg").dispatchEvent(new Event("input")); $("msg").focus(); } };
 
+var THINK_TIP = "The LLM reasons before it answers or calls a tool. LM Studio sends the reasoning as its own part of the output.";
+// Prompt tokens of each model call. LM Studio's input_tokens counts only call 1, so the page counts each prompt from the log.
+const promptCount = new Map();  // prompt text -> number of tokens, or null while counting / when not available
+function promptToks(turn) {
+  const rows = turn.rows.filter(r => r.what === "Applying chat template");
+  return rows.map((r, i) => {
+    const p = r.prompt; if (!i || !p?.text) return null;
+    if (!promptCount.has(p.text)) { promptCount.set(p.text, null); countText(p.model || turn.req?.model, p.text).then(n => { promptCount.set(p.text, n); if (n != null) renderChat(); }); }
+    return promptCount.get(p.text);
+  });
+}
+async function countText(model, text) {
+  const parts = []; for (let i = 0; i < text.length; i += 3000) parts.push(text.slice(i, i + 3000));
+  let total = 0;
+  try { for (let i = 0; i < parts.length; i += 15) { const j = await post("/tokenize", { model, texts: parts.slice(i, i + 15), count: true }); total += j.counts.reduce((a, b) => a + b, 0); } }
+  catch { return null; }
+  return total;
+}
 // The formatted prompt of a model call: what LM Studio gave the model (from its log), with the tool definitions in it.
 async function fillPrompt(turn, row, since) {
   for (let i = 0; i < 6; i++) {
@@ -2037,7 +2056,7 @@ async function send() {
         promptRow = addRow(turn, { t: now, who: "MCP host", what: "Applying chat template", tip: turn.calls === 1 ? "The prompt: your message and the tool definitions, in the chat template of the model. From the LM Studio log." : "The prompt again, now with the tool call and the tool result. From the LM Studio log.", body: `<p class="hint-s">Loading…</p>` });
         fillPrompt(turn, promptRow, now - 1500); break;
       case "prompt_processing.end": endPrompt(); break;
-      case "reasoning.start": endPrompt(); cur = addRow(turn, { who: "LLM", what: "Thinking", text: "", body: "" }); tStep = now; setFlow(turn.calls === 1 ? 2 : 6); break;
+      case "reasoning.start": endPrompt(); cur = addRow(turn, { who: "LLM", what: "Thinking", tip: THINK_TIP, text: "", body: "" }); tStep = now; setFlow(turn.calls === 1 ? 2 : 6); break;
       case "reasoning.delta": if (cur) { cur.text += d.content || ""; cur.body = `<pre class="raw cap">${esc(cur.text.trim())}</pre>`; } break;
       case "reasoning.end": if (cur) { if (!cur.text.trim()) turn.rows.splice(turn.rows.indexOf(cur), 1); else cur.meta = fmtS(now - tStep); } break;
       case "tool_call.start": endPrompt(); genRow(now); setFlow(2); break;
