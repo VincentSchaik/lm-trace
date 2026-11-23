@@ -1065,9 +1065,8 @@
       <div class="attach" id="attach" hidden></div>
       <div class="cbox-top"><textarea id="msg" class="cbox-input" rows="1" placeholder="Ask something, or select an example." title="Enter sends the message. Shift + Enter adds a line."></textarea><div class="input-tools"><button type="button" class="copy" id="saveMsg" title="Save as an example: it shows below the message box" aria-label="Save as an example"></button><button type="button" class="copy" id="copyMsg" title="Copy the message" aria-label="Copy the message"></button></div></div>
       <div class="cbox-bar">
-        <div class="perm-wrap plus-wrap"><button type="button" class="perm-btn" id="plusBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="plusMenu" title="Tools and MCP servers" aria-label="Tools and MCP servers"></button>
+        <div class="perm-wrap plus-wrap"><button type="button" class="perm-btn" id="plusBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="plusMenu" title="MCP servers" aria-label="MCP servers"></button>
           <div class="perm-menu plus-menu" id="plusMenu" role="menu" aria-label="Add" hidden></div>
-          <div class="perm-menu tools-menu" id="toolsMenu" role="menu" aria-label="Tools" hidden></div>
           <div class="perm-menu mcp-menu" id="mcpMenu" role="menu" aria-label="MCP servers" hidden></div></div>
         <div class="perm-wrap"><button type="button" class="perm-btn" id="permBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="permMenu"></button>
           <div class="perm-menu" id="permMenu" role="menu" aria-label="Permissions" hidden></div></div>
@@ -1577,24 +1576,19 @@ $("attach").onclick = e => { const b = e.target.closest("[data-unattach]"); if (
 function renderPlus() {
   $("plusBtn").innerHTML = IC.plus;
   const n = enabled().length;
-  $("plusMenu").innerHTML = `<button type="button" role="menuitem" class="sub" id="plusTools" aria-haspopup="menu" aria-expanded="${!$("toolsMenu").hidden}">${IC.blocks}<span>Tools</span>${IC.chev}</button>`
-    + `<button type="button" role="menuitem" class="sub" id="plusMcp" aria-haspopup="menu" aria-expanded="${!$("mcpMenu").hidden}">${IC.plug}<span>MCP${n ? ` <span style="color:var(--ink-3)">· ${n} on</span>` : ""}</span>${IC.chev}</button>`;
-}
-function renderToolsMenu() {
-  const lt = srv("lm-trace"), off = !lt || !S.on["lm-trace"];  // server off: LM Studio does not get these tools
-  $("toolsMenu").innerHTML = `<div class="hd">The tools of the Tools page, through the LM Trace MCP server</div>`
-    + (!lt ? `<button type="button" role="menuitem" data-act="add-lt">${IC.plus}<span>Add the LM Trace server to mcp.json</span><span></span></button>`
-      : !S.on["lm-trace"] ? `<button type="button" role="menuitemcheckbox" class="tl" aria-checked="false" data-mcp="lm-trace">${IC.wrench}<span class="nm">Turn on the LM Trace server</span><span class="sw" aria-hidden="true"></span></button>` : "")
-    + `<button type="button" role="menuitem" data-act="manage-tools">${IC.manage}<span>Manage tools</span><span></span></button><div class="sep"></div>`
-    + (tools.map((t, i) => `<button type="button" role="menuitemcheckbox" class="tl" aria-checked="${!!t.on}" data-tool="${i}"${off ? ' aria-disabled="true"' : ""} title="${off ? "Turn on the LM Trace server first. " : ""}${esc(t.name)}: ${esc(t.description)}">${IC.wrench}<span class="nm">${esc(t.title || t.name)}</span><span class="sw" aria-hidden="true"></span></button>`).join("") || `<div class="none">No tools. Create one on the Tools page.</div>`);
+  // MCP only: on this page every tool is an MCP tool, run by LM Studio (the harness). The tools of the Tools page
+  // are here too, as one MCP server: LM Trace tools.
+  $("plusMenu").innerHTML = `<button type="button" role="menuitem" class="sub" id="plusMcp" aria-haspopup="menu" aria-expanded="${!$("mcpMenu").hidden}">${IC.plug}<span>MCP${n ? ` <span style="color:var(--ink-3)">· ${n} on</span>` : ""}</span>${IC.chev}</button>`;
 }
 function renderMcpMenu() {
   $("mcpMenu").innerHTML = `<button type="button" role="menuitem" data-act="custom">${IC.plus}<span>Custom MCP</span><span></span></button>`
-    + `<button type="button" role="menuitem" data-act="manage">${IC.manage}<span>Manage MCP</span><span></span></button><div class="sep"></div>`
+    + `<button type="button" role="menuitem" data-act="manage">${IC.manage}<span>Manage MCP</span><span></span></button>`
+    + (srv("lm-trace") ? "" : `<button type="button" role="menuitem" data-act="add-lt" title="The tools of the Tools page, as an MCP server">${IC.plus}<span>Add LM Trace tools</span><span></span></button>`)
+    + `<div class="sep"></div>`
     + (cfg.servers.map(s => `<button type="button" role="menuitemcheckbox" class="tl" aria-checked="${!!S.on[s.name]}" data-mcp="${esc(s.name)}" title="${esc(lineOf(s))}">${iconOf(s)}<span class="nmw2"><span class="nm">${esc(titleOf(s.name))}</span><span class="sv">${s.type === "http" ? (isLocal(s.def.url) ? "Local · HTTP" : "Remote · HTTP") : "Local · stdio"} · mcp/${esc(s.name)}</span></span><span class="sw" aria-hidden="true"></span></button>`).join("")
       || `<div class="none">No servers in mcp.json. Add one with Custom MCP, or on the Servers tab.</div>`);
 }
-const menus = ["toolsMenu", "mcpMenu"];
+const menus = ["mcpMenu"];
 function openPlus(open) {
   $("plusMenu").hidden = !open; $("plusBtn").setAttribute("aria-expanded", open);
   if (!open) menus.forEach(m => $(m).hidden = true);
@@ -1602,24 +1596,18 @@ function openPlus(open) {
 }
 function openSub(id, open) {
   menus.forEach(m => $(m).hidden = true);
-  if (open) { (id === "toolsMenu" ? renderToolsMenu : renderMcpMenu)(); $(id).hidden = false; }
+  if (open) { renderMcpMenu(); $(id).hidden = false; }
   renderPlus();
 }
 $("plusBtn").onclick = () => { if (!busy) openPlus($("plusMenu").hidden); };
-$("plusMenu").onclick = e => { if (e.target.closest("#plusTools")) openSub("toolsMenu", $("toolsMenu").hidden); else if (e.target.closest("#plusMcp")) openSub("mcpMenu", $("mcpMenu").hidden); };
-$("plusMenu").onmouseover = e => { if (e.target.closest("#plusTools") && $("toolsMenu").hidden) openSub("toolsMenu", true); else if (e.target.closest("#plusMcp") && $("mcpMenu").hidden) openSub("mcpMenu", true); };
+$("plusMenu").onclick = e => { if (e.target.closest("#plusMcp")) openSub("mcpMenu", $("mcpMenu").hidden); };
+$("plusMenu").onmouseover = e => { if (e.target.closest("#plusMcp") && $("mcpMenu").hidden) openSub("mcpMenu", true); };
 async function saveTools() { try { await post("/tools", tools, "PUT"); } catch (e) { setStatus(`Not saved: ${e.message}`); } }
-$("toolsMenu").onclick = async e => {
-  const t = e.target.closest("[data-tool]"), a = e.target.closest("[data-act]")?.dataset.act, m = e.target.closest("[data-mcp]");
-  if (t && !busy && !t.getAttribute("aria-disabled")) { const tool = tools[+t.dataset.tool]; tool.on = !tool.on; await saveTools(); if (toolCache["lm-trace"]) loadServerTools("lm-trace", true); renderToolsMenu(); renderChat(); }
-  else if (m) { S.on["lm-trace"] = true; keep(); renderToolsMenu(); renderPlus(); renderChat(); if (!checks["lm-trace"]) check("lm-trace"); }
-  else if (a === "add-lt") { openPlus(false); const x = suggested()[0]; openForm({ type: "http", newName: x.name, def: x.def, note: esc(x.desc) }); }
-  else if (a === "manage-tools") location.href = "/tools.html";
-};
 $("mcpMenu").onclick = e => {
   const m = e.target.closest("[data-mcp]"), a = e.target.closest("[data-act]")?.dataset.act;
   if (m && !busy) { const n = m.dataset.mcp; S.on[n] = !S.on[n]; keep(); if (S.on[n]) loadServerTools(n); renderMcpMenu(); renderPlus(); renderChat(); if (S.on[n] && !checks[n]) check(n); }
   else if (a === "custom") { openPlus(false); openForm({ type: "http", def: blankDef("http") }); }
+  else if (a === "add-lt") { openPlus(false); const x = suggested()[0]; openForm({ type: "http", newName: x.name, def: x.def, note: esc(x.desc) }); }
   else if (a === "manage") { openPlus(false); view.mode = "list"; setTab("servers"); }
 };
 document.addEventListener("click", e => { if (!e.composedPath().some(n => n.classList?.contains("plus-wrap"))) openPlus(false); });
@@ -2374,7 +2362,7 @@ function renderMcpList() {
     const isOn = !!S.on[s.name], open = mlOpen.has(s.name);
     return `<div class="ml-srv${open ? " open" : ""}"><div class="ml-hd">${sw(isOn, `data-ml-on="${esc(s.name)}" title="Use this server in the chat" aria-label="Use ${esc(s.name)} in the chat"${lock ? " disabled" : ""}`)}
       <button type="button" class="ml-name" data-ml-open="${esc(s.name)}" aria-expanded="${open}"><span class="av">${iconOf(s)}</span><code>mcp/${esc(s.name)}</code>${typeBadge(s)}<span class="ml-count">${mlCount(s)}</span><span class="chev"></span></button></div>${open ? mlToolsHtml(s, lock) : ""}</div>`;
-  }).join("") + `<div class="ml-note">Over the API, LM Studio runs each tool with a check at once: there is no ask step. <span class="info" tabindex="0" data-tip-title="Permission" data-tip="In its own chat, LM Studio can ask before each tool call (Ask before running, or Always allow). The API has no such setting. To block a tool here, clear its check.">i</span></div>`;
+  }).join("") + `<div class="ml-note">Over the API, LM Studio runs each tool with a check at once: there is no ask step. Only LM Trace tools can ask: the MCP server checks each call (Permissions). <span class="info" tabindex="0" data-tip-title="Permission" data-tip="In its own chat, LM Studio can ask before each tool call (Ask before running, or Always allow). The API has no such setting. To block a tool here, clear its check.">i</span></div>`;
 }
 // Clicks on the tools of a server: on the MCP list and on the MCP Servers tab. Returns true when handled.
 function mlClick(t) {
@@ -2457,9 +2445,9 @@ if (!PERMS.some(p => p.v === S.perm)) S.perm = "allow";
 const sendPerm = () => fetch("/mcp-perm", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode: S.perm }) }).catch(() => {});
 function renderPerm() {
   const btn = $("permBtn"), cur = PERMS.find(p => p.v === S.perm);
-  btn.innerHTML = cur.icon; btn.title = `Permissions: Tools: ${cur.label} · MCP: Allow all`; btn.setAttribute("aria-label", btn.title);
+  btn.innerHTML = cur.icon; btn.title = `Permissions: LM Trace tools: ${cur.label} · Other MCP servers: Allow all`; btn.setAttribute("aria-label", btn.title);
   const item = (p, on, dis, desc) => `<button type="button" role="menuitemradio" aria-checked="${on}"${dis ? ' aria-disabled="true"' : ` data-perm="${p.v}"`}>${p.icon}<span>${p.label}</span>${on ? '<span class="ck">✓</span>' : "<span></span>"}<span class="d">${desc}</span></button>`;
-  $("permMenu").innerHTML = `<div class="hd" title="The tools of the Tools page reach LM Studio through the LM Trace MCP server. That server checks each call before the tool runs.">Tools: the LM Trace MCP server checks each call</div>`
+  $("permMenu").innerHTML = `<div class="hd" title="The tools of the Tools page, as an MCP server. LM Studio sends each call of these tools to the LM Trace MCP server, and the server checks it before the tool runs.">LM Trace tools: the MCP server checks each call</div>`
     + PERMS.map(p => item(p, p === cur, false, p.desc)).join("")
     + `<div class="sep"></div><div class="hd" title="LM Studio is the harness: it sends each call straight to the MCP server. Only the LM Studio app can ask before a tool call; its API cannot.">Other MCP servers: LM Studio is the harness</div>`
     + item(PERMS[2], true, true, "LM Studio runs every MCP tool call. Its API cannot ask.")
