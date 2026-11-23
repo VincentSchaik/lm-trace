@@ -866,13 +866,14 @@ def mcp_asks():
 
 
 def mcp_tools():
-    """The tools of the Tools page (tools.json) that are on: the same switches as on the Tools page and in Tools ›."""
+    """All the tools of the Tools page (tools.json). The On switches of the Tools page are for that page only: on the
+    MCP page, the MCP list checkboxes choose which of these tools LM Studio gives to the model (allowed_tools)."""
     try:
         with open(LISTS["/tools"]) as f:
             tools = json.load(f)
     except (OSError, ValueError):
         return []
-    return [t for t in tools if isinstance(t, dict) and t.get("on") and isinstance(t.get("name"), str) and isinstance(t.get("params", []), list)]
+    return [t for t in tools if isinstance(t, dict) and isinstance(t.get("name"), str) and isinstance(t.get("params", []), list)]
 
 
 def mcp_resources():

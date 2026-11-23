@@ -1065,9 +1065,8 @@
       <div class="attach" id="attach" hidden></div>
       <div class="cbox-top"><textarea id="msg" class="cbox-input" rows="1" placeholder="Ask something, or select an example." title="Enter sends the message. Shift + Enter adds a line."></textarea><div class="input-tools"><button type="button" class="copy" id="saveMsg" title="Save as an example: it shows below the message box" aria-label="Save as an example"></button><button type="button" class="copy" id="copyMsg" title="Copy the message" aria-label="Copy the message"></button></div></div>
       <div class="cbox-bar">
-        <div class="perm-wrap plus-wrap"><button type="button" class="perm-btn" id="plusBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="plusMenu" title="Tools and MCP servers" aria-label="Tools and MCP servers"></button>
+        <div class="perm-wrap plus-wrap"><button type="button" class="perm-btn" id="plusBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="plusMenu" title="MCP servers" aria-label="MCP servers"></button>
           <div class="perm-menu plus-menu" id="plusMenu" role="menu" aria-label="Add" hidden></div>
-          <div class="perm-menu tools-menu" id="toolsMenu" role="menu" aria-label="Tools" hidden></div>
           <div class="perm-menu mcp-menu" id="mcpMenu" role="menu" aria-label="MCP servers" hidden></div></div>
         <div class="perm-wrap"><button type="button" class="perm-btn" id="permBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="permMenu"></button>
           <div class="perm-menu" id="permMenu" role="menu" aria-label="Permissions" hidden></div></div>
@@ -1577,24 +1576,19 @@ $("attach").onclick = e => { const b = e.target.closest("[data-unattach]"); if (
 function renderPlus() {
   $("plusBtn").innerHTML = IC.plus;
   const n = enabled().length;
-  $("plusMenu").innerHTML = `<button type="button" role="menuitem" class="sub" id="plusTools" aria-haspopup="menu" aria-expanded="${!$("toolsMenu").hidden}">${IC.blocks}<span>Tools</span>${IC.chev}</button>`
-    + `<button type="button" role="menuitem" class="sub" id="plusMcp" aria-haspopup="menu" aria-expanded="${!$("mcpMenu").hidden}">${IC.plug}<span>MCP${n ? ` <span style="color:var(--ink-3)">· ${n} on</span>` : ""}</span>${IC.chev}</button>`;
-}
-function renderToolsMenu() {
-  const lt = srv("lm-trace"), off = !lt || !S.on["lm-trace"];  // server off: LM Studio does not get these tools
-  $("toolsMenu").innerHTML = `<div class="hd">The tools of the Tools page, through the LM Trace MCP server</div>`
-    + (!lt ? `<button type="button" role="menuitem" data-act="add-lt">${IC.plus}<span>Add the LM Trace server to mcp.json</span><span></span></button>`
-      : !S.on["lm-trace"] ? `<button type="button" role="menuitemcheckbox" class="tl" aria-checked="false" data-mcp="lm-trace">${IC.wrench}<span class="nm">Turn on the LM Trace server</span><span class="sw" aria-hidden="true"></span></button>` : "")
-    + `<button type="button" role="menuitem" data-act="manage-tools">${IC.manage}<span>Manage tools</span><span></span></button><div class="sep"></div>`
-    + (tools.map((t, i) => `<button type="button" role="menuitemcheckbox" class="tl" aria-checked="${!!t.on}" data-tool="${i}"${off ? ' aria-disabled="true"' : ""} title="${off ? "Turn on the LM Trace server first. " : ""}${esc(t.name)}: ${esc(t.description)}">${IC.wrench}<span class="nm">${esc(t.title || t.name)}</span><span class="sw" aria-hidden="true"></span></button>`).join("") || `<div class="none">No tools. Create one on the Tools page.</div>`);
+  // MCP only: on this page every tool is an MCP tool, run by LM Studio (the harness). The tools of the Tools page
+  // are here too, as one MCP server: LM Trace tools.
+  $("plusMenu").innerHTML = `<button type="button" role="menuitem" class="sub" id="plusMcp" aria-haspopup="menu" aria-expanded="${!$("mcpMenu").hidden}">${IC.plug}<span>MCP${n ? ` <span style="color:var(--ink-3)">· ${n} on</span>` : ""}</span>${IC.chev}</button>`;
 }
 function renderMcpMenu() {
   $("mcpMenu").innerHTML = `<button type="button" role="menuitem" data-act="custom">${IC.plus}<span>Custom MCP</span><span></span></button>`
-    + `<button type="button" role="menuitem" data-act="manage">${IC.manage}<span>Manage MCP</span><span></span></button><div class="sep"></div>`
+    + `<button type="button" role="menuitem" data-act="manage">${IC.manage}<span>Manage MCP</span><span></span></button>`
+    + (srv("lm-trace") ? "" : `<button type="button" role="menuitem" data-act="add-lt" title="The tools of the Tools page, as an MCP server">${IC.plus}<span>Add LM Trace tools</span><span></span></button>`)
+    + `<div class="sep"></div>`
     + (cfg.servers.map(s => `<button type="button" role="menuitemcheckbox" class="tl" aria-checked="${!!S.on[s.name]}" data-mcp="${esc(s.name)}" title="${esc(lineOf(s))}">${iconOf(s)}<span class="nmw2"><span class="nm">${esc(titleOf(s.name))}</span><span class="sv">${s.type === "http" ? (isLocal(s.def.url) ? "Local · HTTP" : "Remote · HTTP") : "Local · stdio"} · mcp/${esc(s.name)}</span></span><span class="sw" aria-hidden="true"></span></button>`).join("")
       || `<div class="none">No servers in mcp.json. Add one with Custom MCP, or on the Servers tab.</div>`);
 }
-const menus = ["toolsMenu", "mcpMenu"];
+const menus = ["mcpMenu"];
 function openPlus(open) {
   $("plusMenu").hidden = !open; $("plusBtn").setAttribute("aria-expanded", open);
   if (!open) menus.forEach(m => $(m).hidden = true);
@@ -1602,24 +1596,18 @@ function openPlus(open) {
 }
 function openSub(id, open) {
   menus.forEach(m => $(m).hidden = true);
-  if (open) { (id === "toolsMenu" ? renderToolsMenu : renderMcpMenu)(); $(id).hidden = false; }
+  if (open) { renderMcpMenu(); $(id).hidden = false; }
   renderPlus();
 }
 $("plusBtn").onclick = () => { if (!busy) openPlus($("plusMenu").hidden); };
-$("plusMenu").onclick = e => { if (e.target.closest("#plusTools")) openSub("toolsMenu", $("toolsMenu").hidden); else if (e.target.closest("#plusMcp")) openSub("mcpMenu", $("mcpMenu").hidden); };
-$("plusMenu").onmouseover = e => { if (e.target.closest("#plusTools") && $("toolsMenu").hidden) openSub("toolsMenu", true); else if (e.target.closest("#plusMcp") && $("mcpMenu").hidden) openSub("mcpMenu", true); };
+$("plusMenu").onclick = e => { if (e.target.closest("#plusMcp")) openSub("mcpMenu", $("mcpMenu").hidden); };
+$("plusMenu").onmouseover = e => { if (e.target.closest("#plusMcp") && $("mcpMenu").hidden) openSub("mcpMenu", true); };
 async function saveTools() { try { await post("/tools", tools, "PUT"); } catch (e) { setStatus(`Not saved: ${e.message}`); } }
-$("toolsMenu").onclick = async e => {
-  const t = e.target.closest("[data-tool]"), a = e.target.closest("[data-act]")?.dataset.act, m = e.target.closest("[data-mcp]");
-  if (t && !busy && !t.getAttribute("aria-disabled")) { const tool = tools[+t.dataset.tool]; tool.on = !tool.on; await saveTools(); if (toolCache["lm-trace"]) loadServerTools("lm-trace", true); renderToolsMenu(); renderChat(); }
-  else if (m) { S.on["lm-trace"] = true; keep(); renderToolsMenu(); renderPlus(); renderChat(); if (!checks["lm-trace"]) check("lm-trace"); }
-  else if (a === "add-lt") { openPlus(false); const x = suggested()[0]; openForm({ type: "http", newName: x.name, def: x.def, note: esc(x.desc) }); }
-  else if (a === "manage-tools") location.href = "/tools.html";
-};
 $("mcpMenu").onclick = e => {
   const m = e.target.closest("[data-mcp]"), a = e.target.closest("[data-act]")?.dataset.act;
   if (m && !busy) { const n = m.dataset.mcp; S.on[n] = !S.on[n]; keep(); if (S.on[n]) loadServerTools(n); renderMcpMenu(); renderPlus(); renderChat(); if (S.on[n] && !checks[n]) check(n); }
   else if (a === "custom") { openPlus(false); openForm({ type: "http", def: blankDef("http") }); }
+  else if (a === "add-lt") { openPlus(false); const x = suggested()[0]; openForm({ type: "http", newName: x.name, def: x.def, note: esc(x.desc) }); }
   else if (a === "manage") { openPlus(false); view.mode = "list"; setTab("servers"); }
 };
 document.addEventListener("click", e => { if (!e.composedPath().some(n => n.classList?.contains("plus-wrap"))) openPlus(false); });
@@ -1854,15 +1842,31 @@ function rowHtml(r, key) {
   return r.body ? `<details class="ev${r.cls ? " " + r.cls : ""}" data-key="${key}"${openKeys.has(key) ? " open" : ""}><summary>${head}<span class="more">Details<span class="chev"></span></span></summary><div class="ev-bd">${r.body}</div></details>`
     : `<div class="ev${r.cls ? " " + r.cls : ""}"><div class="ev-row">${head}<span></span></div></div>`;
 }
+const liveSecs = t => `${Math.max(0, Math.round((Date.now() - t) / 1000))} s`;
+const liveText = turn => { const x = (Date.now() - turn.t0) / 1000; return `Running… (${x < 10 ? x.toFixed(1) : Math.round(x)} s)`; };
+setInterval(() => {
+  if (!busy) return;
+  document.querySelectorAll("[data-live]").forEach(el => { el.textContent = liveSecs(+el.dataset.live); });
+  const el = document.getElementById("liveMeta"), t = chat.at(-1); if (el && t) el.textContent = liveText(t);
+}, 250);
 function turnHtml(turn, ti) {
   let out = `<div class="bubble user">${esc(turn.user)}</div>`;
   if (turn.attached?.length) out += `<div class="tok-meta user">+ ${turn.attached.map(a => esc(a.title)).join(", ")} (resource${turn.attached.length > 1 ? "s" : ""})</div>`;
   const groups = [];
   for (const [i, r] of turn.rows.entries()) { const g = groups.at(-1); if (g && g.call === r.call && g.grp === r.grp) g.rows.push([i, r]); else groups.push({ call: r.call, grp: r.grp, rows: [[i, r]] }); }
+  // While it runs, as on the Tools page: the step in progress gets a blinking dot and its seconds, and a line under
+  // the steps counts the time of the message.
+  const live = busy && ti === chat.length - 1;
+  const liveIdx = live ? turn.rows.findLastIndex(r => r.t && !r.meta) : -1;
+  // The chat is drawn again for each streamed chunk, so a new dot would restart its blink each time and never dim:
+  // a negative delay from the clock keeps the blink in step across redraws.
+  const dot = `<span class="busy-dot" aria-hidden="true" style="animation-delay:-${Date.now() % 1000}ms"></span>`;
+  const liveRow = r => ({ ...r, what: dot + r.what.replace('<span class="busy-dot" aria-hidden="true"></span>', ""), meta: `<span data-live="${r.t}">${liveSecs(r.t)}</span>` });
   for (const g of groups) {
-    const rows = g.rows.map(([i, r]) => rowHtml(r, `${ti}.${i}`)).join("");
+    const rows = g.rows.map(([i, r]) => rowHtml(i === liveIdx ? liveRow(r) : r, `${ti}.${i}`)).join("");
     out += `<section class="callcard"><div class="callcard-hd">${g.rows[0][1].kind === "close" ? "After the turn" : g.grp === "disc" ? "Discovery" : g.call ? `Model call ${g.call}` : "Request"}</div>${rows}</section>`;
   }
+  if (live) out += `<div class="tok-meta assistant" id="liveMeta">${liveText(turn)}</div>`;
   if (turn.answer) out += `<div class="bubble assistant md">${md(turn.answer.trim())}</div>`;
   if (turn.stats) { const s = turn.stats, pr = promptToks(turn); const meta = `<div class="tok-meta assistant" data-tip-title="Tokens" data-tip="Prompt tokens of each model call. Call 1: input_tokens, from LM Studio. LM Studio reports only the first call, so this page counts the prompt of each later call with the tokenizer of the model (~). Output tokens: total_output_tokens (reasoning_output_tokens of them are thinking) and tokens_per_second, from LM Studio. The time is measured by this page.">${pr.length > 1 ? "Prompt tokens: " + pr.map((n, i) => `call ${i + 1} ${i ? (n == null ? "…" : "~" + n.toLocaleString()) : s.input_tokens?.toLocaleString()}`).join(" + ") : s.input_tokens?.toLocaleString() + " prompt tokens"} · ${s.total_output_tokens?.toLocaleString()} output tokens${s.reasoning_output_tokens ? ` (${s.reasoning_output_tokens} thinking)` : ""} · ${s.tokens_per_second ? s.tokens_per_second.toFixed(1) + " tok/s" : ""} · ${fmtS(turn.ms || 0)}</div>`; out += turn.answer ? Composer.ansBar(ti, meta) : meta; }
   if (turn.error) out += `<div class="error">${esc(turn.error)}${turn.fix && !busy ? ` <button type="button" class="linkbtn" data-act="ctx" data-model="${esc(turn.fix.model)}" data-n="${turn.fix.n}">Reload ${esc(turn.fix.model)} with ${turn.fix.n.toLocaleString()} tokens</button>` : ""}</div>`;
@@ -1880,18 +1884,35 @@ function renderChat() {
 }
 $("log").addEventListener("toggle", e => { const k = e.target.dataset?.key; if (k) e.target.open ? openKeys.add(k) : openKeys.delete(k); }, true);
 $("log").addEventListener("click", e => { if (e.target.closest(".ev-i")) e.preventDefault(); }, true);
-// Copy the answer, or export the whole chat as Markdown: your messages, the tool calls and the answers.
+// Copy the answer, or export the whole chat as Markdown: the settings, and for each message every step as the page
+// shows it (who, what, time) with its full Details: the request, the prompt, the thinking, the raw output, the
+// JSON-RPC messages, the tool results and the final result. Prompts and outputs are the exact (Raw) text.
 function chatMd() {
+  const plain = h => { const el = document.createElement("div"); el.innerHTML = h || ""; return el.textContent.trim(); };
+  const fence = (t, lang = "") => { const f = "~~~~"; return `${f}${lang}\n${t.replace(/\s+$/, "")}\n${f}`; };
+  // Details text: one line per block (a <pre>, a note, a label), so blocks do not run together.
+  const blockText = h => { const el = document.createElement("div"); el.innerHTML = h || ""; return [...el.children].map(c => c.textContent.trim()).filter(Boolean).join("\n\n") || el.textContent.trim(); };
   const t0 = chat[0], req = t0?.req || {}, d = new Date(t0?.t0 || Date.now());
-  const servers = (req.integrations || []).map(x => typeof x === "string" ? x : x.id).join(", ") || "none";
-  const out = [`# MCP chat · LM Trace`, "", `- Date: ${d.toLocaleString()}`, `- Model: ${req.model || ""}`, `- MCP servers: ${servers}`];
+  // Each server, with the tools that LM Studio gave to the model (allowed_tools), or all of its tools.
+  const servers = (req.integrations || []).map(x => typeof x === "string" ? `${x} (all tools)` : `${x.id} (tools: ${(x.allowed_tools || []).join(", ") || "none"})`).join("; ") || "none";
+  const out = [`# MCP chat · LM Trace`, "", `- Date: ${d.toLocaleString()}`, `- Model: ${req.model || ""}`, `- MCP servers: ${servers}`,
+    `- Temperature: ${req.temperature ?? ""} · Max tokens: ${req.max_output_tokens ?? ""}`];
   if (req.system_prompt) out.push(`- System prompt: ${req.system_prompt}`);
-  for (const t of chat) {
-    out.push("", "## You", "", t.user);
-    const calls = t.rows.filter(r => r.kind === "call");
-    if (calls.length) { out.push("", "**Tool calls**", ""); calls.forEach(c => out.push(`- \`${c.tool}\` (${c.server}): \`${JSON.stringify(c.args || {})}\``)); }
-    out.push("", `## ${t.req?.model || "Model"}`, "", (t.answer || "").trim() || (t.error ? `_Error: ${t.error}_` : "_No answer._"));
-  }
+  chat.forEach((t, ti) => {
+    out.push("", "---", "", `## You`, "", t.user);
+    let head = null;
+    t.rows.forEach(r => {
+      const h = r.kind === "close" ? "After the turn" : r.grp === "disc" ? "Discovery" : r.call ? `Model call ${r.call}` : "Request";
+      if (h !== head) { out.push("", `### ${h}`); head = h; }
+      const who = r.who === "Harness" ? "LM Trace" : r.who;
+      out.push("", `**${who}** · ${plain(r.what)}${plain(r.meta) ? ` · ${plain(r.meta)}` : ""}`);
+      const pr = promptOf(r), text = pr ? pr.text : r.out ? r.out.text : blockText(r.body);
+      if (text) out.push("", fence(text, /^[\[{]/.test(text) ? "json" : ""));
+    });
+    if (t.answer) out.push("", `### Answer`, "", t.answer.trim());
+    if (t.error) out.push("", `**Error:** ${t.error}`);
+    if (t.stats) { const s = t.stats; out.push("", `_${s.input_tokens ?? "?"} prompt tokens (call 1) · ${s.total_output_tokens ?? "?"} output tokens (${s.reasoning_output_tokens ?? 0} thinking) · ${s.tokens_per_second ? s.tokens_per_second.toFixed(1) + " tok/s" : ""} · ${((t.ms || 0) / 1000).toFixed(1)} s_`); }
+  });
   return out.join("\n") + "\n";
 }
 $("log").addEventListener("click", e => {
@@ -2113,7 +2134,7 @@ async function send() {
         promptRow = addRow(turn, { t: now, who: "MCP host", what: "Applying chat template", tip: turn.calls === 1 ? "The prompt: your message and the tool definitions, in the chat template of the model. From the LM Studio log." : "The prompt again, now with the tool call and the tool result. From the LM Studio log.", body: `<p class="hint-s">Loading…</p>` });
         fillPrompt(turn, promptRow, now - 1500); break;
       case "prompt_processing.end": endPrompt(); break;
-      case "reasoning.start": endPrompt(); cur = addRow(turn, { who: "LLM", what: "Thinking", tip: THINK_TIP, text: "", body: "" }); tStep = now; setFlow(turn.calls === 1 ? 2 : 6); break;
+      case "reasoning.start": endPrompt(); cur = addRow(turn, { t: now, who: "LLM", what: "Thinking", tip: THINK_TIP, text: "", body: "" }); tStep = now; setFlow(turn.calls === 1 ? 2 : 6); break;
       case "reasoning.delta": if (cur) { cur.text += d.content || ""; cur.body = `<pre class="raw cap">${esc(cur.text.trim())}</pre>`; } break;
       case "reasoning.end": if (cur) { if (!cur.text.trim()) turn.rows.splice(turn.rows.indexOf(cur), 1); else cur.meta = fmtS(now - tStep); } break;
       case "tool_call.start": endPrompt(); genRow(now); setFlow(2); break;
@@ -2341,7 +2362,7 @@ function renderMcpList() {
     const isOn = !!S.on[s.name], open = mlOpen.has(s.name);
     return `<div class="ml-srv${open ? " open" : ""}"><div class="ml-hd">${sw(isOn, `data-ml-on="${esc(s.name)}" title="Use this server in the chat" aria-label="Use ${esc(s.name)} in the chat"${lock ? " disabled" : ""}`)}
       <button type="button" class="ml-name" data-ml-open="${esc(s.name)}" aria-expanded="${open}"><span class="av">${iconOf(s)}</span><code>mcp/${esc(s.name)}</code>${typeBadge(s)}<span class="ml-count">${mlCount(s)}</span><span class="chev"></span></button></div>${open ? mlToolsHtml(s, lock) : ""}</div>`;
-  }).join("") + `<div class="ml-note">Over the API, LM Studio runs each tool with a check at once: there is no ask step. <span class="info" tabindex="0" data-tip-title="Permission" data-tip="In its own chat, LM Studio can ask before each tool call (Ask before running, or Always allow). The API has no such setting. To block a tool here, clear its check.">i</span></div>`;
+  }).join("") + `<div class="ml-note">Over the API, LM Studio runs each tool with a check at once: there is no ask step. Only LM Trace tools can ask: the MCP server checks each call (Permissions). <span class="info" tabindex="0" data-tip-title="Permission" data-tip="In its own chat, LM Studio can ask before each tool call (Ask before running, or Always allow). The API has no such setting. To block a tool here, clear its check.">i</span></div>`;
 }
 // Clicks on the tools of a server: on the MCP list and on the MCP Servers tab. Returns true when handled.
 function mlClick(t) {
@@ -2424,9 +2445,9 @@ if (!PERMS.some(p => p.v === S.perm)) S.perm = "allow";
 const sendPerm = () => fetch("/mcp-perm", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode: S.perm }) }).catch(() => {});
 function renderPerm() {
   const btn = $("permBtn"), cur = PERMS.find(p => p.v === S.perm);
-  btn.innerHTML = cur.icon; btn.title = `Permissions: Tools: ${cur.label} · MCP: Allow all`; btn.setAttribute("aria-label", btn.title);
+  btn.innerHTML = cur.icon; btn.title = `Permissions: LM Trace tools: ${cur.label} · Other MCP servers: Allow all`; btn.setAttribute("aria-label", btn.title);
   const item = (p, on, dis, desc) => `<button type="button" role="menuitemradio" aria-checked="${on}"${dis ? ' aria-disabled="true"' : ` data-perm="${p.v}"`}>${p.icon}<span>${p.label}</span>${on ? '<span class="ck">✓</span>' : "<span></span>"}<span class="d">${desc}</span></button>`;
-  $("permMenu").innerHTML = `<div class="hd" title="The tools of the Tools page reach LM Studio through the LM Trace MCP server. That server checks each call before the tool runs.">Tools: the LM Trace MCP server checks each call</div>`
+  $("permMenu").innerHTML = `<div class="hd" title="The tools of the Tools page, as an MCP server. LM Studio sends each call of these tools to the LM Trace MCP server, and the server checks it before the tool runs.">LM Trace tools: the MCP server checks each call</div>`
     + PERMS.map(p => item(p, p === cur, false, p.desc)).join("")
     + `<div class="sep"></div><div class="hd" title="LM Studio is the harness: it sends each call straight to the MCP server. Only the LM Studio app can ask before a tool call; its API cannot.">Other MCP servers: LM Studio is the harness</div>`
     + item(PERMS[2], true, true, "LM Studio runs every MCP tool call. Its API cannot ask.")
