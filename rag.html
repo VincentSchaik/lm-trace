@@ -190,7 +190,11 @@
   .ctl output { font: 500 15px var(--mono); color: var(--ink); min-width: 36px; }
   .ctl[hidden] { display: none; }
   .tipped { cursor: help; text-decoration: underline dotted var(--stone-2); text-underline-offset: 4px; }
-  .chat-set { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 10px 24px; padding: 0 0 14px; }
+  .info { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; border: 1px solid var(--stone-2); color: var(--ink-3); font: 600 11px/1 var(--sans); cursor: help; flex: none; }
+  .info:hover, .info:focus { color: var(--ink); border-color: var(--ink-3); outline: none; }
+  .ctl-label .info { margin-left: -4px; }
+  .opt > summary .sum-ctl { margin-left: auto; display: inline-flex; align-items: center; gap: 10px; cursor: default; }
+  .chat-set { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 10px 24px; padding: 2px 0 14px 26px; }  /* under the row title, as on Tools and MCP */
   .chat-set .ctl { flex: 1 1 200px; max-width: 280px; }
   .chat-hint { flex-basis: 100%; font-size: 12.5px; line-height: 1.5; }
   .radio { display: inline-flex; align-items: center; gap: 5px; font-weight: 500; color: var(--ink); cursor: pointer; }
@@ -516,24 +520,23 @@
         </div>
       </details>
       <details class="opt" id="optChat">
-        <summary><span class="chev"></span><span class="opt-title">Chat model settings</span><span class="opt-state" id="stChat"></span></summary>
+        <summary><span class="chev"></span><span class="opt-title">Inference parameters</span><span class="opt-state" id="stChat"></span><span class="sum-ctl"><span class="info" tabindex="0" data-tip-title="Inference parameters" data-tip="Sent with each request to the chat model. Used for both answers. At temperature 0, the model always takes the most likely token, so top-k and top-p change nothing. A higher temperature gives a different answer each time. Max tokens stops a long answer.">i</span></span></summary>
         <div class="chat-set">
           <div class="ctl">
-            <div class="ctl-label"><span class="tipped" data-tip-title="Temperature" data-tip="How random the choice of the next token is. 0 = always the most likely token. A higher value gives more varied answers.">Temperature</span></div>
+            <div class="ctl-label"><span>Temperature</span><span class="info" tabindex="0" data-tip-title="Temperature" data-tip="How random the choice of the next token is. 0 = always the most likely token. A higher value gives more varied answers.">i</span></div>
             <div class="ctl-row"><input id="temp" type="range" min="0" max="2" step="0.1" value="0"><output id="tempOut">0.0</output></div>
           </div>
           <div class="ctl">
-            <div class="ctl-label"><span class="tipped" data-tip-title="Sampling" data-tip="Which tokens the model can choose from. Top-k: only the k most likely tokens. Top-p: only the most likely tokens that together have the probability p. At temperature 0, these change nothing.">Sampling</span>
+            <div class="ctl-label"><span>Sampling</span><span class="info" tabindex="0" data-tip-title="Sampling" data-tip="Which tokens the model can choose from. Top-k: only the k most likely tokens. Top-p: only the most likely tokens that together have the probability p. At temperature 0, these change nothing.">i</span>
               <label class="radio"><input type="radio" name="samp" value="k" checked> Top-k</label>
               <label class="radio"><input type="radio" name="samp" value="p"> Top-p</label>
             </div>
             <div class="ctl-row"><input id="samp" type="range" min="1" max="10" step="1" value="10"><output id="sampOut">k=10</output></div>
           </div>
           <div class="ctl">
-            <div class="ctl-label"><span class="tipped" data-tip-title="Max tokens" data-tip="The maximum length of each answer. The model stops when it gets to this number of tokens.">Max tokens</span></div>
+            <div class="ctl-label"><span>Max tokens</span><span class="info" tabindex="0" data-tip-title="Max tokens" data-tip="The maximum length of each answer. The model stops when it gets to this number of tokens.">i</span></div>
             <div class="ctl-row"><input id="max" type="range" min="8" max="2048" step="8" value="400"><output id="maxOut">400</output></div>
           </div>
-          <p class="hint chat-hint">Used for both answers. At temperature 0, the model always takes the most likely token, so top-k and top-p change nothing. A higher temperature gives a different answer each time. Max tokens stops a long answer.</p>
         </div>
       </details>
     </div>
@@ -630,7 +633,7 @@ const ms = t => t < 1000 ? `${Math.round(t)} ms` : `${(t / 1000).toFixed(1)} s`;
 
 // Chat model settings, read when Send starts. The same settings go to both answers.
 const chatSettings = () => ({ temp: +$("temp").value, mode: document.querySelector('input[name="samp"]:checked').value, val: +$("samp").value, max: +$("max").value });
-const settingsText = st => `temperature ${st.temp.toFixed(1)} · ${st.mode === "k" ? `top-k ${st.val}` : `top-p ${st.val.toFixed(2)}`} · max ${st.max} tokens`;
+const settingsText = st => `Temperature ${st.temp.toFixed(1)} · ${st.mode === "k" ? `Top-k ${st.val}` : `Top-p ${st.val.toFixed(2)}`} · Max tokens ${st.max.toLocaleString()}`;
 let chatSet = chatSettings();
 const DEFAULT_INSTR = "Answer the question with the context only. If the context does not contain the answer, say that you do not know. After each fact, give the number of its chunk in square brackets, for example [2].";
 

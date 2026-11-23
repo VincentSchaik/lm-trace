@@ -601,11 +601,14 @@
   @media (max-width: 640px) { .sysrow .opt-body { grid-template-columns: 1fr; } .sysrow .opt-body > :nth-child(2) { display: none; } }
   /* Sliders: as on the Trace page (.ctl), the label above the slider */
   .sampling { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 10px 20px; padding: 12px 18px 14px; }
+  .sysrow .sampling { padding: 2px 0 14px 26px; }  /* inside a row: under its title */
+  .ctx-note { font-size: 12px; color: var(--ink-3); white-space: nowrap; }
+  .ctx-note[hidden] { display: none; }
   .sampling .ctl { flex: 1 1 190px; min-width: 150px; max-width: 300px; }
   .sampling .ctl-label { gap: 8px; }
   .sampling .ctl output { min-width: 52px; }
   .ctx-state { font-size: 12px; color: var(--ink-3); }
-  #ctxReload { flex: none; height: 28px; padding: 0 10px; font-size: 12.5px; }
+  #ctxReload { flex: none; }
   .error .linkbtn { margin-left: 4px; }
   .sampling .ctl-seg { flex: none; min-width: 0; }
   .ctl-seg .seg button { height: 28px; }
@@ -870,6 +873,7 @@
   .ml-th span { margin-right: auto; }
   .ml-th .linkish { font: 500 12.5px var(--sans); text-transform: none; letter-spacing: 0; }
   .ml-th { align-items: center; }
+  #ctxReload[hidden] { display: none; }  /* a button style sets display: the hidden attribute alone does not hide it */
   .icon-btn { width: 28px; height: 28px; display: inline-grid; place-items: center; border: 1px solid var(--line); border-radius: 7px; background: var(--field); color: var(--ink-2); cursor: pointer; padding: 0; }
   .icon-btn svg { width: 15px; height: 15px; }
   .icon-btn:hover { color: var(--ink); background: var(--paper); }
@@ -1083,7 +1087,11 @@
         <div class="mcp-list" id="mcpList"></div>
       </details>
     </div>
-    <div class="sampling">
+    <!-- Inference parameters: temperature and max tokens go with each request; context length is a load setting (↻). -->
+    <div class="opts sysrow">
+      <details class="opt" id="optInf">
+        <summary><span class="chev"></span><span class="opt-title">Inference parameters</span><span class="opt-state" id="stInf"></span><span class="sum-ctl"><span class="info" tabindex="0" data-tip-title="Inference parameters" data-tip="Temperature and Max tokens go with each request (temperature, max_output_tokens) and can change for every message. Context length is set when LM Studio loads the model: a new length needs a reload (↻).">i</span></span></summary>
+        <div class="sampling">
       <div class="ctl">
         <div class="ctl-label"><label for="temp">Temperature</label><span class="info" tabindex="0" data-tip-title="Temperature" data-tip="0: the model always picks the most likely token, so each run is the same. Higher: more random.">i</span></div>
         <div class="ctl-row"><input type="range" id="temp" min="0" max="2" step="0.1" aria-describedby="tempV"><output id="tempV"></output></div>
@@ -1094,8 +1102,10 @@
       </div>
       <div class="ctl">
         <div class="ctl-label"><label for="ctxLen">Context length</label><span class="info" tabindex="0" data-tip-title="Context length" data-tip="The most tokens that fit in one model call: the prompt (system prompt, tool definitions, messages, tool results) and the reply. It is a load setting: LM Studio must unload the model and load it again (POST /api/v1/models/load). A larger context uses more memory.">i</span><span class="ctx-state" id="ctxState"></span></div>
-        <div class="ctl-row"><input type="range" id="ctxLen" min="0" max="6" step="1" aria-describedby="ctxLenV"><output id="ctxLenV"></output><button type="button" class="btn sm" id="ctxReload" hidden>Reload</button></div>
+        <div class="ctl-row"><input type="range" id="ctxLen" min="0" max="6" step="1" aria-describedby="ctxLenV"><output id="ctxLenV"></output><button type="button" class="icon-btn" id="ctxReload" hidden></button><span class="ctx-note" id="ctxNote" hidden>needs reload</span></div>
       </div>
+        </div>
+      </details>
     </div>
   </section>
   <section class="panel" aria-label="Chat log">
@@ -2273,7 +2283,11 @@ function renderSampling() {
   const t = $("temp"), m = $("maxTok"), i = TOK_STEPS.indexOf(S.maxTokens);
   t.value = S.temp; $("tempV").textContent = S.temp.toFixed(1); t.style.setProperty("--fill", (S.temp / 2 * 100) + "%");
   m.value = i; m.style.setProperty("--fill", (i / 9 * 100) + "%"); $("maxTokV").textContent = S.maxTokens.toLocaleString();
+  renderInfState();
 }
+// The closed row: all three values. Context length comes from renderCtx (it knows the loaded model).
+var ctxSummary = "";
+function renderInfState() { $("stInf").textContent = [`Temperature ${S.temp.toFixed(1)}`, `Max tokens ${S.maxTokens.toLocaleString()}`, ctxSummary].filter(Boolean).join(" · "); }
 $("temp").oninput = e => { S.temp = Math.round(+e.target.value * 10) / 10; keep(); renderSampling(); };
 $("maxTok").oninput = e => { S.maxTokens = TOK_STEPS[+e.target.value]; keep(); renderSampling(); };
 renderSampling();
@@ -2304,7 +2318,12 @@ function renderCtx() {
   r.max = steps.length - 1; r.value = i; r.style.setProperty("--fill", (i / Math.max(1, steps.length - 1) * 100) + "%");
   $("ctxLenV").textContent = (steps[i] || 0).toLocaleString();
   $("ctxState").textContent = loaded ? `loaded ${loaded.toLocaleString()}` : "not loaded";
-  const b = $("ctxReload"); b.hidden = !!viewing || steps[i] === loaded; b.textContent = loaded ? "Reload" : "Load"; b.disabled = busy;
+  $("ctxNote").hidden = !!viewing || !loaded || steps[i] === loaded;
+  ctxSummary = `Context length ${(steps[i] || 0).toLocaleString()}${loaded && steps[i] !== loaded ? " (needs reload)" : ""}`; renderInfState();
+  // The same ↻ icon button as Reload on the tool lists, always there: it loads the model again with the length of the
+  // slider (the same length reloads the model as it is).
+  const b = $("ctxReload"); b.hidden = !!viewing; b.innerHTML = IC.reload; b.disabled = busy;
+  b.title = `${loaded ? "Reload" : "Load"} ${k} with a context length of ${(steps[i] || 0).toLocaleString()} tokens`; b.setAttribute("aria-label", b.title);
 }
 $("ctxLen").oninput = e => { ctxWant = ctxSteps($("chatModel").value)[+e.target.value]; renderCtx(); };
 $("ctxReload").onclick = () => reloadCtx($("chatModel").value, ctxSteps($("chatModel").value)[+$("ctxLen").value]);

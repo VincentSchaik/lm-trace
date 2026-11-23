@@ -309,6 +309,12 @@
   .input:focus { border-color: var(--ink); box-shadow: 0 0 0 3px rgba(var(--red-rgb), .18); }
   .input::placeholder { color: var(--ink-3); }
   .btn.primary { height: 48px; padding: 0 26px; flex: none; }
+  .info { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; border: 1px solid var(--stone-2); color: var(--ink-3); font: 600 11px/1 var(--sans); cursor: help; flex: none; }
+  .info:hover, .info:focus { color: var(--ink); border-color: var(--ink-3); outline: none; }
+  .ctl-label .info { margin-left: -4px; }
+  .opt > summary .sum-ctl { margin-left: auto; display: inline-flex; align-items: center; gap: 10px; cursor: default; }
+  .inf-set { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 10px 24px; padding: 2px 0 14px 26px; }  /* under the row title, as on Tools and MCP */
+  .inf-set .ctl { flex: 1 1 200px; max-width: 300px; }
   .settings { display: flex; align-items: flex-start; gap: 10px; flex-wrap: wrap; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--paper-2); }
   .settings .push { margin-left: auto; align-self: flex-end; height: 36px; }
   #replay { width: 124px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }  /* one column: same width, same right edge */
@@ -480,24 +486,29 @@
           <span></span>
         </div>
       </details>
+      <details class="opt" id="optInf">
+        <summary><span class="chev"></span><span class="opt-title">Inference parameters</span><span class="opt-state" id="stInf"></span><span class="sum-ctl"><span class="info" tabindex="0" data-tip-title="Inference parameters" data-tip="Sent with each request: how the next token is chosen and when the answer stops.">i</span></span></summary>
+        <div class="inf-set">
+          <div class="ctl">
+            <div class="ctl-label"><span>Temperature</span><span class="info" tabindex="0" data-tip-title="Temperature" data-tip="How random the choice of the next token is. 0 = always the most likely token. A higher value gives more varied answers.">i</span></div>
+            <div class="ctl-row"><input id="temp" type="range" min="0" max="2" step="0.1" value="1"><output id="tempOut">1.0</output></div>
+          </div>
+          <div class="ctl">
+            <div class="ctl-label"><span>Sampling</span><span class="info" tabindex="0" data-tip-title="Sampling" data-tip="Which tokens the model can choose from. Top-k: only the k most likely tokens. Top-p: only the most likely tokens that together have the probability p. At temperature 0, these change nothing.">i</span>
+              <label class="radio"><input type="radio" name="samp" value="k" checked> Top-k</label>
+              <label class="radio"><input type="radio" name="samp" value="p"> Top-p</label>
+            </div>
+            <div class="ctl-row"><input id="samp" type="range" min="1" max="10" step="1" value="10"><output id="sampOut">k=10</output></div>
+          </div>
+          <div class="ctl">
+            <div class="ctl-label"><span>Max tokens</span><span class="info" tabindex="0" data-tip-title="Max tokens" data-tip="The maximum length of the answer. The model stops when it gets to this number of tokens.">i</span></div>
+            <div class="ctl-row"><input id="max" type="range" min="0" max="11" step="1" value="5"><output id="maxOut">512</output></div>
+          </div>
+        </div>
+      </details>
     </div>
     <div class="error" id="error"></div>
     <div class="settings">
-      <div class="ctl">
-        <div class="ctl-label">Temperature</div>
-        <div class="ctl-row"><input id="temp" type="range" min="0" max="2" step="0.1" value="1"><output id="tempOut">1.0</output></div>
-      </div>
-      <div class="ctl">
-        <div class="ctl-label">Sampling
-          <label class="radio"><input type="radio" name="samp" value="k" checked> Top-k</label>
-          <label class="radio"><input type="radio" name="samp" value="p"> Top-p</label>
-        </div>
-        <div class="ctl-row"><input id="samp" type="range" min="1" max="10" step="1" value="10"><output id="sampOut">k=10</output></div>
-      </div>
-      <div class="ctl">
-        <div class="ctl-label">Max tokens</div>
-        <div class="ctl-row"><input id="max" type="range" min="0" max="11" step="1" value="5"><output id="maxOut">512</output></div>
-      </div>
       <div class="ctl ctl-seg">
         <div class="ctl-label">Mode</div>
         <span class="seg" id="speed" role="group" aria-label="Mode">
@@ -1086,6 +1097,11 @@ document.querySelectorAll("#speed button").forEach(b => b.onclick = () => {
 const MAX_STEPS = [16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768];
 const maxTok = () => MAX_STEPS[+$("max").value] ?? 512;
 const setMaxTok = n => { $("max").value = MAX_STEPS.reduce((b, v, i) => Math.abs(v - n) < Math.abs(MAX_STEPS[b] - n) ? i : b, 0); };
+// The closed Inference parameters row: the values, in the same words as on the other pages.
+function renderInfState() {
+  const sm = samp(), el = $("stInf"); if (!el) return;
+  el.textContent = `Temperature ${(+$("temp").value).toFixed(1)} · ${sm.mode === "k" ? `Top-k ${$("samp").value}` : `Top-p ${(+$("samp").value).toFixed(2)}`} · Max tokens ${maxTok().toLocaleString()}`;
+}
 function syncSliders() {
   const isK = samp().mode === "k";
   const sl = $("samp");
@@ -1095,6 +1111,7 @@ function syncSliders() {
   $("sampOut").textContent = isK ? `k=${sl.value}` : `p=${(+sl.value).toFixed(2)}`;
   $("maxOut").textContent = maxTok().toLocaleString();
   document.querySelectorAll('input[type=range]').forEach(r => r.style.setProperty("--fill", ((r.value - r.min) / (r.max - r.min) * 100) + "%"));
+  renderInfState();
 }
 document.querySelectorAll('input[type=range], input[name="samp"]').forEach(el => el.addEventListener("input", () => { syncSliders(); renderDetail(); exList?.edited(); }));
 syncSliders();

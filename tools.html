@@ -600,6 +600,7 @@
   @media (max-width: 640px) { .sysrow .opt-body { grid-template-columns: 1fr; } .sysrow .opt-body > :nth-child(2) { display: none; } }
   /* Sliders: as on the Trace page (.ctl), the label above the slider */
   .sampling { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 10px 20px; padding: 12px 18px 14px; }
+  .sysrow .sampling { padding: 2px 0 14px 26px; }  /* inside a row: under its title */
   .sampling .ctl { flex: 1 1 190px; min-width: 150px; max-width: 300px; }
   .sampling .ctl-label { gap: 8px; }
   .sampling .ctl output { min-width: 52px; }
@@ -760,24 +761,36 @@
         <div class="note-box" id="noteBox"></div>
       </details>
     </div>
-    <!-- Sliders: the same layout as on the Trace page, the label above the slider -->
-    <div class="sampling">
-      <div class="ctl">
-        <div class="ctl-label"><label for="temp">Temperature</label><span class="info" tabindex="0" data-tip-title="Temperature" data-tip="0: the model always picks the most likely token, so each run is the same. Higher: more random. The model may think more or less, call a tool that is not needed, or write a call with wrong arguments.">i</span></div>
-        <div class="ctl-row"><input type="range" id="temp" min="0" max="2" step="0.1" aria-describedby="tempV"><output id="tempV"></output></div>
-      </div>
-      <div class="ctl">
-        <div class="ctl-label"><label for="maxTok">Max tokens</label><span class="info" tabindex="0" data-tip-title="Max tokens" data-tip="The most tokens the model can write in one reply, its thinking included. A low limit cuts the reply: the model may stop in its thinking, before it writes the tool call or the answer.">i</span></div>
-        <div class="ctl-row"><input type="range" id="maxTok" min="0" max="9" step="1" aria-describedby="maxTokV"><output id="maxTokV"></output></div>
-      </div>
-      <div class="ctl ctl-seg">
-        <div class="ctl-label"><span>Harness</span><span class="info" tabindex="0" data-tip-title="Harness" data-tip="The program around the model. On: it reads the tool call in the reply, checks it, runs the tool and sends the result back. Off: nothing reads the reply, so a tool call stays text and no tool runs.">i</span></div>
-        <div class="ctl-row"><span class="seg" id="harness" role="group" aria-label="Harness"><button data-v="off" aria-pressed="false">Off</button><button data-v="on" aria-pressed="true">On</button></span></div>
-      </div>
-      <div class="ctl ctl-calls">
-        <div class="ctl-label"><label for="maxCalls">Max model calls</label><span class="info" tabindex="0" data-tip-title="Max model calls" data-tip="A guardrail of the harness: it stops after this many model calls for one message. Without a limit, a model that keeps asking for tools would run forever.">i</span></div>
-        <div class="ctl-row"><input type="range" id="maxCalls" min="1" max="10" step="1" aria-describedby="maxCallsV"><output id="maxCallsV"></output></div>
-      </div>
+    <!-- Inference parameters: sent with each request. Harness: the loop around the model. As on the MCP page. -->
+    <div class="opts sysrow">
+      <details class="opt" id="optInf">
+        <summary><span class="chev"></span><span class="opt-title">Inference parameters</span><span class="opt-state" id="stInf"></span><span class="sum-ctl"><span class="info" tabindex="0" data-tip-title="Inference parameters" data-tip="Sent with each request (temperature, max_tokens). They can change for every message.">i</span></span></summary>
+        <div class="sampling">
+          <div class="ctl">
+            <div class="ctl-label"><label for="temp">Temperature</label><span class="info" tabindex="0" data-tip-title="Temperature" data-tip="0: the model always picks the most likely token, so each run is the same. Higher: more random. The model may think more or less, call a tool that is not needed, or write a call with wrong arguments.">i</span></div>
+            <div class="ctl-row"><input type="range" id="temp" min="0" max="2" step="0.1" aria-describedby="tempV"><output id="tempV"></output></div>
+          </div>
+          <div class="ctl">
+            <div class="ctl-label"><label for="maxTok">Max tokens</label><span class="info" tabindex="0" data-tip-title="Max tokens" data-tip="The most tokens the model can write in one reply, its thinking included. A low limit cuts the reply: the model may stop in its thinking, before it writes the tool call or the answer.">i</span></div>
+            <div class="ctl-row"><input type="range" id="maxTok" min="0" max="9" step="1" aria-describedby="maxTokV"><output id="maxTokV"></output></div>
+          </div>
+        </div>
+      </details>
+    </div>
+    <div class="opts sysrow">
+      <details class="opt" id="optHarness">
+        <summary><span class="chev"></span><span class="opt-title">Harness</span><span class="opt-state" id="stHarness"></span><span class="sum-ctl"><span class="info" tabindex="0" data-tip-title="Harness" data-tip="The loop around the model, here run by LM Trace: it reads each tool call, checks it, runs the tool and calls the model again, up to Max model calls.">i</span></span></summary>
+        <div class="sampling">
+          <div class="ctl ctl-seg">
+            <div class="ctl-label"><span>Harness</span><span class="info" tabindex="0" data-tip-title="Harness" data-tip="The program around the model. On: it reads the tool call in the reply, checks it, runs the tool and sends the result back. Off: nothing reads the reply, so a tool call stays text and no tool runs.">i</span></div>
+            <div class="ctl-row"><span class="seg" id="harness" role="group" aria-label="Harness"><button data-v="off" aria-pressed="false">Off</button><button data-v="on" aria-pressed="true">On</button></span></div>
+          </div>
+          <div class="ctl ctl-calls">
+            <div class="ctl-label"><label for="maxCalls">Max model calls</label><span class="info" tabindex="0" data-tip-title="Max model calls" data-tip="A guardrail of the harness: it stops after this many model calls for one message. Without a limit, a model that keeps asking for tools would run forever.">i</span></div>
+            <div class="ctl-row"><input type="range" id="maxCalls" min="1" max="10" step="1" aria-describedby="maxCallsV"><output id="maxCallsV"></output></div>
+          </div>
+        </div>
+      </details>
     </div>
   </section>
   <!-- The chat: its own card below the settings, as on the Trace page -->
@@ -1050,11 +1063,17 @@ function renderSampling() {
   t.value = S.temp; t.style.setProperty("--fill", (S.temp / 2 * 100) + "%"); $("tempV").textContent = (+S.temp).toFixed(1);
   const i = Math.max(0, TOK_STEPS.indexOf(S.maxTokens)); m.value = i; m.style.setProperty("--fill", (i / 9 * 100) + "%"); $("maxTokV").textContent = TOK_STEPS[i].toLocaleString();
   const c = $("maxCalls"); c.value = S.maxCalls; c.style.setProperty("--fill", ((S.maxCalls - 1) / 9 * 100) + "%"); $("maxCallsV").textContent = S.maxCalls;
+  renderRowStates();
+}
+// The closed rows: the values, in the same words as on the other pages.
+function renderRowStates() {
+  $("stInf").textContent = `Temperature ${(+S.temp).toFixed(1)} · Max tokens ${S.maxTokens.toLocaleString()}`;
+  $("stHarness").textContent = S.harness === "off" ? "Off" : `On · Max model calls ${S.maxCalls}`;
 }
 function setSeg(id, v) {
   S[id] = v;
   document.querySelectorAll(`#${id} button`).forEach(b => b.setAttribute("aria-pressed", b.dataset.v === v));
-  keep();
+  keep(); if ($("stHarness")) renderRowStates();
 }
 ["noteBy", "harness"].forEach(id => document.querySelectorAll(`#${id} button`).forEach(b => b.onclick = () => {
   if (busy) return;
