@@ -5,57 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>LM Trace · Tools</title>
 <style>
-  :root {
-    color-scheme: light;
-    --paper: #f5f5f7;
-    --field: #ffffff;
-    --paper-2: #eeeef1;
-    --line: #e1e1e6;
-    --stone-2: #c7c7cc;
-    --ink: #1d1d1f;
-    --ink-2: #4b4b52;
-    --ink-3: #8e8e93;
-    --red: #1f6ff2;
-    --red-rgb: 31, 111, 242;
-    --neg-rgb: 71, 85, 105;
-    --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
-    --mono: ui-monospace, "SF Mono", Menlo, monospace;
-    --input-bg: #ffffff;
-    --shadow-rgb: 0, 0, 0;
-    --primary: #1f6ff2;
-    --primary-hover: #185ed6;
-    --on-primary: #ffffff;
-    --danger: #d93025;
-    --tip-bg: #1d1d1f;
-    --tip-fg: #f5f5f7;
-    --tip-sub: #c7c7cc;
-    --tip-code: #8ab4ff;
-    --r: 10px;
-    --lift: 0 1px 2px rgba(0, 0, 0, .04), 0 2px 8px -4px rgba(0, 0, 0, .08);
-  }
-  :root[data-theme="dark"] {
-    color-scheme: dark;
-    --paper: #161618;
-    --field: #1f1f22;
-    --paper-2: #2a2a2e;
-    --line: #333338;
-    --stone-2: #4a4a50;
-    --ink: #ececf0;
-    --ink-2: #b9b9c0;
-    --ink-3: #85858c;
-    --red: #4c8dff;
-    --red-rgb: 76, 141, 255;
-    --neg-rgb: 148, 163, 184;
-    --input-bg: #18181a;
-    --primary: #3b7cf5;
-    --primary-hover: #5a90f7;
-    --danger: #ff6b5e;
-    --tip-bg: #f0f0f3;
-    --tip-fg: #1d1d1f;
-    --tip-sub: #4b4b52;
-    --tip-code: #185ed6;
-    --lift: 0 1px 2px rgba(0, 0, 0, .3), 0 2px 10px -4px rgba(0, 0, 0, .5);
-  }
+  /* The colours, buttons, tabs and theme button: theme.css, linked after this block. */
   * { font-variant-ligatures: none !important; font-feature-settings: "calt" 0, "liga" 0 !important; }
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; }
@@ -603,6 +553,16 @@
   /* Sliders: as on the Trace page (.ctl), the label above the slider */
   .sampling { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 10px 20px; padding: 12px 18px 14px; }
   .sysrow .sampling { padding: 2px 0 14px 26px; }  /* inside a row: under its title */
+  #ctxLenV { min-width: 7ch; text-align: right; }  /* up to 262,144: the slider keeps its width */
+  .icon-btn { width: 28px; height: 28px; display: inline-grid; place-items: center; border: 1px solid var(--line); border-radius: 7px; background: var(--field); color: var(--ink-2); cursor: pointer; padding: 0; flex: none; }
+  .icon-btn svg { width: 15px; height: 15px; }
+  .icon-btn.go { background: var(--primary); border-color: var(--primary); color: var(--on-primary, #fff); }
+  .icon-btn.go:hover { filter: brightness(1.08); background: var(--primary); color: var(--on-primary, #fff); }
+  .icon-btn:disabled { cursor: default; opacity: .5; }
+  .icon-btn.spin:disabled { opacity: 1; }
+  .icon-btn.spin svg { animation: ctxspin 1s linear infinite; }
+  @keyframes ctxspin { to { transform: rotate(-360deg); } }  /* counterclockwise: the way the arrow of the icon points */
+  @media (prefers-reduced-motion: reduce) { .icon-btn.spin svg { animation: none; } }
   .sampling .ctl { flex: 1 1 190px; min-width: 150px; max-width: 300px; }
   .sampling .ctl-label { gap: 8px; }
   .sampling .ctl output { min-width: 52px; }
@@ -646,12 +606,6 @@
   .icon-row .ti svg { width: 20px; height: 20px; }
   .icon-row input { flex: 1; min-width: 0; }
   .icon-row a { flex: none; font-size: 13px; color: var(--primary); }
-  .ctx { display: inline-flex; align-items: center; gap: 6px; cursor: help; }
-  .ctx svg { width: 15px; height: 15px; transform: rotate(-90deg); }
-  .ctx circle { fill: none; stroke: var(--line); stroke-width: 2.5; }
-  .ctx circle.arc { stroke: var(--primary); stroke-linecap: round; }
-  .ctx.high circle.arc { stroke: #d98e04; }
-  .ctx.full circle.arc { stroke: var(--danger); }
   .edit-actions { display: flex; justify-content: flex-end; gap: 8px; padding-top: 10px; }
   .note-box { padding: 0 0 14px; display: grid; gap: 10px; }
   .opt > summary .sum-ctl { margin-left: auto; display: inline-flex; align-items: center; gap: 10px; cursor: default; }
@@ -681,6 +635,7 @@
     .prow { grid-template-columns: 1fr 1fr; }
   }
 </style>
+<link rel="stylesheet" href="/theme.css">
 <link rel="stylesheet" href="/composer.css">
 <script>
   // Saved choice, else the system setting. Set before the page draws, so there is no flash.
@@ -711,10 +666,10 @@
     <select id="chatModel" class="field" aria-label="Chat model" hidden></select>
     <span class="spacer"></span>
     <button type="button" id="resetAll" class="hdr-btn" title="Clear the chat and set all the settings back to their defaults. Your tools stay.">Reset all</button>
-    <span class="seg" id="theme" role="group" aria-label="Theme">
-      <button data-theme="light" aria-pressed="false">Light</button>
-      <button data-theme="dark" aria-pressed="false">Dark</button>
-    </span>
+    <button type="button" id="theme" class="hdr-btn" aria-label="Toggle dark mode" data-tooltip="Toggle dark mode">
+      <span class="tm-sun"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg></span>
+      <span class="tm-moon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg></span>
+    </button>
   </header>
 
   <section class="composer" aria-label="Settings">
@@ -742,8 +697,7 @@
   <section class="panel" aria-label="Chat">
     <div class="panel-head"><button type="button" id="newChat" class="btn ghost" title="Start a new chat: clear the conversation. The settings and the tools stay.">New</button>
       <div class="perm-wrap chats-wrap"><button type="button" id="chatsBtn" class="btn ghost" aria-haspopup="menu" aria-expanded="false" aria-controls="chatsMenu" title="Archived chats: each chat is archived when a message finishes. Open one to view it again, read only.">Archived</button>
-        <div class="perm-menu chats-menu" id="chatsMenu" role="menu" aria-label="Archived chats" hidden></div></div>
-      <span class="stats" id="stats"></span></div>
+        <div class="perm-menu chats-menu" id="chatsMenu" role="menu" aria-label="Archived chats" hidden></div></div></div>
     <!-- System prompt: the same row as on the Trace page. Sent first, in every model call. -->
     <div class="opts sysrow">
       <details class="opt" id="optSystem">
@@ -766,7 +720,7 @@
     <!-- Inference parameters: sent with each request. Harness: the loop around the model. As on the MCP page. -->
     <div class="opts sysrow">
       <details class="opt" id="optInf">
-        <summary><span class="chev"></span><span class="opt-title">Inference parameters</span><span class="opt-state" id="stInf"></span><span class="sum-ctl"><span class="info" tabindex="0" data-tip-title="Inference parameters" data-tip="Sent with each request (temperature, max_tokens). They can change for every message.">i</span></span></summary>
+        <summary><span class="chev"></span><span class="opt-title">Inference parameters</span><span class="opt-state" id="stInf"></span><span class="sum-ctl"><span class="info" tabindex="0" data-tip-title="Inference parameters" data-tip="Temperature and Max tokens go with each request (temperature, max_tokens) and can change for every message. Context length is set when LM Studio loads the model: a new length needs a reload (↻).">i</span></span></summary>
         <div class="sampling">
           <div class="ctl">
             <div class="ctl-label"><label for="temp">Temperature</label><span class="info" tabindex="0" data-tip-title="Temperature" data-tip="0: the model always picks the most likely token, so each run is the same. Higher: more random. The model may think more or less, call a tool that is not needed, or write a call with wrong arguments.">i</span></div>
@@ -775,6 +729,10 @@
           <div class="ctl">
             <div class="ctl-label"><label for="maxTok">Max tokens</label><span class="info" tabindex="0" data-tip-title="Max tokens" data-tip="The most tokens the model can write in one reply, its thinking included. A low limit cuts the reply: the model may stop in its thinking, before it writes the tool call or the answer.">i</span></div>
             <div class="ctl-row"><input type="range" id="maxTok" min="0" max="9" step="1" aria-describedby="maxTokV"><output id="maxTokV"></output></div>
+          </div>
+          <div class="ctl">
+            <div class="ctl-label"><label for="ctxLen">Context length</label><span class="info" tabindex="0" data-tip-title="Context length" data-tip="The most tokens that fit in one model call: the prompt (system prompt, tool definitions, messages, tool results) and the reply. It is a load setting: LM Studio must unload the model and load it again (POST /api/v1/models/load). A larger context uses more memory.">i</span></div>
+            <div class="ctl-row"><input type="range" id="ctxLen" min="0" max="6" step="1" aria-describedby="ctxLenV"><output id="ctxLenV"></output><button type="button" class="icon-btn" id="ctxReload" hidden></button></div>
           </div>
         </div>
       </details>
@@ -798,6 +756,7 @@
   <!-- The chat: its own card below the settings, as on the Trace page -->
   <section class="panel" aria-label="Chat log">
     <div class="chatlog" id="log"></div>
+    <div class="stats-row"><span class="stats" id="stats"></span></div>
   </section>
   <section class="panel sendbar" aria-label="Your message">
     <div class="cbox">
@@ -1060,6 +1019,7 @@ try { Object.assign(S, JSON.parse(localStorage.getItem("toolsPage2") || "{}")); 
 delete S.stepMode;  // the Mode switch (Step | Auto) is gone: the harness always runs each step by itself
 const keep = () => { try { localStorage.setItem("toolsPage2", JSON.stringify(S)); localStorage.setItem("toolNote", noteText); } catch {} };
 const TOK_STEPS = [16, 32, 64, 128, 256, 512, 1024, 1500, 2048, 4096];
+var ctxSummary = "";  // Context length in the closed row: set by renderCtx (it knows the loaded model)
 function renderSampling() {
   const t = $("temp"), m = $("maxTok");
   t.value = S.temp; t.style.setProperty("--fill", (S.temp / 2 * 100) + "%"); $("tempV").textContent = (+S.temp).toFixed(1);
@@ -1069,7 +1029,7 @@ function renderSampling() {
 }
 // The closed rows: the values, in the same words as on the other pages.
 function renderRowStates() {
-  $("stInf").textContent = `Temperature ${(+S.temp).toFixed(1)} · Max tokens ${S.maxTokens.toLocaleString()}`;
+  $("stInf").textContent = [`Temperature ${(+S.temp).toFixed(1)}`, `Max tokens ${S.maxTokens.toLocaleString()}`, ctxSummary].filter(Boolean).join(" · ");
   $("stHarness").textContent = S.harness === "off" ? "Off" : `On · Max model calls ${S.maxCalls}`;
 }
 function setSeg(id, v) {
@@ -1101,10 +1061,10 @@ async function loadModels() {
     let saved = null; try { saved = localStorage.getItem("toolsModel"); } catch {}
     $("chatModel").value = keys.includes(saved) ? saved : keys.find(k => /gemma-4-e4b/i.test(k)) || keys.find(k => k === "google/gemma-4-12b") || keys.find(k => trained(k)) || keys[0];
   } catch (e) { $("error").textContent = `LM Studio unreachable: ${e.message || e}`; }
-  renderChat(true);  // the context meter needs the model list
+  renderCtx(); renderChat(true);  // the context meter needs the model list
 }
 const trained = k => modelInfo.find(m => m.key === k)?.capabilities?.trained_for_tool_use;
-$("chatModel").onchange = () => { try { localStorage.setItem("toolsModel", $("chatModel").value); } catch {} renderChat(true); };
+$("chatModel").onchange = () => { try { localStorage.setItem("toolsModel", $("chatModel").value); } catch {} ctxWant = null; renderCtx(); renderChat(true); };
 // ---- The message box: the model picker and the Send button come from composer.js, the same on all pages.
 const chatPick = Composer.picker({ select: $("chatModel"), mount: $("chatPick"), label: "Chat model", isBusy: () => busy, onError: m => { $("error").textContent = m; } });
 Composer.setSend($("sendBtn"), false, { key: "Enter" });
@@ -1320,6 +1280,48 @@ async function logEntry(kind, since, keepWaiting = () => false) {
 // ---- Chat state. chat = list of turns; each turn has the steps of the harness.
 // history = the messages that the harness sends to the model (the conversation memory of the book: the full history).
 let chat = [], history = [], busy = false, ctrl = null, pending = null;
+
+// ---- Context length: a load setting, as on the MCP page. The page unloads the model and loads it again with context_length.
+const CTX_STEPS = [4096, 8192, 16384, 32768, 65536, 131072, 262144];
+const RELOAD_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>';
+let ctxWant = null;  // the value of the slider; null: the loaded value
+let ctxJob = null;   // {phase, n, t0} while it loads; {end, n, ms} just after
+const loadedCtx = k => Composer.info(k)?.loaded_instances?.[0]?.config?.context_length || null;
+function ctxSteps(k) { const max = Composer.info(k)?.max_context_length; return CTX_STEPS.filter(x => !max || x <= max); }
+function renderCtx() {
+  const k = $("chatModel").value, steps = ctxSteps(k), loaded = loadedCtx(k), r = $("ctxLen");
+  const want = ctxJob?.n ?? ctxWant ?? loaded ?? steps.find(x => x >= 8192) ?? steps[0];  // while loading: the length it loads
+  let i = steps.indexOf(want); if (i < 0) i = steps.findIndex(x => x >= want); if (i < 0) i = steps.length - 1;
+  r.max = steps.length - 1; r.value = i; r.style.setProperty("--fill", (i / Math.max(1, steps.length - 1) * 100) + "%");
+  $("ctxLenV").textContent = (steps[i] || 0).toLocaleString();
+  // ↻: grey and off at the loaded length, filled when the slider shows another length, turning while LM Studio loads.
+  const b = $("ctxReload"), job = ctxJob, change = !loaded || steps[i] !== loaded;
+  b.classList.toggle("spin", !!job && !job.end);
+  b.classList.toggle("go", change && !job);
+  ctxSummary = `Context length ${(steps[i] || 0).toLocaleString()}${job && !job.end ? " (loading…)" : loaded && steps[i] !== loaded ? " (not loaded yet)" : ""}`; renderRowStates();
+  b.hidden = !!viewing; if (!b.innerHTML) b.innerHTML = RELOAD_ICON; b.disabled = busy || !!viewing || !change;
+  b.title = job && !job.end ? `Loading ${k} with ${job.n.toLocaleString()} tokens…` : change ? `${loaded ? "Reload" : "Load"} ${k} with a context length of ${(steps[i] || 0).toLocaleString()} tokens` : `${k} is loaded with ${loaded.toLocaleString()} tokens. Move the slider to change it.`;
+  b.setAttribute("aria-label", b.title);
+}
+$("ctxLen").oninput = e => { ctxWant = ctxSteps($("chatModel").value)[+e.target.value]; renderCtx(); };
+$("ctxReload").onclick = () => reloadCtx($("chatModel").value, ctxSteps($("chatModel").value)[+$("ctxLen").value]);
+async function reloadCtx(model, n) {
+  if (busy || !model || !n) return;
+  busy = true; $("error").textContent = "";
+  ctxJob = { phase: "Unloading", n, t0: Date.now() }; setBusy();
+  try {
+    for (const inst of Composer.info(model)?.loaded_instances || []) await post("/api/v1/models/unload", { instance_id: inst.id });
+    ctxJob.phase = "Loading"; renderCtx();
+    await post("/api/v1/models/load", { model, context_length: n });
+    await Composer.load(); Composer.renderAll?.();
+    ctxWant = null;
+    ctxJob = { end: "done", n, ms: Date.now() - ctxJob.t0 };
+  } catch (e) {
+    ctxJob = { end: "error", ms: Date.now() - ctxJob.t0 };
+    $("error").textContent = `Model not loaded: ${e.message}`; await Composer.load();
+  }
+  busy = false; ctxJob = null; setBusy(); renderChat(true);  // the Context meter shows the new size
+}
 const openKeys = new Set();  // the open ▸ sections, kept when the chat draws again
 let stats = { calls: 0, tools: 0, tokens: 0, ctx: 0 };
 // New chat: clear the chat, the history and the counts. The tools and the settings stay.
@@ -1797,7 +1799,7 @@ function renderChat(hold) {
   if (!hold) $("log").style.paddingBottom = "";
   const log = $("log"), atEnd = !hold && log.scrollHeight - log.scrollTop - log.clientHeight < 80, top = log.scrollTop;
   const last = chat.length - 1;
-  if (!chat.length) log.innerHTML = `<div class="chat-empty">Type a message, or choose an example below the message box.</div>`;
+  if (!chat.length) log.innerHTML = `<div class="chat-empty">Type a message, or choose an example below.</div>`;
   else log.innerHTML = chat.map((t, ti) => {
     const groups = new Map();
     t.steps.forEach((s, si) => {
@@ -1824,7 +1826,10 @@ function renderChat(hold) {
     return out;
   }).join("") + archEnd();
   log.scrollTop = atEnd ? log.scrollHeight : top;
-  $("stats").innerHTML = `<span title="The tools that are on: the harness sends their definitions in each model call">Tools on <b>${viewing ? (viewing.tools || []).length : active().length}</b></span><span>Model calls <b>${stats.calls}</b></span><span>Tool calls <b>${stats.tools}</b></span>${ctxHtml()}`;
+  $("stats").innerHTML = `<span title="MCP servers: this page uses none. The MCP page connects a model to MCP servers.">MCP <b>–</b></span>`
+    + `<span title="The tools that are on: the harness sends their definitions in each model call">Tools <b>${viewing ? (viewing.tools || []).length : active().length}</b></span>`
+    + `<span title="The tool calls of this chat: the harness ran each one">Tools called <b>${stats.tools}</b></span>`
+    + `<span title="The model calls of this chat: the harness calls the model once, then again after each tool result">Model calls <b>${stats.calls}</b></span>${ctxHtml()}`;
   estimateCtx();
 }
 document.addEventListener("toggle", e => { const d = e.target; if (d.matches?.("details.x, details.ev")) d.open ? openKeys.add(d.dataset.key) : openKeys.delete(d.dataset.key); }, true);
@@ -2182,11 +2187,12 @@ function contextError(msg) {
 function stop() { ctrl?.abort(); if (pending) { const p = pending; pending = null; p.resolve(null); } }
 function setBusy() {
   Composer.setSend($("sendBtn"), busy, { key: "Enter", stop: "Stop the run" });
+  renderCtx();
   // An archived chat: the settings are read only too (they are the settings of that run).
   const lock = busy || !!viewing;
   chatPick.setDisabled(lock);
   ["newChat", "chatsBtn", "resetTools", "addTool", "library"].forEach(id => $(id).disabled = busy);
-  ["chatModel", "temp", "maxTok", "maxCalls", "system", "sysExamples", "saveSystem", "delSystem", "plusBtn", "permBtn"].forEach(id => $(id).disabled = lock);
+  ["chatModel", "temp", "maxTok", "ctxLen", "maxCalls", "system", "sysExamples", "saveSystem", "delSystem", "plusBtn", "permBtn"].forEach(id => $(id).disabled = lock);
   document.querySelectorAll("#noteBy button, #harness button, .starter").forEach(b => b.disabled = lock);
   syncSave();
 }
@@ -2235,7 +2241,7 @@ function sizeChat() {
   if (!log.offsetParent) return;
   if (CAPTURE) { log.style.height = "auto"; return; }
   const top = log.getBoundingClientRect().top + scrollY;
-  log.style.height = Math.max(320, innerHeight - top - bar.offsetHeight - 52) + "px";
+  log.style.height = Math.max(320, innerHeight - top - bar.offsetHeight - (document.querySelector(".stats-row")?.offsetHeight || 0) - 52) + "px";
 }
 addEventListener("resize", sizeChat);
 // Refit the chat log when anything above or below it changes height: the settings card, the rows of the Chat panel
@@ -2277,10 +2283,9 @@ $("sideToggle").onclick = () => {
 };
 function setTheme(v, save) {
   document.documentElement.dataset.theme = v;
-  document.querySelectorAll("#theme button").forEach(b => b.setAttribute("aria-pressed", b.dataset.theme === v));
   if (save) try { localStorage.setItem("theme", v); } catch {}
 }
-document.querySelectorAll("#theme button").forEach(b => { b.onclick = () => setTheme(b.dataset.theme, true); });
+document.getElementById("theme").onclick = () => setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark", true);
 setTheme(document.documentElement.dataset.theme, false);
 
 ["noteBy", "harness"].forEach(id => setSeg(id, S[id]));

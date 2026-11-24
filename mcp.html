@@ -5,57 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>LM Trace · MCP</title>
 <style>
-  :root {
-    color-scheme: light;
-    --paper: #f5f5f7;
-    --field: #ffffff;
-    --paper-2: #eeeef1;
-    --line: #e1e1e6;
-    --stone-2: #c7c7cc;
-    --ink: #1d1d1f;
-    --ink-2: #4b4b52;
-    --ink-3: #8e8e93;
-    --red: #1f6ff2;
-    --red-rgb: 31, 111, 242;
-    --neg-rgb: 71, 85, 105;
-    --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
-    --mono: ui-monospace, "SF Mono", Menlo, monospace;
-    --input-bg: #ffffff;
-    --shadow-rgb: 0, 0, 0;
-    --primary: #1f6ff2;
-    --primary-hover: #185ed6;
-    --on-primary: #ffffff;
-    --danger: #d93025;
-    --tip-bg: #1d1d1f;
-    --tip-fg: #f5f5f7;
-    --tip-sub: #c7c7cc;
-    --tip-code: #8ab4ff;
-    --r: 10px;
-    --lift: 0 1px 2px rgba(0, 0, 0, .04), 0 2px 8px -4px rgba(0, 0, 0, .08);
-  }
-  :root[data-theme="dark"] {
-    color-scheme: dark;
-    --paper: #161618;
-    --field: #1f1f22;
-    --paper-2: #2a2a2e;
-    --line: #333338;
-    --stone-2: #4a4a50;
-    --ink: #ececf0;
-    --ink-2: #b9b9c0;
-    --ink-3: #85858c;
-    --red: #4c8dff;
-    --red-rgb: 76, 141, 255;
-    --neg-rgb: 148, 163, 184;
-    --input-bg: #18181a;
-    --primary: #3b7cf5;
-    --primary-hover: #5a90f7;
-    --danger: #ff6b5e;
-    --tip-bg: #f0f0f3;
-    --tip-fg: #1d1d1f;
-    --tip-sub: #4b4b52;
-    --tip-code: #185ed6;
-    --lift: 0 1px 2px rgba(0, 0, 0, .3), 0 2px 10px -4px rgba(0, 0, 0, .5);
-  }
+  /* The colours, buttons, tabs and theme button: theme.css, linked after this block. */
   * { font-variant-ligatures: none !important; font-feature-settings: "calt" 0, "liga" 0 !important; }
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; }
@@ -853,10 +803,6 @@
   .insp details.x > .rpc { border: 0; border-top: 1px solid var(--paper-2); border-radius: 0; margin: 0; }
   .insp details.x > pre { margin: 0 14px 12px; }
   /* Chat card head: the steps and the numbers, as on the RAG page */
-  .log-head { display: flex; align-items: center; gap: 8px 16px; flex-wrap: wrap; border-bottom: 1px solid var(--paper-2); padding-right: 18px; }
-  .log-head .flow2 { border-bottom: 0; padding: 12px 18px; }
-  .log-head .stats { margin-left: auto; font-size: 13px; color: var(--ink-3); }
-  .log-head .stats > span + span { margin-left: 12px; }
   /* MCP list: one row per server, its tools below when open */
   .mcp-list { padding: 4px 18px 14px; display: grid; gap: 6px; }
   .ml-srv { border: 1px solid var(--line); border-radius: 8px; background: var(--field); overflow: hidden; }
@@ -989,12 +935,6 @@
   @media (max-width: 860px) { #log .ev > summary, #log .ev-row { grid-template-columns: minmax(0, 1fr) auto; } #log .ev-bd { padding-left: 14px; } }
   .setup a { color: var(--red); text-decoration: none; } .setup a:hover { text-decoration: underline; }
   .ev .what .q { color: var(--ink-3); }
-  .flow2 { display: flex; align-items: center; gap: 6px 8px; flex-wrap: wrap; padding: 10px 18px; border-bottom: 1px solid var(--paper-2); font-size: 12.5px; color: var(--ink-2); }
-  .flow2 .fs { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px 2px 3px; border-radius: 12px; cursor: help; }
-  .flow2 .fs.on { background: rgba(var(--red-rgb), .1); color: var(--ink); }
-  .flow2 .fs.on .stepnum { background: var(--primary); color: var(--on-primary); }
-  .flow2 .fs.done .stepnum { background: var(--ink-3); color: var(--field); }
-  .flow2 .arrow { color: var(--stone-2); }
   .roles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 8px 0 4px; }
   .roles > div { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; background: var(--field); }
   .roles b { display: block; color: var(--ink-2); }
@@ -1007,6 +947,7 @@
     .srv .d { padding-left: 12px; }
   }
 </style>
+<link rel="stylesheet" href="/theme.css">
 <link rel="stylesheet" href="/composer.css">
 <script>
   // Saved choice, else the system setting. Set before the page draws, so there is no flash.
@@ -1036,10 +977,10 @@
     <h1>MCP</h1>
     <select id="chatModel" class="field" aria-label="Chat model" hidden></select>
     <span class="spacer"></span>
-    <span class="seg" id="theme" role="group" aria-label="Theme">
-      <button data-theme="light" aria-pressed="false">Light</button>
-      <button data-theme="dark" aria-pressed="false">Dark</button>
-    </span>
+    <button type="button" id="theme" class="hdr-btn" aria-label="Toggle dark mode" data-tooltip="Toggle dark mode">
+      <span class="tm-sun"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg></span>
+      <span class="tm-moon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg></span>
+    </button>
   </header>
 
   <section class="composer" aria-label="About">
@@ -1117,8 +1058,8 @@
     </div>
   </section>
   <section class="panel" aria-label="Chat log">
-    <div class="log-head"><div class="flow2" id="flow" aria-label="The steps of MCP"></div><span class="stats" id="stats"></span></div>
     <div class="chatlog" id="log"></div>
+    <div class="stats-row"><span class="stats" id="stats"></span></div>
   </section>
   <section class="panel sendbar" aria-label="Your message">
     <div class="cbox">
@@ -1251,10 +1192,9 @@ $("sideToggle").onclick = () => {
 };
 function setTheme(v, save) {
   document.documentElement.dataset.theme = v;
-  document.querySelectorAll("#theme button").forEach(b => b.setAttribute("aria-pressed", b.dataset.theme === v));
   if (save) try { localStorage.setItem("theme", v); } catch {}
 }
-document.querySelectorAll("#theme button").forEach(b => { b.onclick = () => setTheme(b.dataset.theme, true); });
+document.getElementById("theme").onclick = () => setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark", true);
 setTheme(document.documentElement.dataset.theme, false);
 function setTab(v) {
   S.tab = v; keep();
@@ -1674,7 +1614,7 @@ document.addEventListener("click", e => { if (!e.composedPath().some(n => n.clas
 document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("plusMenu").hidden) { openPlus(false); $("plusBtn").focus(); } });
 
 // ---------------------------------------------------------------- Chat: the run
-// The steps of MCP, as in the How it works list. The step of the newest event is marked.
+// The steps of MCP, as in the How it works list. While a message runs, the live line names the step of the newest event.
 const FLOW = [
   ["Discovery", "Each MCP client connects to its server and asks for the tools (tools/list)."],
   ["Prompt and tools", "The MCP host puts your message and the tool definitions into the prompt of the LLM."],
@@ -1685,10 +1625,7 @@ const FLOW = [
   ["Answer", "The LLM reads the result and writes the answer."],
 ];
 let flowStep = -1;
-function renderFlow() {
-  $("flow").innerHTML = `<span class="who" style="font:500 10.5px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);margin-right:4px">Steps</span>` + FLOW.map(([t, d], i) => `${i ? '<span class="arrow">→</span>' : ""}<span class="fs${i === flowStep ? " on" : i < flowStep ? " done" : ""}" tabindex="0" data-tip-title="${i + 1}. ${esc(t)}" data-tip="${esc(d)}"><span class="stepnum">${i + 1}</span>${esc(t)}</span>`).join("");
-}
-const setFlow = i => { if (i !== flowStep) { flowStep = i; renderFlow(); } };
+const setFlow = i => { flowStep = i; };
 const setStatus = s => { $("status").innerHTML = s; };
 const fmtS = ms => ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1)} s`;
 const pretty = s => { try { return JSON.stringify(typeof s === "string" ? JSON.parse(s) : s, null, 2); } catch { return String(s); } };
@@ -1902,7 +1839,7 @@ function rowHtml(r, key) {
     : `<div class="ev${r.cls ? " " + r.cls : ""}"><div class="ev-row">${head}<span></span></div></div>`;
 }
 const liveSecs = t => `${Math.max(0, Math.round((Date.now() - t) / 1000))} s`;
-const liveText = turn => { const x = (Date.now() - turn.t0) / 1000; return `Running… (${x < 10 ? x.toFixed(1) : Math.round(x)} s)`; };
+const liveText = turn => { const x = (Date.now() - turn.t0) / 1000; return `Running… (${x < 10 ? x.toFixed(1) : Math.round(x)} s)${FLOW[flowStep] ? ` · Step ${flowStep + 1} of ${FLOW.length}: ${FLOW[flowStep][0]}` : ""}`; };
 setInterval(() => {
   if (!busy) return;
   document.querySelectorAll("[data-live]").forEach(el => { el.textContent = liveSecs(+el.dataset.live); });
@@ -1936,7 +1873,7 @@ function renderChat() {
   const on = enabled();
   renderStats(); renderMcpList(); renderViewBar();
   const log = $("log");
-  if (!chat.length) { log.innerHTML = `<div class="chat-empty">${on.length ? "Ask something. LM Studio gives the tools of the servers that are on to the model." : "Turn on an MCP server in <b>+</b> › <b>MCP</b>, or add one on the Servers tab."}${permState() && permState() !== "ok" && on.length ? `<br><br><span style="color:var(--danger)">LM Studio does not let the API use the servers of mcp.json yet.</span> <button type="button" class="linkbtn" data-act="setup">How to fix it</button>` : ""}</div>`; return; }
+  if (!chat.length) { log.innerHTML = `<div class="chat-empty">${on.length ? "Type a message, or choose an example below." : "Turn on an MCP server in <b>+</b> › <b>MCP</b>, or add one on the Servers tab."}${permState() && permState() !== "ok" && on.length ? `<br><br><span style="color:var(--danger)">LM Studio does not let the API use the servers of mcp.json yet.</span> <button type="button" class="linkbtn" data-act="setup">How to fix it</button>` : ""}</div>`; return; }
   const atEnd = log.scrollHeight - log.scrollTop - log.clientHeight < 40;
   log.innerHTML = chat.map(turnHtml).join("") + archEnd();
   if (atEnd || busy) log.scrollTop = log.scrollHeight;
@@ -2384,7 +2321,7 @@ function sizeChat() {
   if (!log.offsetParent) return;
   if (CAPTURE) { log.style.height = "auto"; return; }
   const top = log.getBoundingClientRect().top + scrollY;
-  log.style.height = Math.max(320, innerHeight - top - bar.offsetHeight - 52) + "px";
+  log.style.height = Math.max(320, innerHeight - top - bar.offsetHeight - (document.querySelector(".stats-row")?.offsetHeight || 0) - 52) + "px";
 }
 addEventListener("resize", sizeChat);
 const fitObs = new ResizeObserver(sizeChat);
@@ -2498,10 +2435,23 @@ function renderStats() {
   const on = viewing ? (viewing.servers || []).map(name => ({ name })) : enabled();
   const nt = on.map(s => viewing ? (viewing.allowed?.[s.name]?.length ?? toolCache[s.name]?.tools?.length ?? null) : toolCount(s.name));
   const calls = chat.reduce((a, t) => a + new Set(t.rows.filter(r => r.kind !== "close" && r.call > 0).map(r => r.call)).size, 0), tcalls = chat.reduce((a, t) => a + t.rows.filter(r => r.kind === "call").length, 0);
-  $("stats").innerHTML = `<span title="The MCP servers that the chat sends in integrations">Servers on <b>${on.length}</b></span>`
-    + `<span title="The tools of these servers that LM Studio gives to the model">Tools on <b>${nt.every(n => n != null) ? nt.reduce((a, b) => a + b, 0) : "–"}</b></span>`
+  $("stats").innerHTML = `<span title="The MCP servers that are on: the chat sends them in integrations">MCP <b>${on.length}</b></span>`
+    + `<span title="The tools that are on: the tools of these servers that LM Studio gives to the model">Tools <b>${nt.every(n => n != null) ? nt.reduce((a, b) => a + b, 0) : "–"}</b></span>`
+    + `<span title="The tool calls of this chat: the tools/call requests that LM Studio sent to the servers">Tools called <b>${tcalls}</b></span>`
     + `<span title="The model calls of this chat: LM Studio calls the model once, then again after each tool result">Model calls <b>${calls}</b></span>`
-    + `<span title="The tools/call requests that LM Studio sent to the servers in this chat">Tool calls <b>${tcalls}</b></span>`;
+    + ctxHtml();
+}
+// Context window, as on the Tools page: the prompt of the last model call against the loaded context length.
+// LM Studio reports input_tokens for call 1 only; a later call's prompt is counted with the tokenizer (~).
+function ctxHtml() {
+  const t = [...chat].reverse().find(x => x.stats), pr = t ? promptToks(t) : [];
+  const model = t?.req?.model || $("chatModel").value;
+  const size = loadedCtx(model) || Composer.info(model)?.max_context_length || 0;
+  const used = !t ? 0 : pr.length > 1 ? pr.at(-1) : t.stats.input_tokens;
+  if (!size || !used) return `<span class="ctx" tabindex="0" data-tip-title="Context window" data-tip="The prompt of the last model call against the context length. It shows after the first answer.${size ? ` Context length: ${size.toLocaleString()} tokens.` : ""}"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6"/></svg>Context <b>–</b> / ${size ? size.toLocaleString() : "–"}</span>`;
+  const approx = pr.length > 1, pct = Math.min(1, used / size), lvl = pct > .9 ? " full" : pct > .75 ? " high" : "", C = 2 * Math.PI * 6;
+  const tip = `The prompt of the last model call took ${approx ? "about " : ""}${used.toLocaleString()} of ${size.toLocaleString()} tokens of the context window (${(pct * 100).toFixed(1)}%): the system prompt, the tool definitions and the history. The reply adds to it. ${approx ? "LM Studio reports only the first call, so the page counts this prompt with the tokenizer of the model." : "From LM Studio: input_tokens."}`;
+  return `<span class="ctx${lvl}" tabindex="0" data-tip-title="Context window" data-tip="${esc(tip)}"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6"/><circle cx="8" cy="8" r="6" class="arc" stroke-dasharray="${(pct * C).toFixed(2)} ${C.toFixed(2)}"/></svg>Context <b>${approx ? "≈ " : ""}${used.toLocaleString()}</b> / ${size.toLocaleString()}</span>`;
 }
 
 // ---------------------------------------------------------------- System prompt: examples, save, delete and copy
@@ -2702,7 +2652,6 @@ $("chatsMenu").onclick = async e => {
 document.addEventListener("click", e => { if (!e.target.closest(".chats-wrap")) openChats(false); });
 document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("chatsMenu").hidden) { openChats(false); $("chatsBtn").focus(); } });
 
-renderFlow();
 (async () => {
   await Promise.all([loadConfig(), loadTools(), loadToken(), loadModels(), loadMeta()]);
   for (const s of cfg.servers) if (S.on[s.name]) loadServerTools(s.name);

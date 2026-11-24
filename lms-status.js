@@ -1,31 +1,39 @@
-// The Status control in the header of each page: is the LM Studio server running? A click starts or stops it.
+// The Status control in the header of each page: is the LM Studio server running? A switch; a click starts or stops it.
 // GET /lms-status every 5 s; POST /lms-server {"on": true|false} runs `lms server start` or `lms server stop`.
 (() => {
   const theme = document.getElementById("theme");
   if (!theme) return;
   const css = document.createElement("style");
   css.textContent = `
-  .lms-st { display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 12px; margin-right: 4px;
-    font: 500 13px var(--sans, system-ui); color: var(--ink-2); background: var(--field, var(--paper)); border: 1px solid var(--line);
-    border-radius: 8px; cursor: pointer; }
-  .lms-st:hover { color: var(--ink); border-color: var(--stone-2, var(--line)); }
+  .lms-st { gap: 10px; margin-right: 4px; }  /* the button look: .hdr-btn in theme.css */
   .lms-st:disabled { cursor: default; opacity: .7; }
-  .lms-st .dot { width: 8px; height: 8px; border-radius: 50%; background: #a1a1aa; }
-  .lms-st.on .dot { background: #22a559; }`;
+  /* All labels in one grid cell, only one visible: the control keeps the width of the longest label. */
+  .lms-st .txt { display: inline-grid; text-align: left; }
+  .lms-st .txt > span { grid-area: 1 / 1; visibility: hidden; }
+  .lms-st .txt > span.show { visibility: visible; }
+  /* The switch: grey and left when stopped, green and right when running. */
+  .lms-st .lms-sw { position: relative; width: 28px; height: 16px; border-radius: 8px; background: var(--stone-2); transition: background .15s; flex: none; }
+  .lms-st .lms-sw::after { content: ""; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: #fff;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, .2); transition: translate .15s; }
+  .lms-st.on .lms-sw { background: #22a559; }
+  .lms-st.on .lms-sw::after { translate: 12px 0; }`;
   document.head.appendChild(css);
 
+  const LABELS = ["Status: …", "Status: Running", "Status: Stopped", "Starting…", "Stopping…"];
   const btn = document.createElement("button");
   btn.type = "button";
-  btn.className = "lms-st";
-  btn.innerHTML = '<span class="dot" aria-hidden="true"></span><span class="txt">Status: …</span>';
+  btn.className = "hdr-btn lms-st";
+  btn.setAttribute("role", "switch");
+  btn.innerHTML = '<span class="txt">' + LABELS.map(l => `<span>${l}</span>`).join("") + '</span><span class="lms-sw" aria-hidden="true"></span>';
   theme.before(btn);
-  const txt = btn.querySelector(".txt");
+  const label = l => btn.querySelectorAll(".txt > span").forEach(sp => sp.classList.toggle("show", sp.textContent === l));
 
   let running = null, busy = false;
   function show(r) {
     running = r;
     btn.classList.toggle("on", r === true);
-    txt.textContent = r === null ? "Status: …" : r ? "Status: Running" : "Status: Stopped";
+    btn.setAttribute("aria-checked", r === true);
+    label(r === null ? "Status: …" : r ? "Status: Running" : "Status: Stopped");
     btn.title = r ? "The LM Studio server runs. Click to stop it." : "The LM Studio server does not run. Click to start it.";
   }
   async function check() {
@@ -35,7 +43,7 @@
   btn.addEventListener("click", async () => {
     if (busy || running === null) return;
     const on = !running;
-    busy = true; btn.disabled = true; txt.textContent = on ? "Starting…" : "Stopping…";
+    busy = true; btn.disabled = true; label(on ? "Starting…" : "Stopping…");
     try {
       const r = await fetch("/lms-server", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ on }) });
       const j = await r.json();
