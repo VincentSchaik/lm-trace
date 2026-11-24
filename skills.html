@@ -783,7 +783,10 @@
   .sk-ex-hd .grow { flex: 1; }
   .sk-ex-text { margin-top: 10px; max-height: 140px; overflow: auto; white-space: pre-wrap; font-size: 13.5px; line-height: 1.5; color: var(--ink-2); background: var(--paper); border-radius: 8px; padding: 10px 12px; }
   .sk-ex-none { margin-top: 8px; font-size: 13px; color: var(--ink-3); }
-  .sk-ex textarea { display: block; width: 100%; margin-top: 10px; font: 13.5px/1.5 var(--sans); padding: 10px 12px; resize: vertical; }
+  .sk-ex textarea { display: block; width: 100%; margin-top: 10px; font: 13.5px/1.5 var(--sans); padding: 10px 52px 10px 12px; resize: vertical; }
+  /* The sparkle sits in the top-right corner of the box, like the tools of the message box. */
+  .sk-ex-box { position: relative; }
+  .sk-ex-box #exGenBtn { position: absolute; top: 8px; right: 8px; }
   .sk-ex-bar { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
   .sk-ex-bar .grow { flex: 1; }
   .sk-ex-st { font-size: 12.5px; color: var(--danger); }
@@ -2277,10 +2280,10 @@ function exampleHtml(sk, inOpen) {
   const ex = exampleOf(sk), builtIn = PRESETS.some(p => p.skill === sk.name);
   const head = `<div class="sk-ex-hd"><b>Example message</b><span class="grow"></span>`;
   const gen = iconBtn("exGenBtn", "sparkle", `Write an example with the loaded model (${$("chatModel").value || "no model"})`);
-  if (inOpen && exEdit) return `<div class="sk-ex">${head}${gen}</div>
-    <textarea id="exText" rows="6" placeholder="A message that needs this skill: a task in the words of a user.">${esc(ex)}</textarea>
+  if (inOpen && exEdit) return `<div class="sk-ex">${head}</div>
+    <div class="sk-ex-box"><textarea id="exText" rows="6" placeholder="A message that needs this skill: a task in the words of a user.">${esc(ex)}</textarea>${gen}</div>
     <div class="sk-ex-bar"><span class="sk-ex-st" id="exSt"></span><span class="grow"></span>${builtIn && sk.example != null ? '<button type="button" class="btn ghost" id="exReset" title="Use the built-in example again">Reset</button>' : ""}<button type="button" class="btn ghost" id="exCancel">Cancel</button><button type="button" class="btn" id="exSave">Save</button></div></div>`;
-  return `<div class="sk-ex">${head}${gen}${iconBtn("exEditBtn", "edit", "Edit the example message")}</div>${ex ? `<div class="sk-ex-text">${esc(ex)}</div>` : `<div class="sk-ex-none">No example yet. Click Edit to write one, or the sparkle to let the loaded model write one.</div>`}</div>`;
+  return `<div class="sk-ex">${head}${iconBtn("exEditBtn", "edit", "Edit the example message")}</div>${ex ? `<div class="sk-ex-text">${esc(ex)}</div>` : `<div class="sk-ex-none">No example yet. Click Edit to write one.</div>`}</div>`;
 }
 // The sparkle: the loaded model reads SKILL.md and writes a message that needs the skill. It goes into the box;
 // you check it and save. Reasoning off and 1,024 tokens: a short message, quickly.

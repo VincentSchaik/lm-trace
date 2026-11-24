@@ -330,7 +330,7 @@ The starter skills show the three layers and the best practices of the standard:
 
 Your skills are in `skills/` (the starters come from `skill-starters/`), and your archived chats are in `skill-chats/`. Git ignores them.
 
-When an answer has a `SKILL.md` in it, **Create skill** under the answer opens the editor with that text (**Update skill** when you have a skill with that name); you check it and save; the test message of the model becomes the example message of the new skill. In **Open**, the sparkle next to **Example message** lets the loaded model write an example from the `SKILL.md`. Use the **Create a skill** example with Max tokens at 4,096. A new starter joins your `skills/` folder once; a starter you uninstall does not come back (**Reset** brings all of them back).
+When an answer has a `SKILL.md` in it, **Create skill** under the answer opens the editor with that text (**Update skill** when you have a skill with that name); you check it and save; the test message of the model becomes the example message of the new skill. In **Open**, **Edit** on **Example message** has a sparkle in the corner of the box: it lets the loaded model write an example from the `SKILL.md`. Use the **Create a skill** example with Max tokens at 4,096. A new starter joins your `skills/` folder once; a starter you uninstall does not come back (**Reset** brings all of them back).
 
 Tests for saving skills (create, edit, rename, collisions, rollback), `/` activation, skill-creator-lite and Create skill: `python3 -m unittest discover tests` and `node --test tests/*.test.js`.
 
