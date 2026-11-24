@@ -145,6 +145,17 @@ def lint(folder, fm, body, err):
     return errors, hints
 
 
+def validate_text(skill_md):
+    """Validate SKILL.md text before it is saved (the Validate button). Save names the folder after the name in the
+    frontmatter, so the folder check uses that name."""
+    if not isinstance(skill_md, str):
+        return 400, {"error": {"message": "expected {\"skillMd\": str}"}}
+    fm, body, err = parse_skill_md(skill_md)
+    folder = fm.get("name").strip() if isinstance(fm.get("name"), str) else ""
+    errors, hints = lint(unicodedata.normalize("NFKC", folder), fm, body, err)
+    return 200, {"name": folder, "errors": errors, "hints": hints}
+
+
 # ---------------------------------------------------------------- the skills folder
 
 def seed():

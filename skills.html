@@ -737,12 +737,12 @@
   .sk-bin-none svg { width: 22px; height: 22px; }
   .sk-pdf { width: 100%; height: 70vh; border: 1px solid var(--line); border-radius: 10px; background: var(--field); }
   .sk-bin-info { margin-top: 8px; font-size: 12.5px; color: var(--ink-3); }
-  .sk-valid { margin: 0 0 14px; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--line); }
-  .sk-valid .hd { font: 500 12px var(--sans); color: var(--ink-3); margin-bottom: 6px; }
-  .sk-valid .hd code { font: 12px var(--mono); }
-  .sk-valid pre { margin: 0 0 6px; font: 13px/1.5 var(--mono); white-space: pre-wrap; }
-  .sk-valid.ok pre { color: #1a7f45; } :root[data-theme="dark"] .sk-valid.ok pre { color: #4ade80; }
-  .sk-valid.bad { border-color: rgba(217, 48, 37, .4); } .sk-valid.bad pre { color: var(--danger); }
+  .sk-valid { margin: 0 0 14px; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--line); display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 13px; }
+  .sk-valid .res { font-weight: 600; }
+  .sk-valid.ok .res { color: #1a7f45; } :root[data-theme="dark"] .sk-valid.ok .res { color: #4ade80; }
+  .sk-valid.bad { border-color: rgba(217, 48, 37, .4); } .sk-valid.bad .res { color: var(--danger); }
+  .sk-valid .lbl { color: var(--ink-3); }
+  .sk-valid ul { flex-basis: 100%; margin: 2px 0 0; padding-left: 20px; color: var(--danger); font: 12.5px/1.5 var(--mono); }
   .sk-lint { margin: 0 0 14px; padding: 10px 14px; border-radius: 10px; font-size: 13px; }
   .sk-lint.err { background: rgba(217, 48, 37, .08); color: var(--danger); }
   .sk-lint.hint { background: rgba(217, 142, 4, .1); color: var(--ink-2); }
@@ -2040,12 +2040,17 @@ function mdView(t) {
 }
 const metaHtml = sk => `<div class="sk-meta"><div class="hd">Metadata · layer 1, always loaded</div>${Object.entries(sk.frontmatter || {}).map(([k, v]) => `<span class="k">${esc(k)}</span><span>${esc(typeof v === "object" ? Object.entries(v).map(([a, b]) => `${a}: ${b}`).join("\n") : v)}</span>`).join("").replace(/\n/g, "<br>")}</div>`;
 const layersLine = sk => { const t = skTok[sk.name], n = k => t ? t[k].toLocaleString() : "…"; return `<div class="sk-layers"><span>Metadata · always <b>${n("l1")}</b> tokens</span><span>Instructions · when activated <b>${n("l2")}</b> tokens</span><span>Resources · as needed <b>${n("l3")}</b> tokens in ${sk.files.length} file${sk.files.length === 1 ? "" : "s"}</span></div>`; };
-// Validation: the checks of skills-ref validate (the reference library of the specification), run by the server,
-// shown as the command prints them. Best practices are hints, not part of the validation.
-const lintHtml = sk => `<div class="sk-valid ${sk.errors.length ? "bad" : "ok"}"><div class="hd">Validation · <code>skills-ref validate ./${esc(sk.name)}</code></div>`
-  + (sk.errors.length ? `<pre>Validation failed for ${esc(sk.name)}:\n${sk.errors.map(x => `  - ${esc(x)}`).join("\n")}</pre><div class="hint-s">A skill that is not valid cannot be turned on.</div>` : `<pre>Valid skill: ${esc(sk.name)}</pre>`)
-  + `<div class="hint-s">Checks the SKILL.md frontmatter and its naming conventions: the allowed fields, name (lowercase letters, digits and single hyphens, at most 64 characters, the same as the folder), description (at most 1,024 characters) and compatibility (at most 500).</div></div>`
-  + (sk.hints.length ? `<div class="sk-lint hint"><b>Best practices</b><ul>${sk.hints.map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>` : "")
+// Validation: the checks of skills-ref validate (the reference library of the specification), run by the server.
+// One line: the result, and an i with what it checks. The errors show only when the skill is not valid.
+const VALID_TIP = "skills-ref validate ./<skill>: the reference library of the Agent Skills specification. It checks the frontmatter of SKILL.md: only the allowed fields; the name (lowercase letters, digits and single hyphens, at most 64 characters, the same as the folder); the description (at most 1,024 characters); compatibility (at most 500). A skill that is not valid cannot be turned on.";
+function validHtml(errors) {
+  const n = errors.length;
+  return `<div class="sk-valid ${n ? "bad" : "ok"}"><span class="lbl">Validation</span><span class="res">${n ? `✗ Not valid · ${n} error${n === 1 ? "" : "s"}` : "✓ Valid"}</span>`
+    + `<span class="info" tabindex="0" data-tip-title="Validation · skills-ref validate" data-tip="${esc(VALID_TIP)}">i</span>`
+    + (n ? `<ul>${errors.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : "") + `</div>`;
+}
+const hintsHtml = hints => hints.length ? `<div class="sk-lint hint"><b>Best practices</b><ul>${hints.map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>` : "";
+const lintHtml = sk => validHtml(sk.errors) + hintsHtml(sk.hints)
   + (demoOf(sk) ? `<div class="sk-lint ${/^bad/i.test(demoOf(sk)) ? "err" : "hint"}">${esc(demoOf(sk))}</div>` : "");
 
 // The file tree of a skill, as in the Agent Skills specification: SKILL.md (required), then the recommended directories
@@ -2140,8 +2145,9 @@ function openEditorSk(name) {
   dlg(`<div class="sk-dlg-top"><h3 id="skDlgTitle">${sk ? `Edit ${esc(titleOf(sk.name))}` : "Create skill"}</h3><span class="grow"></span><button type="button" class="x-btn" data-dlg-close aria-label="Close">${ICON_X}</button></div>
     <p class="lead" style="font-size:13.5px">SKILL.md: YAML frontmatter between <code>---</code> lines (name, description), then the instructions. Other files (scripts/, references/, assets/, or any other) can be added in <code>skills/${esc(sk ? sk.name : "<name>")}/</code>.</p>
     <div class="sk-edit"><span>SKILL.md</span><div><textarea class="field" id="skMd" rows="18" spellcheck="false">${esc(text)}</textarea><div class="cnt" id="skCnt"></div></div></div>
+    <div id="skValid"></div>
     <div class="error" id="skEditErr"></div>
-    <div class="sk-dlg-foot"><span class="grow"></span><button type="button" class="btn ghost" data-dlg-close>Cancel</button><button type="button" class="btn" id="skSave">Save</button></div>`);
+    <div class="sk-dlg-foot"><button type="button" class="btn ghost" id="skValidate" title="Run the skills-ref checks on this text. It does not save.">Validate</button><span class="grow"></span><button type="button" class="btn ghost" data-dlg-close>Cancel</button><button type="button" class="btn" id="skSave">Save</button></div>`);
   const box = $("skDlg"), ta = $("skMd");
   box.querySelectorAll("[data-dlg-close]").forEach(b => b.onclick = closeDlg);
   const check = () => {
@@ -2154,7 +2160,12 @@ function openEditorSk(name) {
     $("skCnt").classList.toggle("over", bad.length > 0);
     return !bad.length;
   };
-  ta.oninput = check; check();
+  ta.oninput = () => { check(); $("skValid").innerHTML = ""; };  // a change makes the last result old
+  check();
+  $("skValidate").onclick = async () => {
+    try { const r = await post("/skill-validate", { skillMd: ta.value }); $("skValid").innerHTML = validHtml(r.errors) + hintsHtml(r.hints); }
+    catch (e) { $("skEditErr").textContent = e.message; }
+  };
   $("skSave").onclick = async () => {
     if (!check()) return;
     try { const r = await post("/skill-save", { skillMd: ta.value, old: sk ? sk.name : null }); closeDlg(); await loadSkills(); renderAll(); if (viewSk) { viewSk = r.name; renderView(); } }
