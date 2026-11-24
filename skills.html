@@ -695,6 +695,7 @@
   .sk-tree .dir { color: var(--ink); }
   .sk-tree button.tree-empty { color: var(--ink-3); }
   .sk-tree button.tree-empty:hover { color: var(--ink); }
+  .sk-tree button.tree-dir { color: var(--ink); }
   .sk-meta { background: var(--paper-2); border: 1px solid var(--line); border-radius: 10px; padding: 12px 16px; font: 13px var(--mono); display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 6px 16px; margin-bottom: 14px; }
   .sk-meta .k { color: var(--ink-3); }
   .sk-meta .hd { grid-column: 1 / -1; font: 500 12px var(--sans); color: var(--ink-3); }
@@ -2085,6 +2086,7 @@ function treeHtml(sk, current) {
   const top = new Map();  // first part of the path -> [rest paths] ("" for a file at the root)
   sk.files.forEach(f => { const i = f.path.indexOf("/"), k = i < 0 ? f.path : f.path.slice(0, i) + "/"; if (!top.has(k)) top.set(k, []); if (i >= 0) top.get(k).push(f.path); });
   ["scripts/", "references/", "assets/"].forEach(k => { if (!top.has(k)) top.set(k, []); });  // the recommended folders show also when empty
+  // A click on any folder opens Add files with that folder chosen.
   const order = [...top.keys()].sort((a, b) => { const r = x => ["scripts/", "references/", "assets/"].indexOf(x); const ra = r(a), rb = r(b); return (ra < 0) - (rb < 0) || ra - rb || a.localeCompare(b); });
   const rows = [["", "SKILL.md", "SKILL.md", "Required: metadata + instructions", ""]];
   order.forEach((k, ki) => {
@@ -2096,8 +2098,7 @@ function treeHtml(sk, current) {
   const w = Math.max(...rows.map(r => (r[0] + r[1]).length)) + 4;
   const line = ([br, label, path, note, layer, empty]) => {
     const name = path ? `<button type="button" data-sk-file="${esc(path)}"${path === current ? ' aria-current="true"' : ""}>${esc(label)}</button>`
-      : empty ? `<button type="button" class="tree-empty" data-sk-adddir="${esc(label)}" title="Empty: click to add files to ${esc(label)}">${esc(label)}</button>`
-      : `<span class="dir">${esc(label)}</span>`;
+      : `<button type="button" class="${empty ? "tree-empty" : "tree-dir"}" data-sk-adddir="${esc(label)}" title="${empty ? "Empty. " : ""}Click to add files to ${esc(label)}">${esc(label)}</button>`;
     if (empty) note = `${note} (empty)`;
     const gap = " ".repeat(Math.max(2, w - (br + label).length));
     return `<span class="br">${br}</span>${name}${note ? `${gap}<span class="cm"># ${esc(note)}${layer ? ` · <b>${layer}</b>` : ""}</span>` : ""}`;
