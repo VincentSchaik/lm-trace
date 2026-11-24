@@ -2283,7 +2283,7 @@ function exampleHtml(sk, inOpen) {
   if (inOpen && exEdit) return `<div class="sk-ex">${head}</div>
     <div class="sk-ex-box"><textarea id="exText" rows="6" placeholder="A message that needs this skill: a task in the words of a user.">${esc(ex)}</textarea>${gen}</div>
     <div class="sk-ex-bar"><span class="sk-ex-st" id="exSt"></span><span class="grow"></span>${builtIn && sk.example != null ? '<button type="button" class="btn ghost" id="exReset" title="Use the built-in example again">Reset</button>' : ""}<button type="button" class="btn ghost" id="exCancel">Cancel</button><button type="button" class="btn" id="exSave">Save</button></div></div>`;
-  return `<div class="sk-ex">${head}${iconBtn("exEditBtn", "edit", "Edit the example message")}</div>${ex ? `<div class="sk-ex-text">${esc(ex)}</div>` : `<div class="sk-ex-none">No example yet. Click Edit to write one.</div>`}</div>`;
+  return `<div class="sk-ex">${head}${iconBtn("exEditBtn", "edit", "Edit the example message")}</div>${ex ? `<div class="sk-ex-text">${esc(ex)}</div><div class="sk-ex-bar"><span class="grow"></span><button type="button" class="btn" id="exTryOpen" title="Put the example in the message box, on the Chat tab">Try now</button></div>` : `<div class="sk-ex-none">No example yet. Click Edit to write one.</div>`}</div>`;
 }
 // The sparkle: the loaded model reads SKILL.md and writes a message that needs the skill. It goes into the box;
 // you check it and save. Reasoning off and 1,024 tokens: a short message, quickly.
@@ -2304,6 +2304,7 @@ async function genExample(sk) {
 }
 function wireExample(sk) {
   if ($("exEditBtn")) $("exEditBtn").onclick = () => { exEdit = true; renderView().then(() => $("exText")?.focus()); };
+  if ($("exTryOpen")) $("exTryOpen").onclick = () => tryNow(skills.find(x => x.name === sk.name) || sk);
   if ($("exGenBtn")) $("exGenBtn").onclick = () => genExample(skills.find(x => x.name === sk.name) || sk);
   if (!$("exText")) return;
   const store = async example => {
