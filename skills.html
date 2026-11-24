@@ -2275,7 +2275,7 @@ const exampleOf = sk => sk.example ?? PRESETS.find(p => p.skill === sk.name)?.ms
 var exEdit = false;
 function exampleHtml(sk, inOpen) {
   const ex = exampleOf(sk), builtIn = PRESETS.some(p => p.skill === sk.name);
-  const head = `<div class="sk-ex-hd"><b>Example message</b><span>Not part of the skill: LM Trace keeps it. Try now puts it in the message box.</span><span class="grow"></span>`;
+  const head = `<div class="sk-ex-hd"><b>Example message</b><span class="grow"></span>`;
   const gen = iconBtn("exGenBtn", "sparkle", `Write an example with the loaded model (${$("chatModel").value || "no model"})`);
   if (inOpen && exEdit) return `<div class="sk-ex">${head}${gen}</div>
     <textarea id="exText" rows="6" placeholder="A message that needs this skill: a task in the words of a user.">${esc(ex)}</textarea>
