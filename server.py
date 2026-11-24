@@ -19,6 +19,7 @@ facts as vectors in a Chroma collection on disk. The page sends the vectors (fro
 """
 import atexit, glob, http.server, json, math, os, re, shutil, signal, socket, struct, subprocess, sys, threading, time, urllib.parse, urllib.request, urllib.error
 import mcp_lab  # the MCP page: mcp.json, the Inspect client, and the MCP server of LM Trace
+import skills_lab  # the Skills page: the skill folders, the three skill tools, import from GitHub
 
 LMS = os.environ.get("LMS_URL", "http://localhost:1234")
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -46,11 +47,11 @@ def lms_headers():
 PORT = int(os.environ.get("PORT", "8765"))
 # Saved lists: user prompts and system prompts, one JSON file each.
 LISTS = {k: os.path.join(ROOT, k.strip("/") + ".json") for k in ("/prompts", "/system-prompts", "/few-shot", "/schemas", "/presets",
-                                                                   "/embed-texts", "/rag-docs", "/rag-questions", "/tools", "/model-formats", "/embed-prefixes", "/tool-prompts", "/mcp-prompts", "/mcp-meta")}
+                                                                   "/embed-texts", "/rag-docs", "/rag-questions", "/tools", "/model-formats", "/embed-prefixes", "/tool-prompts", "/mcp-prompts", "/mcp-meta", "/skill-prompts")}
 # Saved chats of the Tools page: one JSON file each, view only. The id is the file name.
 CHATS = os.path.join(ROOT, "chats")
 # Saved chats of the MCP page: the same format, in their own folder.
-CHAT_STORES = {"/chats/": CHATS, "/mcp-chats/": os.path.join(ROOT, "mcp-chats")}
+CHAT_STORES = {"/chats/": CHATS, "/mcp-chats/": os.path.join(ROOT, "mcp-chats"), "/skill-chats/": os.path.join(ROOT, "skill-chats")}
 CHAT_ID = re.compile(r"^[0-9a-z-]{1,40}$")
 
 
@@ -102,7 +103,7 @@ def embed_prefixes(model):
     row = next((r for r in rows if r.get("name", "").lower() == m), None) \
         or next((r for r in rows if r.get("name") and r["name"].lower() in m), None)
     return (row.get("query", ""), row.get("doc", "")) if row else ("", "")
-PAGES = ("/index.html", "/embeddings.html", "/rag.html", "/memory.html", "/tools.html", "/mcp.html", "/settings.html", "/composer.js", "/composer.css", "/lms-status.js", "/theme.css")
+PAGES = ("/index.html", "/embeddings.html", "/rag.html", "/memory.html", "/tools.html", "/mcp.html", "/skills.html", "/settings.html", "/composer.js", "/composer.css", "/lms-status.js", "/theme.css")
 MEM_DIR = os.path.join(ROOT, "agent-memory")  # long-term memory of the Memory page
 LMS_CLI = shutil.which("lms") or os.path.expanduser("~/.lmstudio/bin/lms")
 # Only local names: a different Host means DNS rebinding; a different Origin means another website.
@@ -966,9 +967,18 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     return self._json(200, json.load(f))
             except FileNotFoundError:
                 return self._json(200, LIST_START.get(self.path, []))
-        if self.path in ("/chats", "/mcp-chats"):
+        if self.path == "/skills":  # the Skills page: every skill folder, with its SKILL.md, files and problems
+            return self._json(200, skills_lab.list_skills())
+        if self.path.startswith("/skill-file?"):  # one file of a skill, to show it (the model reads files with read_skill_file)
+            q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            d = skills_lab.skill_dir(q.get("name", [""])[0])
+            p = d and skills_lab.safe_path(d, q.get("path", [""])[0])
+            if not p:
+                return self._json(404, {"error": {"message": "No such file."}})
+            return self._json(200, {"text": open(p, encoding="utf-8", errors="replace").read(skills_lab.MAX_FILE)})
+        if self.path in ("/chats", "/mcp-chats", "/skill-chats"):
             return self._json(200, chat_list(CHAT_STORES[self.path + "/"]))
-        if self.path.startswith(("/chats/", "/mcp-chats/")):
+        if self.path.startswith(("/chats/", "/mcp-chats/", "/skill-chats/")):
             f = chat_path(self.path)
             try:
                 with open(f) as h:
@@ -1051,7 +1061,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             global sdk_client
             sdk_client = None  # the Tokenizer logs in again with the new token
             return self._json(200, {"set": bool(TOKEN), "source": "file" if TOKEN else None})
-        if self.path.startswith(("/chats/", "/mcp-chats/")):
+        if self.path.startswith(("/chats/", "/mcp-chats/", "/skill-chats/")):
             f = chat_path(self.path)
             if not f:
                 return self._json(400, {"error": "bad chat id"})
@@ -1149,6 +1159,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return self._json(*nearest(key, ids))
         if self.path.startswith("/agent-memory/"):
             return self._memory(self.path[len("/agent-memory/"):])
+        if self.path.startswith("/skill"):  # the Skills page
+            return self._skills(self.path)
         if self.path == "/tool-run":
             try:
                 req = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))))
@@ -1159,6 +1171,32 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 return self._json(400, {"error": {"message": "expected {\"tool\": {...}, \"args\": {...}}"}})
             return self._json(200, tool_run(tool, args))
         self.send_error(404)
+
+    def _skills(self, path):
+        """POST /skill-call {tool, args}: one of the three skill tools. /skill-save {skillMd, old?}: create or change
+        SKILL.md. /skill-on {name, on}. /skill-delete {name}. /skill-import {url}. /skills-reset."""
+        try:
+            req = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
+            if not isinstance(req, dict):
+                raise ValueError
+        except ValueError:
+            return self._json(400, {"error": {"message": "expected a JSON object"}})
+        if path == "/skill-call":
+            tool, args = req.get("tool"), req.get("args")
+            if not isinstance(tool, str) or not isinstance(args, dict):
+                return self._json(400, {"error": {"message": "expected {\"tool\": str, \"args\": {...}}"}})
+            return self._json(200, skills_lab.call(tool, args))
+        if path == "/skill-save":
+            return self._json(*skills_lab.save_skill(req.get("name"), req.get("skillMd"), req.get("old")))
+        if path == "/skill-on":
+            return self._json(*skills_lab.set_on(req.get("name"), req.get("on") is True))
+        if path == "/skill-delete":
+            return self._json(*skills_lab.delete_skill(req.get("name")))
+        if path == "/skill-import":
+            return self._json(*skills_lab.import_github(req.get("url")))
+        if path == "/skills-reset":
+            return self._json(*skills_lab.reset())
+        return self.send_error(404)
 
     def _mcp_server(self):
         """The MCP server of LM Trace (Streamable HTTP): one JSON-RPC message in, one JSON answer out."""

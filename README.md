@@ -310,6 +310,25 @@ The page has two tabs:
 
 Your tools are in `tools.json`, and your archived chats are in `chats/`. Git ignores them.
 
+## Skills
+
+Open **Skills** in the sidebar. The page is a playground for [Agent Skills](https://agentskills.io): folders of instructions that a model loads only when a task needs them. A skill is a folder with a `SKILL.md` file (YAML frontmatter with a `name` and a `description`, then instructions in Markdown) and optional files: scripts, formats and references.
+
+LM Studio has no skills of its own, so LM Trace is the harness, as on the Tools page. The model gets more of a skill as it needs it (progressive disclosure):
+
+1. **Layer 1, always loaded:** the harness puts the name and description of each skill that is on into the system prompt.
+2. **Layer 2, loaded when activated:** the model calls `load_skill`, and gets the instructions of `SKILL.md` and the list of its files.
+3. **Layer 3, loaded when needed:** the model calls `read_skill_file` to read a file of the skill, or `run_skill_script` to run one of its scripts. A script runs on your computer, so the page asks you before each run: **Allow** or **Deny**.
+
+The page has two tabs:
+
+- **Skills:** each skill with its source and an **On** switch. The **⋯** menu has **Open** (the files of the skill, with the metadata and the tokens of each layer), **Details**, **Edit** and **Delete**. **Create skill** writes a new `SKILL.md`, with the name and description checked against the standard. **Import from GitHub** downloads a skill folder, for example from [anthropics/skills](https://github.com/anthropics/skills); an imported skill starts off.
+- **Chat:** the same rows as on the Tools page. A **Skill** row shows each layer as it joins the context. Under the chat, the bar shows the tokens of each layer in the context.
+
+The starter skills show the three layers and the best practices of the standard: **meeting-notes** (format files in `references/` and a script in `scripts/`), **release-notes** (a good example) and **release-notes-verbose** (a bad example: a vague description, text that the model already knows, a menu of formats, and rules hidden in a reference file). Try the same message with each release-notes skill and compare the tokens and the answers.
+
+Your skills are in `skills/` (the starters come from `skill-starters/`), and your archived chats are in `skill-chats/`. Git ignores them.
+
 ## Limitations
 
 These limitations come from LM Studio:

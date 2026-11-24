@@ -27,3 +27,9 @@ private/
 # The API token of LM Studio (Settings page). Never push.
 lmstudio-token
 mcp-chats/
+
+# The Skills page: your skills (starters come from skill-starters/), their switches, examples and chats.
+skills/
+skills-meta.json
+skill-prompts.json
+skill-chats/
