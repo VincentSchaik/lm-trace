@@ -806,6 +806,16 @@
   .stats > span { white-space: nowrap; }
   .stats-row .stats { margin-left: auto; }
   .layer-tag { font: 500 11px var(--sans); padding: 1px 7px; border-radius: 9px; color: #fff; margin-left: 6px; }
+  .layer-tag.L-2 { background: #2563eb; } .layer-tag.L-3 { background: #7c3aed; }
+  /* The / menu: the skills that are on, above the message box, while you type /name. */
+  .slash-menu { position: absolute; left: 0; bottom: calc(100% + 10px); z-index: 30; width: min(460px, 100%); max-height: 300px; overflow-y: auto;
+    padding: 6px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); box-shadow: 0 12px 32px -8px rgba(0,0,0,.25); }
+  .slash-menu button { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: baseline; width: 100%; padding: 7px 10px; border: 0; border-radius: 8px;
+    background: transparent; color: var(--ink); font: 14px var(--sans); text-align: left; cursor: pointer; }
+  .slash-menu button[aria-selected="true"], .slash-menu button:hover { background: var(--paper); }
+  .slash-menu .nm { font-weight: 500; white-space: nowrap; }
+  .slash-menu .ds { color: var(--ink-3); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .slash-menu .none { padding: 8px 10px; font-size: 13px; color: var(--ink-3); }
 </style>
 <link rel="stylesheet" href="/theme.css">
 <link rel="stylesheet" href="/composer.css">
@@ -938,7 +948,7 @@
   </section>
   <section class="panel sendbar" aria-label="Your message">
     <div class="cbox">
-      <div class="cbox-top"><textarea id="msg" class="cbox-input" rows="1" placeholder="Ask something, or select an example." title="Enter sends the message. Shift + Enter adds a line."></textarea><div class="input-tools"><button type="button" class="copy" id="saveMsg" title="Save as an example: it shows below the message box" aria-label="Save as an example"></button><button type="button" class="copy" id="copyMsg" title="Copy the message" aria-label="Copy the message"></button></div></div>
+      <div class="cbox-top"><textarea id="msg" class="cbox-input" rows="1" placeholder="Ask something, select an example, or type / for a skill." title="Enter sends the message. Shift + Enter adds a line. Type / at the start to activate a skill yourself." role="combobox" aria-autocomplete="list" aria-controls="slashMenu" aria-expanded="false"></textarea><div class="slash-menu" id="slashMenu" role="listbox" aria-label="Skills" hidden></div><div class="input-tools"><button type="button" class="copy" id="saveMsg" title="Save as an example: it shows below the message box" aria-label="Save as an example"></button><button type="button" class="copy" id="copyMsg" title="Copy the message" aria-label="Copy the message"></button></div></div>
       <div class="cbox-bar">
         <div class="perm-wrap plus-wrap"><button type="button" class="perm-btn" id="plusBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="plusMenu" title="Skills" aria-label="Skills"></button>
           <div class="perm-menu plus-menu" id="plusMenu" role="menu" aria-label="Add" hidden></div>
@@ -984,6 +994,7 @@
 
 <div class="sk-dlg-back" id="skDlg" hidden><div class="sk-dlg" role="dialog" aria-modal="true" aria-labelledby="skDlgTitle"></div></div>
 <script src="/composer.js"></script>
+<script src="/skill-slash.js"></script>
 <script>
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -1054,7 +1065,7 @@ const skillsOn = () => skills.filter(s => s.on && !s.errors.length);
 function skillTools() {
   const names = skillsOn().map(s => s.name), N = P("name", "string", true, "The name of the skill, as in the list of skills", { enum: names });
   return [
-    { name: "load_skill", on: true, description: "Load a skill: returns the instructions of its SKILL.md and the list of its other files. Call it first when the task matches the description of a skill, then follow the instructions.", params: [N] },
+    { name: "load_skill", on: true, description: "Load a skill: returns the instructions of its SKILL.md and the list of its other files. Call it first when the task matches the description of a skill, then follow the instructions. Do not call it for a skill whose <skill_content> block is already in the conversation.", params: [N] },
     { name: "read_skill_file", on: true, description: "Read one file of a skill that you loaded, for example a format or a reference file that its instructions name. Returns the text of the file.", params: [N, P("path", "string", true, "The path of the file in the skill folder, as load_skill lists it, for example references/team-meeting.md")] },
     { name: "run_skill_script", on: true, description: "Run one script of a skill that you loaded, when its instructions say so. The input goes to the script on stdin. Returns what the script prints. The user approves each run.", params: [N, P("path", "string", true, "The path of the script in the skill folder, for example scripts/extract_action_items.py"), P("input", "string", false, "Text for the script, on stdin, for example the transcript")] },
   ];
@@ -1071,7 +1082,8 @@ const signature = t => `${t.name}(${t.params.map(p => `${p.name}${p.required ? "
 let noteText = "";
 // Metadata (layer 1), as text in the system prompt: the <available_skills> block in the format of skills-ref to-prompt
 // (the reference library of the Agent Skills specification): name, description and location of each skill, escaped.
-const SKILL_INTRO = "You have skills: folders of instructions for special tasks. When a task matches the description of a skill, call load_skill with its name first, then follow its instructions.";
+// The last sentence is for /name: the harness already put the instructions in the message, so no load_skill call is needed.
+const SKILL_INTRO = "You have skills: folders of instructions for special tasks. When a task matches the description of a skill, call load_skill with its name first, then follow its instructions. If a <skill_content> block with the skill is already in the conversation, do not call load_skill: follow the instructions in the block.";
 const xmlEsc = t => String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#x27;");
 const skillEntry = x => `<skill>\n<name>\n${xmlEsc(x.name)}\n</name>\n<description>\n${xmlEsc(x.description)}\n</description>\n<location>\nskills/${x.name}/SKILL.md\n</location>\n</skill>`;
 function skillListText(list = skillsOn()) {
@@ -1669,12 +1681,32 @@ async function must(next, approve, force) {
 async function runTurn(text) {
   const model = $("chatModel").value;
   if (!model) throw new Error("Select a chat model.");
+  // /name at the start: you activate the skill, not the model. The harness puts its instructions before your
+  // message in a <skill_content> block (agentskills.io, "User-explicit activation"). Not again if it is already in the chat.
+  const slash = SkillSlash.parseSlash(text);
+  let content = text, act = null;
+  if (slash) {
+    const fail = m => Object.assign(new Error(m), { slash: true });
+    if (SkillSlash.skillInHistory(history, slash.name)) {
+      if (!slash.rest) throw fail(`The skill ${slash.name} is already active in this chat. Type your task after /${slash.name}.`);
+      content = slash.rest; act = { name: slash.name, dup: true };
+    } else {
+      let r;
+      try { r = await post("/skill-activate", { name: slash.name }, ctrl.signal); }
+      catch (e) { if (e.name === "AbortError") throw e; throw fail(e.message); }
+      content = SkillSlash.withSkill(r.result, slash.rest); act = { name: slash.name, result: r.result, files: r.files, rest: slash.rest };
+    }
+  }
   const turn = { user: text, steps: [], answer: null, done: false, t0: Date.now() };
   chat.push(turn);
   const before = history.length;
   // A new question: the thinking of the earlier turns is removed, as the chat templates of the models do.
   history.forEach(m => { delete m.reasoning_content; });
-  history.push({ role: "user", content: text });
+  history.push({ role: "user", content });
+  if (act) {
+    const a = step(turn, { type: "activate", call: 1, ...act });
+    if (!act.dup) countText(model, act.result).then(n => { a.tokens = n; renderChat(true); });
+  }
   try {
     let lastResults = 0;
     for (let call = 1; ; call++) {
@@ -1737,9 +1769,14 @@ async function runTurn(text) {
         if (!ok) { results.push({ call: c, ok: false, text: `The user denied the script ${ck.args.path}.` }); continue; }
         const run = step(turn, { type: "run", call, c, args: ck.args, wait: true });
         const tr = Date.now();
-        const r = await post("/skill-call", { tool: c.name, args: ck.args }, ctrl.signal);
+        // The skill is already in the conversation (from /name or an earlier load_skill): the harness does not add the
+        // instructions again (agentskills.io, "Deduplicate activations"). history without its last message: this call.
+        const dup = c.name === "load_skill" && SkillSlash.skillInHistory(history.slice(0, -1), ck.args.name);
+        const r = dup ? { ok: true, dup: true, result: `The skill ${ck.args.name} is already loaded: its instructions are earlier in this conversation. Follow them. Do not load it again.` }
+          : await post("/skill-call", { tool: c.name, args: ck.args }, ctrl.signal);
         r.ms = r.ms ?? Date.now() - tr;
-        r.request = c.name === "load_skill" ? `Read skills/${ck.args.name}/SKILL.md (the body, after the frontmatter) and list the other files.`
+        r.request = r.dup ? "Nothing to read: the skill is already in the conversation."
+          : c.name === "load_skill" ? `Read skills/${ck.args.name}/SKILL.md (the body, after the frontmatter) and list the other files.`
           : c.name === "read_skill_file" ? `Read skills/${ck.args.name}/${ck.args.path}`
           : `${r.cmd || ck.args.path}\nstdin: ${(ck.args.input || "").length.toLocaleString()} characters`;
         r.layer = c.name === "load_skill" ? 2 : 3;
@@ -1872,14 +1909,23 @@ function rowHtml(s, k) {
   }
   if (s.type === "skip") return row(k, "Harness", tipped("Skipping tool", "The call has an error, so the tool does not run."), "", `<pre class="pre">${esc(s.text)}</pre>`, "bad");
   if (s.type === "decide") return row(k, s.auto ? "Harness" : "You", s.ok ? tipped("Allowed", "You allow the script, so it runs on this computer.") : tipped("Denied", (s.auto ? "Permissions is Deny all, so the harness denies the call." : "You deny the tool call.") + " The model gets: the tool was denied by the user."), "", "", s.ok ? "" : "bad");
+  if (s.type === "activate") {
+    if (s.dup) return row(k, "You", tipped(`Activating skill: ${s.name}: already active`, "The skill is already in this chat, so the harness does not add it again. Only your message goes to the model."), "", "");
+    const what = tipped(`Activating skill: ${s.name}`, `You typed /${s.name}, so you activate the skill, not the model. The harness reads the body of SKILL.md and the list of the other files, and puts them before your message in a <skill_content> block. The model does not call load_skill.`)
+      + `<span class="layer-tag L-2">Instructions</span>`;
+    const body = `<p class="lbl">${tipped("Your message to the model", "The skill block, then the text you typed after the name.")} · ${plural(SkillSlash.withSkill(s.result, s.rest).length, "character")}</p>`
+      + `<pre class="pre">${esc(SkillSlash.withSkill(s.result, s.rest))}</pre>`;
+    return row(k, "You", what, s.tokens != null ? `${s.tokens.toLocaleString()} tokens` : "", body);
+  }
   if (s.type === "run") {
     const nm = s.c.name, a = s.args || {}, L = nm === "load_skill" ? 2 : 3;
-    const label = nm === "load_skill" ? `Activating skill: ${a.name}` : nm === "read_skill_file" ? `Reading file: ${a.path}` : `Running script: ${a.path}`;
+    const label = nm === "load_skill" ? `Activating skill: ${a.name}${s.r?.dup ? ": already loaded" : ""}` : nm === "read_skill_file" ? `Reading file: ${a.path}` : `Running script: ${a.path}`;
     if (s.wait) return row(k, "Skill", `<span class="busy-dot" aria-hidden="true"></span>${esc(label)}…`, "", "");
     const r = s.r;
-    const tip = L === 2 ? "Instructions: the harness reads the body of SKILL.md (the instructions) and the list of the other files. It goes to the model as the result of load_skill."
+    const tip = r.dup ? "The skill is already in the conversation, so the harness does not add its instructions again. The model gets a short note instead."
+      : L === 2 ? "Instructions: the harness reads the body of SKILL.md (the instructions) and the list of the other files. It goes to the model as the result of load_skill."
       : nm === "read_skill_file" ? "Resources: the harness reads one file of the skill. The model asked for it because the instructions name it." : "Resources: the server runs the script of the skill on this computer, with the input on stdin. Only what the script prints goes to the model, not its code.";
-    const what = tipped(r.ok ? label : `${label}: failed`, tip) + `<span class="layer-tag L-${L}">${L === 2 ? "Instructions" : "Resources"}</span>`;
+    const what = tipped(r.ok ? label : `${label}: failed`, tip) + (r.dup ? "" : `<span class="layer-tag L-${L}">${L === 2 ? "Instructions" : "Resources"}</span>`);
     const meta = [r.tokens != null ? `${r.tokens.toLocaleString()} tokens` : "", `${r.ms} ms`].filter(Boolean).join(" · ");
     const body = `<p class="lbl">${tipped("Request", "What the server does.")}</p><pre class="pre">${esc(r.request || "")}</pre>`
       + `<p class="lbl">Result · ${plural(String(r.result).length, "character")}</p><pre class="pre">${esc(r.result)}</pre>`;
@@ -2610,6 +2656,7 @@ async function send(text) {
     if (t && e.name === "AbortError") t.stopped = true;  // a failed request shows its red row and the error, not "Stopped."
     if (e.name === "AbortError") setStatus("Stopped.");
     else $("error").textContent = contextError(String(e.message || e));
+    if (e.slash && !$("msg").value) { $("msg").value = text; fit($("msg")); syncSave(); }  // a / error: nothing was sent, so you keep your message
     return false;
   } finally { busy = false; ctrl = null; setBusy(); renderChat(); saveChat(); }
 }
@@ -2638,9 +2685,46 @@ $("sendBtn").onclick = () => {
   if (busy) { stop(); return; }
   const text = $("msg").value.trim();
   if (!text) return;
-  $("msg").value = ""; fit($("msg")); syncSave(); setStatus("");
+  $("msg").value = ""; fit($("msg")); syncSave(); setStatus(""); renderSlash();
   send(text);
 };
+// ---- The / menu: type / at the start of the message to pick a skill that is on. ↑ ↓ move, Enter or Tab picks, Esc closes.
+let slashSel = 0, slashQ = null, slashOff = false, slashList = [];
+function renderSlash() {
+  const box = $("msg"), menu = $("slashMenu");
+  const q = busy || viewing || slashOff || document.activeElement !== box ? null : SkillSlash.slashQuery(box.value, box.selectionStart);
+  if (q !== slashQ) slashSel = 0;
+  slashQ = q;
+  if (q === null) { menu.hidden = true; slashList = []; box.setAttribute("aria-expanded", "false"); box.removeAttribute("aria-activedescendant"); return; }
+  slashList = SkillSlash.slashMatches(q, skillsOn());
+  menu.innerHTML = slashList.length
+    ? slashList.map((sk, i) => `<button type="button" role="option" id="slashOpt${i}" tabindex="-1" aria-selected="${i === slashSel}" data-slash="${esc(sk.name)}" title="${esc(sk.description)}"><span class="nm">/${esc(sk.name)}</span><span class="ds">${esc(sk.description)}</span></button>`).join("")
+    : `<div class="none">${skillsOn().length ? `No skill that is on matches /${esc(q)}.` : "No skills are on. Turn one on with + › Skills."}</div>`;
+  menu.hidden = false; box.setAttribute("aria-expanded", "true");
+  if (slashList.length) { box.setAttribute("aria-activedescendant", `slashOpt${slashSel}`); $(`slashOpt${slashSel}`).scrollIntoView({ block: "nearest" }); }
+  else box.removeAttribute("aria-activedescendant");
+}
+function pickSlash(name) {
+  const box = $("msg");
+  box.value = SkillSlash.pickSkill(box.value, name);
+  box.focus(); box.setSelectionRange(box.value.length, box.value.length);
+  fit(box); syncSave(); renderSlash();
+}
+$("msg").addEventListener("keydown", e => {
+  if ($("slashMenu").hidden || e.isComposing) return;
+  const n = slashList.length;
+  if ((e.key === "ArrowDown" || e.key === "ArrowUp") && n) { e.preventDefault(); slashSel = (slashSel + (e.key === "ArrowDown" ? 1 : n - 1)) % n; renderSlash(); }
+  // Enter on a name that you typed in full sends the message; otherwise Enter and Tab complete the name.
+  else if (((e.key === "Enter" && !e.shiftKey) || e.key === "Tab") && n && !(e.key === "Enter" && slashList[slashSel].name === slashQ)) {
+    e.preventDefault(); e.stopImmediatePropagation(); pickSlash(slashList[slashSel].name);
+  }
+  else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); slashOff = true; renderSlash(); }
+});
+$("msg").addEventListener("input", () => { slashOff = false; renderSlash(); });
+["click", "focus", "blur"].forEach(ev => $("msg").addEventListener(ev, () => setTimeout(renderSlash)));
+$("msg").addEventListener("keyup", e => { if (["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) renderSlash(); });
+$("slashMenu").addEventListener("mousedown", e => e.preventDefault());  // keep the focus in the message box
+$("slashMenu").onclick = e => { const b = e.target.closest("[data-slash]"); if (b) pickSlash(b.dataset.slash); };
 $("msg").addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); $("sendBtn").click(); } });
 $("msg").addEventListener("input", () => fit($("msg")));
 $("newChat").onclick = () => { if (busy) return; newChat(); renderChat(); setStatus(""); };

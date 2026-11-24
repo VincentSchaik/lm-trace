@@ -511,6 +511,26 @@ def reset():
     return 200, {"ok": True}
 
 
+# ---------------------------------------------------------------- user-explicit activation
+
+def activate(name):
+    """/name in the message box: the user, not the model, activates the skill (agentskills.io/integrate-skills,
+    "User-explicit activation"). The harness adds the instructions itself, so no tool call is needed. Returns
+    (status, {name, result, files}): result is the <skill_content> block that goes before the user's message."""
+    sk = next((x for x in list_skills() if x["name"] == name), None) if isinstance(name, str) else None
+    if not sk:
+        names = [x["name"] for x in list_skills() if x["on"] and not x["errors"]]
+        return 404, {"error": {"message": f"There is no skill named /{name}. The skills are: {', '.join('/' + n for n in names) or 'none'}."}}
+    if sk["errors"]:
+        return 409, {"error": {"message": f"The skill {name} is not valid: {sk['errors'][0]} Fix it in Skills first."}}
+    if not sk["on"]:
+        return 409, {"error": {"message": f"The skill {name} is off. Turn it on in Skills first."}}
+    files = [f["path"] for f in sk["files"]]
+    result = (f'<skill_content name="{name}">\n{sk["body"].strip()}\n\nSkill folder: skills/{name}\n'
+              f'Files: {", ".join(files) if files else "none"}\n</skill_content>')
+    return 200, {"name": name, "result": result, "files": files}
+
+
 # ---------------------------------------------------------------- the three skill tools
 
 def call(tool, args):

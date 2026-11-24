@@ -317,7 +317,7 @@ Open **Skills** in the sidebar. The page is a playground for [Agent Skills](http
 LM Studio has no skills of its own, so LM Trace is the harness, as on the Tools page. The model gets more of a skill as it needs it (progressive disclosure):
 
 1. **Metadata** (~100 tokens, always loaded): the harness puts the name and description of each skill that is on into the system prompt, as an `<available_skills>` block in the format of `skills-ref to-prompt`.
-2. **Instructions** (fewer than 5,000 tokens recommended, loaded when the skill is activated): the model calls `load_skill`, and gets the body of `SKILL.md` and the list of its files.
+2. **Instructions** (fewer than 5,000 tokens recommended, loaded when the skill is activated): the model calls `load_skill`, and gets the body of `SKILL.md` and the list of its files. You can also activate a skill yourself: type `/` at the start of the message and pick a skill that is on (↑ ↓, then Enter or Tab), then type your task, for example `/meeting-notes Team standup. …`. The harness puts the instructions before your message in a `<skill_content>` block, so the model does not call `load_skill` ("User-explicit activation" in the [client guide](https://agentskills.io/integrate-skills)). A skill that is already in the chat is not added again, by `/` or by `load_skill`.
 3. **Resources** (as needed): files in `scripts/`, `references/`, `assets/` or any other folder. The model calls `read_skill_file` to read one, or `run_skill_script` to run a script. A script runs on your computer, so the page asks you before each run: **Allow** or **Deny**.
 
 The page has two tabs:
@@ -330,7 +330,7 @@ The starter skills show the three layers and the best practices of the standard:
 
 Your skills are in `skills/` (the starters come from `skill-starters/`), and your archived chats are in `skill-chats/`. Git ignores them.
 
-Tests for saving skills (create, edit, rename, collisions, rollback): `python3 -m unittest discover tests`.
+Tests for saving skills (create, edit, rename, collisions, rollback) and for `/` activation: `python3 -m unittest discover tests` and `node --test tests/*.test.js`.
 
 ## Limitations
 
