@@ -370,12 +370,12 @@ def save_skill(name, text, old=None):
         made = not src
         main = os.path.basename(find_skill_md(work) or "SKILL.md") if src else "SKILL.md"  # keep skill.md in lowercase
         tmp = os.path.join(work, ".SKILL.md.tmp")
-        prev, moved = None, False
+        prev, moved, replaced = None, False, False
         try:
             if made:
                 os.makedirs(d)
             else:
-                with open(os.path.join(work, main), encoding="utf-8", errors="replace") as f:
+                with open(os.path.join(work, main), "rb") as f:  # the exact bytes, to restore them on a failure
                     prev = f.read()
             with open(tmp, "w", encoding="utf-8") as f:
                 f.write(text)
@@ -385,25 +385,39 @@ def save_skill(name, text, old=None):
                 moved = True
                 tmp = os.path.join(d, ".SKILL.md.tmp")
             os.replace(tmp, os.path.join(d, main))
+            replaced = True
             m = meta.pop(old, None) if rename else meta.get(new)
             meta[new] = m or {"source": "Created", "on": True}
             write_meta(meta)
         except OSError as e:
-            # Undo in the reverse order: the file, the folder, the temp file.
-            try:
-                if prev is not None:
-                    with open(os.path.join(d if moved else work, main), "w", encoding="utf-8") as f:
-                        f.write(prev)
-                if moved:
-                    os.rename(d, src)
-                if made and os.path.isdir(d):
-                    shutil.rmtree(d, ignore_errors=True)
-                for t in (os.path.join(work, ".SKILL.md.tmp"), os.path.join(d, ".SKILL.md.tmp")):
-                    if os.path.exists(t):
-                        os.remove(t)
-            except OSError:
-                pass
-            return 500, {"error": {"message": f"Could not save the skill: {e.strerror or e}"}}
+            # Undo only the steps that happened, in the reverse order. Each undo step is atomic, and a failed undo
+            # step is reported, not hidden.
+            here = d if moved else work
+            undo_errors = []
+            def undo(what, fn):
+                try:
+                    fn()
+                except OSError as x:
+                    undo_errors.append(f"{what} ({x.strerror or x})")
+            def restore():  # the old SKILL.md back: a temp file, then os.replace, so the file is never half written
+                u = os.path.join(here, ".SKILL.md.undo")
+                with open(u, "wb") as f:
+                    f.write(prev)
+                os.replace(u, os.path.join(here, main))
+            if replaced and prev is not None:
+                undo("restore SKILL.md", restore)
+            if moved:
+                undo(f"rename the folder back to {old}", lambda: os.rename(d, src))
+            if made and os.path.isdir(d):
+                undo("remove the new folder", lambda: shutil.rmtree(d))
+            for t in {os.path.join(work, ".SKILL.md.tmp"), os.path.join(d, ".SKILL.md.tmp"),
+                      os.path.join(here, ".SKILL.md.undo"), META + ".tmp"}:
+                if os.path.exists(t):
+                    undo(f"remove {os.path.basename(t)}", lambda t=t: os.remove(t))
+            msg = f"Could not save the skill: {e.strerror or e}."
+            if undo_errors:
+                msg += " The undo also failed, check the folder by hand: " + "; ".join(undo_errors) + "."
+            return 500, {"error": {"message": msg}}
     return 200, {"name": new}
 
 

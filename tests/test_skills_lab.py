@@ -145,6 +145,55 @@ class SaveSkill(unittest.TestCase):
             self.assertEqual(sl.save_skill(None, md("beta"), old="alpha")[0], 500)
         self.assertEqual(self.state(), before)
 
+    # ---- the undo touches only what the save changed, and reports its own failures
+    def test_original_untouched_when_temp_write_fails(self):
+        # The save fails before SKILL.md is replaced: the undo must not write SKILL.md at all. Every write to the
+        # skill folder fails here, so a needless restore would truncate the original or report an undo failure.
+        sl.save_skill(None, md("alpha"))
+        before = self.state()
+        real = open
+        def bad_open(path, mode="r", *a, **k):
+            if "w" in mode and os.path.dirname(str(path)) == os.path.join(sl.SKILLS, "alpha"):
+                real(path, mode, *a, **k).close()  # as a real failed write: the file is truncated, then the error
+                raise OSError(28, "No space left on device")
+            return real(path, mode, *a, **k)
+        with mock.patch("builtins.open", bad_open):
+            code, out = sl.save_skill(None, md("alpha", "changed"), old="alpha")
+        self.assertEqual(code, 500)
+        self.assertNotIn("undo", out["error"]["message"].lower())
+        self.assertEqual(self.state(), before)
+
+    def test_failed_restore_is_reported_and_file_not_truncated(self):
+        # SKILL.md was replaced, then the metadata write and the restore both fail: the error says so, and
+        # SKILL.md is whole (the new text), not half written.
+        sl.save_skill(None, md("alpha"))
+        real = open
+        def bad_open(path, mode="r", *a, **k):
+            if "w" in mode and str(path).endswith(".SKILL.md.undo"):
+                raise OSError(28, "No space left on device")
+            return real(path, mode, *a, **k)
+        with mock.patch.object(sl, "write_meta", side_effect=OSError(13, "Permission denied")), mock.patch("builtins.open", bad_open):
+            code, out = sl.save_skill(None, md("alpha", "changed"), old="alpha")
+        self.assertEqual(code, 500)
+        self.assertIn("undo also failed", out["error"]["message"])
+        self.assertIn("restore SKILL.md", out["error"]["message"])
+        self.assertEqual(self.read("alpha"), md("alpha", "changed"))
+        self.assertFalse(os.path.exists(os.path.join(sl.SKILLS, "alpha", ".SKILL.md.undo")))
+
+    def test_failed_rename_back_is_reported(self):
+        sl.save_skill(None, md("alpha"))
+        real_rename = os.rename
+        calls = []
+        def rename(a, b):
+            calls.append((a, b))
+            if len(calls) > 1:  # the first rename (alpha -> beta) works; the rename back fails
+                raise OSError(16, "Resource busy")
+            return real_rename(a, b)
+        with mock.patch.object(sl.os, "replace", side_effect=OSError(28, "No space left on device")), mock.patch.object(sl.os, "rename", rename):
+            code, out = sl.save_skill(None, md("beta"), old="alpha")
+        self.assertEqual(code, 500)
+        self.assertIn("rename the folder back to alpha", out["error"]["message"])
+
 
 class ValidateText(unittest.TestCase):
     def test_validate_text(self):
