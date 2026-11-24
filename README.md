@@ -316,13 +316,14 @@ Open **Skills** in the sidebar. The page is a playground for [Agent Skills](http
 
 LM Studio has no skills of its own, so LM Trace is the harness, as on the Tools page. The model gets more of a skill as it needs it (progressive disclosure):
 
-1. **Layer 1, always loaded:** the harness puts the name and description of each skill that is on into the system prompt.
-2. **Layer 2, loaded when activated:** the model calls `load_skill`, and gets the instructions of `SKILL.md` and the list of its files.
-3. **Layer 3, loaded when needed:** the model calls `read_skill_file` to read a file of the skill, or `run_skill_script` to run one of its scripts. A script runs on your computer, so the page asks you before each run: **Allow** or **Deny**.
+1. **Metadata** (~100 tokens, always loaded): the harness puts the name and description of each skill that is on into the system prompt, as an `<available_skills>` block in the format of `skills-ref to-prompt`.
+2. **Instructions** (fewer than 5,000 tokens recommended, loaded when the skill is activated): the model calls `load_skill`, and gets the body of `SKILL.md` and the list of its files.
+3. **Resources** (as needed): files in `scripts/`, `references/`, `assets/` or any other folder. The model calls `read_skill_file` to read one, or `run_skill_script` to run a script. A script runs on your computer, so the page asks you before each run: **Allow** or **Deny**.
 
 The page has two tabs:
 
-- **Skills:** each skill with its source and an **On** switch. The **⋯** menu has **Open** (the files of the skill, with the metadata and the tokens of each layer), **Details**, **Edit** and **Delete**. **Create skill** writes a new `SKILL.md`, with the name and description checked against the standard. **Import from GitHub** downloads a skill folder, for example from [anthropics/skills](https://github.com/anthropics/skills); an imported skill starts off.
+- **Skills:** each skill with its source and an **On** switch. The **⋯** menu has **Open**, **Details**, **Edit** and **Delete**. **Open** shows the file tree of the skill, its metadata, the tokens of each layer, and the result of the validation. In **Open**, **Add file** adds a resource (type it, or upload a file of up to 1 MB), and **Edit** and **Delete file** change the file on screen.
+- **Validation:** the page runs the checks of [`skills-ref validate`](https://github.com/agentskills/agentskills/tree/main/skills-ref), the reference library of the specification, with the same messages: the allowed frontmatter fields, the name rules, and the length of the description and compatibility. A skill that is not valid cannot be turned on. Best-practice hints show apart. **Create skill** writes a new `SKILL.md`, with the name and description checked against the standard. **Import from GitHub** downloads a skill folder, for example from [anthropics/skills](https://github.com/anthropics/skills); an imported skill starts off.
 - **Chat:** the same rows as on the Tools page. A **Skill** row shows each layer as it joins the context. Under the chat, the bar shows the tokens of each layer in the context.
 
 The starter skills show the three layers and the best practices of the standard: **meeting-notes** (format files in `references/` and a script in `scripts/`), **release-notes** (a good example) and **release-notes-verbose** (a bad example: a vague description, text that the model already knows, a menu of formats, and rules hidden in a reference file). Try the same message with each release-notes skill and compare the tokens and the answers.

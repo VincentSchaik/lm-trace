@@ -16,13 +16,12 @@ LM Trace is the harness: the page puts the name and description of each skill th
 Import: a skill folder from GitHub (github.com/<owner>/<repo>/tree/<ref>/<path>), with the GitHub contents API.
 Standard library only.
 """
-import json, os, re, shutil, subprocess, threading, time, urllib.error, urllib.parse, urllib.request
+import base64, json, os, re, shutil, subprocess, threading, time, unicodedata, urllib.error, urllib.parse, urllib.request
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 SKILLS = os.path.join(ROOT, "skills")
 STARTERS = os.path.join(ROOT, "skill-starters")
 META = os.path.join(ROOT, "skills-meta.json")
-NAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")  # the spec: lowercase letters, digits and single hyphens
 MAX_FILE = 200_000      # the most characters that read_skill_file returns
 MAX_OUT = 20_000        # the most characters of script output that go back to the model
 MAX_IMPORT = 3_000_000  # the most bytes of one imported skill
@@ -36,7 +35,7 @@ def parse_skill_md(text):
     key: value, quoted values, block values (> and |), and one level of nested keys (metadata)."""
     m = re.match(r"^---[ \t]*\r?\n(.*?)\r?\n---[ \t]*(?:\r?\n|$)(.*)$", text, re.S)
     if not m:
-        return {}, text, "SKILL.md must start with YAML frontmatter between two --- lines."
+        return {}, text, "SKILL.md must start with YAML frontmatter (---)" if not text.startswith("---") else "SKILL.md frontmatter not properly closed with ---"
     fm_text, body = m.group(1), m.group(2)
     data, lines, i = {}, fm_text.split("\n"), 0
     try:
@@ -47,7 +46,7 @@ def parse_skill_md(text):
                 continue
             km = re.match(r"^([A-Za-z0-9_-]+):\s*(.*)$", line)
             if not km:
-                return data, body, f"Frontmatter line {i} is not 'key: value': {line.strip()[:60]}"
+                return data, body, f"Invalid YAML in frontmatter: line {i} is not 'key: value': {line.strip()[:60]}"
             key, val = km.group(1), km.group(2).strip()
             if val in (">", "|", ">-", "|-", ">+", "|+"):
                 block = []
@@ -66,7 +65,7 @@ def parse_skill_md(text):
             else:
                 data[key] = unquote(val)
     except Exception as e:  # never fail the whole list for one bad file
-        return data, body, f"Frontmatter: {e}"
+        return data, body, f"Invalid YAML in frontmatter: {e}"
     return data, body, None
 
 
@@ -77,36 +76,70 @@ def unquote(v):
     return v
 
 
-def lint(folder, fm, body, err):
-    """Problems against the Agent Skills specification (errors) and its best practices (hints)."""
-    errors, hints = [], []
+ALLOWED_FIELDS = {"name", "description", "license", "allowed-tools", "metadata", "compatibility"}
+
+
+def name_errors(name, folder=None):
+    """The name rules of skills-ref: Unicode letters and digits, lowercase, single hyphens, at most 64 characters."""
+    if not isinstance(name, str) or not name.strip():
+        return ["Field 'name' must be a non-empty string"]
+    errors = []
+    name = unicodedata.normalize("NFKC", name.strip())
+    if len(name) > 64:
+        errors.append(f"Skill name '{name}' exceeds 64 character limit ({len(name)} chars)")
+    if name != name.lower():
+        errors.append(f"Skill name '{name}' must be lowercase")
+    if name.startswith("-") or name.endswith("-"):
+        errors.append("Skill name cannot start or end with a hyphen")
+    if "--" in name:
+        errors.append("Skill name cannot contain consecutive hyphens")
+    if not all(c.isalnum() or c == "-" for c in name):
+        errors.append(f"Skill name '{name}' contains invalid characters. Only letters, digits, and hyphens are allowed.")
+    if folder is not None and unicodedata.normalize("NFKC", folder) != name:
+        errors.append(f"Directory name '{folder}' must match skill name '{name}'")
+    return errors
+
+
+def validate(folder, fm, err):
+    """skills-ref validate: the same checks and messages as the reference library of the Agent Skills specification
+    (github.com/agentskills/agentskills, skills-ref). It checks the frontmatter only."""
     if err:
-        errors.append(err)
-    name, desc = fm.get("name"), fm.get("description")
-    if not isinstance(name, str) or not name:
-        errors.append("name is required.")
+        return [err]
+    errors = []
+    extra = set(fm) - ALLOWED_FIELDS
+    if extra:
+        errors.append(f"Unexpected fields in frontmatter: {', '.join(sorted(extra))}. Only {sorted(ALLOWED_FIELDS)} are allowed.")
+    if "name" not in fm:
+        errors.append("Missing required field in frontmatter: name")
     else:
-        if len(name) > 64:
-            errors.append(f"name has {len(name)} characters: at most 64.")
-        if not NAME_RE.match(name):
-            errors.append("name: only lowercase letters, digits and single hyphens; no hyphen at the start or end.")
-        if name != folder:
-            errors.append(f"name must match the folder name ({folder}).")
-    if not isinstance(desc, str) or not desc.strip():
-        errors.append("description is required.")
-    else:
-        if len(desc) > 1024:
-            errors.append(f"description has {len(desc)} characters: at most 1,024.")
+        errors += name_errors(fm["name"], folder)
+    if "description" not in fm:
+        errors.append("Missing required field in frontmatter: description")
+    elif not isinstance(fm["description"], str) or not fm["description"].strip():
+        errors.append("Field 'description' must be a non-empty string")
+    elif len(fm["description"]) > 1024:
+        errors.append(f"Description exceeds 1024 character limit ({len(fm['description'])} chars)")
+    if "compatibility" in fm:
+        c = fm["compatibility"]
+        if not isinstance(c, str):
+            errors.append("Field 'compatibility' must be a string")
+        elif len(c) > 500:
+            errors.append(f"Compatibility exceeds 500 character limit ({len(c)} chars)")
+    return errors
+
+
+def lint(folder, fm, body, err):
+    """Errors: skills-ref validate. Hints: best practices of agentskills.io (not part of the validation)."""
+    errors, hints = validate(folder, fm, err), []
+    desc = fm.get("description")
+    if isinstance(desc, str) and desc.strip():
         if not re.search(r"\b(use|when)\b", desc, re.I):
             hints.append("description: say when to use the skill (\"Use this skill when…\"). It is the only text the model sees before it activates the skill.")
         elif len(desc) < 60:
             hints.append("description is very short: list the tasks and the words that should activate the skill.")
-    comp = fm.get("compatibility")
-    if isinstance(comp, str) and len(comp) > 500:
-        errors.append(f"compatibility has {len(comp)} characters: at most 500.")
     lines = body.count("\n") + 1 if body.strip() else 0
     if lines > 500:
-        hints.append(f"SKILL.md body has {lines} lines: keep it under 500. Move details to reference files.")
+        hints.append(f"SKILL.md body has {lines} lines: keep it under 500. Move detailed reference material to separate files.")
     if re.search(r"\bsee (the )?(references?|docs?)/? for (more )?details\b", body, re.I):
         hints.append("Say when to read each reference file, not only \"see references/ for details\".")
     return errors, hints
@@ -150,7 +183,7 @@ def write_meta(meta):
 
 def skill_dir(name):
     """The folder of a skill, or None: the name must be a plain folder name in skills/."""
-    if not isinstance(name, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,99}", name):
+    if not isinstance(name, str) or not name or len(name) > 100 or "/" in name or "\\" in name or name.startswith(".") or "\x00" in name:
         return None
     d = os.path.join(SKILLS, name)
     return d if os.path.isfile(os.path.join(d, "SKILL.md")) else None
@@ -216,8 +249,10 @@ def save_skill(name, skill_md, old=None):
         return 400, {"error": {"message": "SKILL.md must be text, at most 200,000 characters."}}
     fm, body, err = parse_skill_md(skill_md)
     new = fm.get("name")
-    if err or not isinstance(new, str) or not NAME_RE.match(new) or len(new) > 64:
-        return 400, {"error": {"message": err or "name: 1–64 lowercase letters, digits and single hyphens."}}
+    bad = [err] if err else name_errors(new)
+    if bad or "/" in new or new in (".", ".."):
+        return 400, {"error": {"message": " ".join(bad) or "Skill name: not a folder name."}}
+    new = unicodedata.normalize("NFKC", new.strip())
     with lock:
         meta = read_meta()
         d = os.path.join(SKILLS, new)
@@ -236,6 +271,53 @@ def save_skill(name, skill_md, old=None):
         meta.setdefault(new, {"source": "Created", "on": True})
         write_meta(meta)
     return 200, {"name": new}
+
+
+FILE_RE = re.compile(r"^(?!.*\.\.)[\w.-]+(/[\w.-]+){0,3}$")
+
+
+def save_file(name, rel, text=None, b64=None):
+    """Add or change one file of a skill (not SKILL.md: Edit changes it). Text, or bytes as base64 (an upload)."""
+    d = skill_dir(name)
+    if not d:
+        return 404, {"error": {"message": f"No skill named {name}."}}
+    if not isinstance(rel, str) or not FILE_RE.match(rel) or rel.split("/")[-1].startswith("."):
+        return 400, {"error": {"message": "Path: a relative path like references/guide.md, scripts/run.py or assets/template.txt (letters, digits, . _ -; at most 4 levels)."}}
+    if rel.lower() == "skill.md":
+        return 400, {"error": {"message": "Change SKILL.md with Edit."}}
+    if b64 is not None:
+        try:
+            data = base64.b64decode(b64, validate=True)
+        except (ValueError, TypeError):
+            return 400, {"error": {"message": "The upload is not valid base64."}}
+    elif isinstance(text, str):
+        data = text.encode("utf-8")
+    else:
+        return 400, {"error": {"message": "expected text or b64"}}
+    if len(data) > 1_000_000:
+        return 400, {"error": {"message": "A file can have at most 1 MB."}}
+    p = os.path.realpath(os.path.join(d, rel))
+    if not p.startswith(os.path.realpath(d) + os.sep):
+        return 400, {"error": {"message": "The path must stay in the skill folder."}}
+    with lock:
+        os.makedirs(os.path.dirname(p), exist_ok=True)
+        with open(p, "wb") as f:
+            f.write(data)
+    return 200, {"path": rel, "size": len(data)}
+
+
+def delete_file(name, rel):
+    d = skill_dir(name)
+    p = d and safe_path(d, rel)
+    if not p or os.path.basename(p) == "SKILL.md" and os.path.dirname(p) == os.path.realpath(d):
+        return 404, {"error": {"message": "No such file (SKILL.md cannot be deleted)."}}
+    with lock:
+        os.remove(p)
+        parent, root = os.path.dirname(p), os.path.realpath(d)
+        while parent != root and not os.listdir(parent):  # remove folders that are now empty
+            os.rmdir(parent)
+            parent = os.path.dirname(parent)
+    return 200, {"ok": True}
 
 
 def delete_skill(name):
@@ -345,7 +427,7 @@ def import_github(url):
         return 400, {"error": {"message": "Paste the address of a skill folder on GitHub: https://github.com/<owner>/<repo>/tree/<branch>/<folder>"}}
     owner, repo, ref, path = m.groups()
     folder = path.rstrip("/").split("/")[-1]
-    if not NAME_RE.match(folder) or len(folder) > 64:
+    if name_errors(folder):
         return 400, {"error": {"message": f"The folder name {folder!r} is not a valid skill name."}}
     if os.path.exists(os.path.join(SKILLS, folder)):
         return 409, {"error": {"message": f"A skill named {folder} already exists. Delete it first."}}

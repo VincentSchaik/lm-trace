@@ -699,6 +699,12 @@
   .sk-layers { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; font-size: 12.5px; color: var(--ink-2); }
   .sk-layers span { padding: 3px 9px; border-radius: 8px; background: var(--paper-2); }
   .sk-layers b { font-family: var(--mono); font-weight: 600; color: var(--ink); }
+  .sk-valid { margin: 0 0 14px; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--line); }
+  .sk-valid .hd { font: 500 12px var(--sans); color: var(--ink-3); margin-bottom: 6px; }
+  .sk-valid .hd code { font: 12px var(--mono); }
+  .sk-valid pre { margin: 0 0 6px; font: 13px/1.5 var(--mono); white-space: pre-wrap; }
+  .sk-valid.ok pre { color: #1a7f45; } :root[data-theme="dark"] .sk-valid.ok pre { color: #4ade80; }
+  .sk-valid.bad { border-color: rgba(217, 48, 37, .4); } .sk-valid.bad pre { color: var(--danger); }
   .sk-lint { margin: 0 0 14px; padding: 10px 14px; border-radius: 10px; font-size: 13px; }
   .sk-lint.err { background: rgba(217, 48, 37, .08); color: var(--danger); }
   .sk-lint.hint { background: rgba(217, 142, 4, .1); color: var(--ink-2); }
@@ -794,16 +800,16 @@
       <details class="more"><summary>How it works</summary>
         <p>A skill is a folder with a <code>SKILL.md</code> file: YAML frontmatter with a <code>name</code> and a <code>description</code>, then instructions in Markdown. It can also have other files: scripts, references, assets. The model does not get all of it at once. It gets more as it needs it: progressive disclosure, in three layers.</p>
         <pre class="sk-tree">my-skill/
-<span class="br">├── </span>SKILL.md          <span class="cm"># Required: metadata + instructions · <b>layers 1 + 2</b></span>
-<span class="br">├── </span>scripts/          <span class="cm"># Optional: executable code · <b>layer 3</b></span>
-<span class="br">├── </span>references/       <span class="cm"># Optional: documentation, read when needed · <b>layer 3</b></span>
-<span class="br">├── </span>assets/           <span class="cm"># Optional: static resources: templates, images, data · <b>layer 3</b></span>
-<span class="br">└── </span>...               <span class="cm"># Any additional files or directories · <b>layer 3</b></span></pre>
+<span class="br">├── </span>SKILL.md          <span class="cm"># Required: metadata + instructions</span>
+<span class="br">├── </span>scripts/          <span class="cm"># Optional: executable code · <b>resources</b></span>
+<span class="br">├── </span>references/       <span class="cm"># Optional: documentation, read when needed · <b>resources</b></span>
+<span class="br">├── </span>assets/           <span class="cm"># Optional: static resources: templates, images, data · <b>resources</b></span>
+<span class="br">└── </span>...               <span class="cm"># Any additional files or directories · <b>resources</b></span></pre>
         <p>Only <code>SKILL.md</code> is required. A skill can have any other files and directories; <code>scripts/</code>, <code>references/</code> and <code>assets/</code> are the recommended places for code, documentation and static resources. <code>SKILL.md</code> names each file with a relative path, one level deep, so the model knows when to load it.</p>
         <ol class="how">
-          <li><b>Discovery</b> · <i>Layer 1, always loaded</i>. The harness puts the name and description of each skill that is on into the system prompt: about 100 tokens per skill. The model reads only this to decide if a skill fits the task.</li>
-          <li><b>Activation</b> · <i>Layer 2, loaded when activated</i>. The task matches a description, so the model calls <code>load_skill</code>. The harness adds the body of <code>SKILL.md</code> to the messages: the standard advises fewer than 5,000 tokens.</li>
-          <li><b>Execution</b> · <i>Layer 3, loaded when needed</i>. The model follows the instructions. When they say so, it reads a file of the skill (<code>read_skill_file</code>) or runs a script (<code>run_skill_script</code>). A script runs on this computer, so the harness asks you first.</li>
+          <li><b>Metadata</b> (~100 tokens) · <i>Discovery, always loaded</i>. The harness puts the <code>name</code> and <code>description</code> of each skill that is on into the system prompt. The model reads only this to decide if a skill fits the task.</li>
+          <li><b>Instructions</b> (&lt; 5,000 tokens recommended) · <i>Activation, loaded when activated</i>. The task matches a description, so the model calls <code>load_skill</code>. The harness adds the body of <code>SKILL.md</code> to the messages.</li>
+          <li><b>Resources</b> (as needed) · <i>Execution, loaded only when required</i>. The model follows the instructions. When they say so, it reads a file of the skill (<code>read_skill_file</code>) or runs a script (<code>run_skill_script</code>). A script runs on this computer, so the harness asks you first.</li>
         </ol>
         <p>Every token that joins the context competes for the attention of the model. The stats under the chat show the tokens of each layer. LM Trace is the harness here: LM Studio runs the model, and has no skills of its own.</p>
       </details></div>
@@ -835,7 +841,7 @@
     <!-- Skill list: layer 1, the name and description of each skill that is on, in the system prompt. -->
     <div class="opts sysrow">
       <details class="opt" id="optNote">
-        <summary><span class="chev"></span><span class="opt-title">Skill list</span><span class="opt-state" id="stNote"></span><span class="sum-ctl"><span class="info" tabindex="0" data-tip-title="Skill list" data-tip="Layer 1: what the model knows about the skills before it uses one. The harness adds the name and description of each skill that is on to the system prompt, and sends the three skill tools. Turn skills on and off on the Skills tab, or with + in the message box.">i</span></span></summary>
+        <summary><span class="chev"></span><span class="opt-title">Skill list</span><span class="opt-state" id="stNote"></span><span class="sum-ctl"><span class="info" tabindex="0" data-tip-title="Skill list" data-tip="Metadata (layer 1): what the model knows about the skills before it uses one. The harness adds the name and description of each skill that is on to the system prompt, and sends the three skill tools. Turn skills on and off on the Skills tab, or with + in the message box.">i</span></span></summary>
         <div class="note-box" id="noteBox"></div>
       </details>
     </div>
@@ -901,7 +907,7 @@
 
   <div class="tabpane" id="pane-skills" role="tabpanel" hidden>
   <section class="panel" aria-label="Skills">
-    <div class="panel-head"><h2>Skills</h2><span class="sub">A folder with SKILL.md: a name and a description (layer 1), instructions (layer 2), and files (layer 3)</span></div>
+    <div class="panel-head"><h2>Skills</h2><span class="sub">A folder with SKILL.md: metadata (name, description) and instructions; and resources: any other files</span></div>
     <div class="card-tools top">
       <span class="sk-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input type="search" id="skSearch" class="field" placeholder="Search skills" aria-label="Search skills"></span>
       <span class="grow"></span>
@@ -1011,11 +1017,14 @@ function schemaOf(t) {
 }
 const signature = t => `${t.name}(${t.params.map(p => `${p.name}${p.required ? "" : "?"}: ${p.type}`).join(", ")})`;
 let noteText = "";
-// Layer 1, as text in the system prompt. The XML tags keep each name with its description.
+// Metadata (layer 1), as text in the system prompt: the <available_skills> block in the format of skills-ref to-prompt
+// (the reference library of the Agent Skills specification): name, description and location of each skill, escaped.
 const SKILL_INTRO = "You have skills: folders of instructions for special tasks. When a task matches the description of a skill, call load_skill with its name first, then follow its instructions.";
+const xmlEsc = t => String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#x27;");
+const skillEntry = x => `<skill>\n<name>\n${xmlEsc(x.name)}\n</name>\n<description>\n${xmlEsc(x.description)}\n</description>\n<location>\nskills/${x.name}/SKILL.md\n</location>\n</skill>`;
 function skillListText(list = skillsOn()) {
   if (!list.length) return "";
-  return `${SKILL_INTRO}\n\n<available_skills>\n` + list.map(x => `<skill>\n<name>${x.name}</name>\n<description>${x.description}</description>\n</skill>`).join("\n") + "\n</available_skills>";
+  return `${SKILL_INTRO}\n\n<available_skills>\n${list.map(skillEntry).join("\n")}\n</available_skills>`;
 }
 const systemText = () => [$("system").value.trim(), skillListText()].filter(Boolean).join("\n\n");
 
@@ -1039,7 +1048,7 @@ async function countSkillTokens() {
   const model = $("chatModel").value; if (!model || !skills.length) return;
   for (const sk of skills) {
     if (skTok[sk.name]?.model === model && skTok[sk.name].md === sk.skillMd) continue;
-    const entry = `<skill>\n<name>${sk.name}</name>\n<description>${sk.description}</description>\n</skill>`;
+    const entry = skillEntry(sk);
     try {
       const texts = [entry, sk.body.trim()];
       const j = await post("/tokenize", { model, texts, count: true });
@@ -1815,9 +1824,9 @@ function rowHtml(s, k) {
     const label = nm === "load_skill" ? `Activating skill: ${a.name}` : nm === "read_skill_file" ? `Reading file: ${a.path}` : `Running script: ${a.path}`;
     if (s.wait) return row(k, "Skill", `<span class="busy-dot" aria-hidden="true"></span>${esc(label)}…`, "", "");
     const r = s.r;
-    const tip = L === 2 ? "Layer 2: the harness reads the body of SKILL.md (the instructions) and the list of the other files. It goes to the model as the result of load_skill."
-      : nm === "read_skill_file" ? "Layer 3: the harness reads one file of the skill. The model asked for it because the instructions name it." : "Layer 3: the server runs the script of the skill on this computer, with the input on stdin. Only what the script prints goes to the model, not its code.";
-    const what = tipped(r.ok ? label : `${label}: failed`, tip) + `<span class="layer-tag L-${L}">Layer ${L}</span>`;
+    const tip = L === 2 ? "Instructions: the harness reads the body of SKILL.md (the instructions) and the list of the other files. It goes to the model as the result of load_skill."
+      : nm === "read_skill_file" ? "Resources: the harness reads one file of the skill. The model asked for it because the instructions name it." : "Resources: the server runs the script of the skill on this computer, with the input on stdin. Only what the script prints goes to the model, not its code.";
+    const what = tipped(r.ok ? label : `${label}: failed`, tip) + `<span class="layer-tag L-${L}">${L === 2 ? "Instructions" : "Resources"}</span>`;
     const meta = [r.tokens != null ? `${r.tokens.toLocaleString()} tokens` : "", `${r.ms} ms`].filter(Boolean).join(" · ");
     const body = `<p class="lbl">${tipped("Request", "What the server does.")}</p><pre class="pre">${esc(r.request || "")}</pre>`
       + `<p class="lbl">Result · ${plural(String(r.result).length, "character")}</p><pre class="pre">${esc(r.result)}</pre>`;
@@ -1879,7 +1888,7 @@ function renderChat(hold) {
   log.scrollTop = atEnd ? log.scrollHeight : top;
   $("layers").innerHTML = layersHtml();
   $("stats").innerHTML = `<span title="MCP servers: this page uses none. The MCP page connects a model to MCP servers.">MCP <b>–</b></span>`
-    + `<span title="The skills that are on: their names and descriptions are in the system prompt (layer 1)">Skills <b>${viewing ? (viewing.skills || []).length : skillsOn().length}</b></span>`
+    + `<span title="The skills that are on: their names and descriptions are in the system prompt (metadata)">Skills <b>${viewing ? (viewing.skills || []).length : skillsOn().length}</b></span>`
     + `<span title="The skill tools: load_skill, read_skill_file and run_skill_script. The harness sends their definitions in each model call when a skill is on.">Tools <b>${viewing ? ((viewing.skills || []).length ? 3 : 0) : active().length}</b></span>`
     + `<span title="The tool calls of this chat: the harness ran each one">Tools called <b>${stats.tools}</b></span>`
     + `<span title="The model calls of this chat: the harness calls the model once, then again after each tool result">Model calls <b>${stats.calls}</b></span>${ctxHtml()}`;
@@ -1906,7 +1915,7 @@ function renderNote() {
   const t1 = on.reduce((a, x) => a + (tokOf(x.name, "l1") || 0), 0);
   $("stNote").textContent = `${n} skill${n === 1 ? "" : "s"} on${t1 ? ` · ~${t1.toLocaleString()} tokens` : ""}`;
   $("noteBox").innerHTML = n
-    ? `<div class="note">Layer 1. The harness adds this text to the system prompt, after the System prompt. The model reads only the name and description of each skill to decide if it needs one. It also gets the three skill tools in the <code>tools</code> parameter.</div>
+    ? `<div class="note">Metadata (layer 1). The harness adds this text to the system prompt, after the System prompt. The model reads only the name and description of each skill to decide if it needs one. It also gets the three skill tools in the <code>tools</code> parameter.</div>
        ${noteDet("note-list", "Skill list in the system prompt", `<pre class="pre gen" title="Auto-generated from the skills that are on. You cannot edit it.">${esc(skillListText())}</pre>`)}
        ${noteDet("note-json", "Skill tools (JSON schema)", `<pre class="pre json gen">${esc(JSON.stringify(active().map(schemaOf), null, 2))}</pre>`)}`
     : `<div class="hint-s inj">No skills are on. Turn one on in the Skills tab, or with the <button type="button" class="linkbtn" id="toPlus">+ button</button> in the message box. Without skills, the request has no skill list and no skill tools.</div>`;
@@ -1991,9 +2000,13 @@ function mdView(t) {
   }
   close(); return html;
 }
-const metaHtml = sk => `<div class="sk-meta"><div class="hd">Metadata · layer 1</div>${Object.entries(sk.frontmatter || {}).map(([k, v]) => `<span class="k">${esc(k)}</span><span>${esc(typeof v === "object" ? Object.entries(v).map(([a, b]) => `${a}: ${b}`).join("\n") : v)}</span>`).join("").replace(/\n/g, "<br>")}</div>`;
-const layersLine = sk => { const t = skTok[sk.name]; return `<div class="sk-layers"><span>Layer 1 · always <b>${t ? t.l1.toLocaleString() : "…"}</b> tokens</span><span>Layer 2 · when activated <b>${t ? t.l2.toLocaleString() : "…"}</b> tokens</span><span>Layer 3 · when needed <b>${t ? t.l3.toLocaleString() : "…"}</b> tokens in ${sk.files.length} file${sk.files.length === 1 ? "" : "s"}</span></div>`; };
-const lintHtml = sk => (sk.errors.length ? `<div class="sk-lint err"><b>Not valid: the skill cannot be turned on.</b><ul>${sk.errors.map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>` : "")
+const metaHtml = sk => `<div class="sk-meta"><div class="hd">Metadata · layer 1, always loaded</div>${Object.entries(sk.frontmatter || {}).map(([k, v]) => `<span class="k">${esc(k)}</span><span>${esc(typeof v === "object" ? Object.entries(v).map(([a, b]) => `${a}: ${b}`).join("\n") : v)}</span>`).join("").replace(/\n/g, "<br>")}</div>`;
+const layersLine = sk => { const t = skTok[sk.name], n = k => t ? t[k].toLocaleString() : "…"; return `<div class="sk-layers"><span>Metadata · always <b>${n("l1")}</b> tokens</span><span>Instructions · when activated <b>${n("l2")}</b> tokens</span><span>Resources · as needed <b>${n("l3")}</b> tokens in ${sk.files.length} file${sk.files.length === 1 ? "" : "s"}</span></div>`; };
+// Validation: the checks of skills-ref validate (the reference library of the specification), run by the server,
+// shown as the command prints them. Best practices are hints, not part of the validation.
+const lintHtml = sk => `<div class="sk-valid ${sk.errors.length ? "bad" : "ok"}"><div class="hd">Validation · <code>skills-ref validate ./${esc(sk.name)}</code></div>`
+  + (sk.errors.length ? `<pre>Validation failed for ${esc(sk.name)}:\n${sk.errors.map(x => `  - ${esc(x)}`).join("\n")}</pre><div class="hint-s">A skill that is not valid cannot be turned on.</div>` : `<pre>Valid skill: ${esc(sk.name)}</pre>`)
+  + `<div class="hint-s">Checks the SKILL.md frontmatter and its naming conventions: the allowed fields, name (lowercase letters, digits and single hyphens, at most 64 characters, the same as the folder), description (at most 1,024 characters) and compatibility (at most 500).</div></div>`
   + (sk.hints.length ? `<div class="sk-lint hint"><b>Best practices</b><ul>${sk.hints.map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>` : "")
   + (demoOf(sk) ? `<div class="sk-lint ${/^bad/i.test(demoOf(sk)) ? "err" : "hint"}">${esc(demoOf(sk))}</div>` : "");
 
@@ -2006,10 +2019,10 @@ function treeHtml(sk, current) {
   const top = new Map();  // first part of the path -> [rest paths] ("" for a file at the root)
   sk.files.forEach(f => { const i = f.path.indexOf("/"), k = i < 0 ? f.path : f.path.slice(0, i) + "/"; if (!top.has(k)) top.set(k, []); if (i >= 0) top.get(k).push(f.path); });
   const order = [...top.keys()].sort((a, b) => { const r = x => ["scripts/", "references/", "assets/"].indexOf(x); const ra = r(a), rb = r(b); return (ra < 0) - (rb < 0) || ra - rb || a.localeCompare(b); });
-  const rows = [["", "SKILL.md", "SKILL.md", "Required: metadata + instructions", "layers 1 + 2"]];
+  const rows = [["", "SKILL.md", "SKILL.md", "Required: metadata + instructions", ""]];
   order.forEach((k, ki) => {
     const last = ki === order.length - 1, dir = k.endsWith("/");
-    rows.push([last ? "└── " : "├── ", k, dir ? null : k, dir ? (TREE_NOTE[k.slice(0, -1)] || "Any additional directory") : "Any additional file", "layer 3"]);
+    rows.push([last ? "└── " : "├── ", k, dir ? null : k, dir ? (TREE_NOTE[k.slice(0, -1)] || "Any additional directory") : "Any additional file", "resources"]);
     if (dir) top.get(k).forEach((f, fi, arr) => rows.push([(last ? "    " : "│   ") + (fi === arr.length - 1 ? "└── " : "├── "), f.slice(k.length), f, "", ""]));
   });
   rows[0][0] = order.length ? "├── " : "└── ";
@@ -2017,12 +2030,12 @@ function treeHtml(sk, current) {
   const line = ([br, label, path, note, layer]) => {
     const name = path ? `<button type="button" data-sk-file="${esc(path)}"${path === current ? ' aria-current="true"' : ""}>${esc(label)}</button>` : `<span class="dir">${esc(label)}</span>`;
     const gap = " ".repeat(Math.max(2, w - (br + label).length));
-    return `<span class="br">${br}</span>${name}${note ? `${gap}<span class="cm"># ${esc(note)} · <b>${layer}</b></span>` : ""}`;
+    return `<span class="br">${br}</span>${name}${note ? `${gap}<span class="cm"># ${esc(note)}${layer ? ` · <b>${layer}</b>` : ""}</span>` : ""}`;
   };
   return `<div class="sk-tree" aria-label="Files of the skill">${esc(sk.name)}/\n${rows.map(line).join("\n")}</div>`;
 }
 // Open: the files of the skill in the tab, SKILL.md first (metadata + rendered body), like a file view.
-let viewSk = null, viewFile = "SKILL.md", viewSrc = false;
+let viewSk = null, viewFile = "SKILL.md", viewSrc = false, viewText = null;
 function openView(name) { viewSk = name; viewFile = "SKILL.md"; viewSrc = false; $("skillList").hidden = true; $("skillView").hidden = false; document.querySelector("#pane-skills .card-tools").hidden = true; renderView(); }
 function closeView() { viewSk = null; $("skillList").hidden = false; $("skillView").hidden = true; document.querySelector("#pane-skills .card-tools").hidden = false; renderSkills(); }
 async function renderView() {
@@ -2031,13 +2044,18 @@ async function renderView() {
   if (viewFile === "SKILL.md") body = viewSrc ? `<pre class="src-pre">${esc(sk.skillMd)}</pre>` : metaHtml(sk) + layersLine(sk) + lintHtml(sk) + `<div class="mdv">${mdView(sk.body)}</div>`;
   else {
     const t = await fetch(`/skill-file?name=${encodeURIComponent(sk.name)}&path=${encodeURIComponent(viewFile)}`).then(r => r.json()).catch(() => ({}));
-    const text = t.text ?? "(cannot show this file)";
+    const text = t.text ?? "(cannot show this file)"; viewText = t.text ?? null;
     body = /\.md$/i.test(viewFile) && !viewSrc ? `<div class="mdv">${mdView(text)}</div>` : `<pre class="src-pre">${esc(text)}</pre>`;
   }
   $("skillView").innerHTML = `<div class="sk-crumbs"><button type="button" class="btn ghost small" id="skBack">← Skills</button><span class="sk-path">skills / ${esc(sk.name)} / <b>${esc(viewFile)}</b></span><span class="grow" style="flex:1"></span>`
-    + `<button type="button" class="btn ghost small" id="skSrc">${viewSrc ? "View rendered" : "View source"}</button><button type="button" class="btn ghost small" id="skEdit">Edit</button>${swHtml(sk, "view")}</div>`
+    + `<button type="button" class="btn ghost small" id="skAddFile" title="Add a file to the skill: scripts/, references/, assets/ or any other folder">Add file</button>`
+    + `<button type="button" class="btn ghost small" id="skSrc">${viewSrc ? "View rendered" : "View source"}</button><button type="button" class="btn ghost small" id="skEdit" title="${viewFile === "SKILL.md" ? "Edit SKILL.md" : "Edit " + esc(viewFile)}">Edit</button>`
+    + (viewFile === "SKILL.md" ? "" : `<button type="button" class="btn ghost small warn" id="skDelFile" title="Delete ${esc(viewFile)}">Delete file</button>`) + `${swHtml(sk, "view")}</div>`
     + treeHtml(sk, viewFile) + body;
-  $("skBack").onclick = closeView; $("skSrc").onclick = () => { viewSrc = !viewSrc; renderView(); }; $("skEdit").onclick = () => openEditorSk(sk.name);
+  $("skBack").onclick = closeView; $("skSrc").onclick = () => { viewSrc = !viewSrc; renderView(); };
+  $("skEdit").onclick = () => viewFile === "SKILL.md" ? openEditorSk(sk.name) : openFileEditor(sk.name, viewFile);
+  $("skAddFile").onclick = () => openFileEditor(sk.name, null);
+  if ($("skDelFile")) $("skDelFile").onclick = () => deleteFile(sk.name, viewFile);
   $("skillView").querySelectorAll("[data-sk-file]").forEach(b => b.onclick = () => { viewFile = b.dataset.skFile; renderView(); });
 }
 
@@ -2084,9 +2102,10 @@ function openEditorSk(name) {
   const check = () => {
     const t = ta.value, nm = (t.match(/^name:\s*(.*)$/m) || [])[1]?.trim().replace(/^["']|["']$/g, "") || "", ds = (t.match(/^description:\s*(.*)$/m) || [])[1]?.trim() || "";
     const lines = t.split("\n").length, bad = [];
-    if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(nm) || nm.length > 64) bad.push("name: 1–64 lowercase letters, digits and single hyphens");
+    const nn = nm.normalize("NFKC");
+    if (!nn || nn.length > 64 || nn !== nn.toLowerCase() || /^-|-$|--/.test(nn) || !/^[\p{L}\p{N}-]+$/u.test(nn)) bad.push("name: lowercase letters, digits and single hyphens, at most 64 characters");
     if (!ds) bad.push("description is required"); else if (ds.length > 1024) bad.push(`description: ${ds.length} of 1,024 characters`);
-    $("skCnt").textContent = `name ${nm.length}/64 · description ${ds.length.toLocaleString()}/1,024 characters · ${lines} lines (keep under 500)` + (bad.length ? ` · ${bad.join(" · ")}` : "");
+    $("skCnt").textContent = `name ${nn.length}/64 · description ${ds.length.toLocaleString()}/1,024 characters · ${lines} lines (keep under 500)` + (bad.length ? ` · ${bad.join(" · ")}` : "");
     $("skCnt").classList.toggle("over", bad.length > 0);
     return !bad.length;
   };
@@ -2095,6 +2114,52 @@ function openEditorSk(name) {
     if (!check()) return;
     try { const r = await post("/skill-save", { skillMd: ta.value, old: sk ? sk.name : null }); closeDlg(); await loadSkills(); renderAll(); if (viewSk) { viewSk = r.name; renderView(); } }
     catch (e) { $("skEditErr").textContent = e.message; }
+  };
+}
+
+// Add or change one file of a skill (resources), and delete one. SKILL.md changes with Edit (openEditorSk).
+const FILE_DIRS = [["scripts/", "executable code"], ["references/", "documentation"], ["assets/", "templates, images, data"]];
+function openFileEditor(name, path) {
+  dlgSkill = null;
+  const isNew = !path, text = isNew ? "" : (viewText ?? "");
+  dlg(`<div class="sk-dlg-top"><h3 id="skDlgTitle">${isNew ? "Add file" : `Edit ${esc(path)}`} <span>${esc(name)}</span></h3><span class="grow"></span><button type="button" class="x-btn" data-dlg-close aria-label="Close">${ICON_X}</button></div>
+    <p class="lead" style="font-size:13.5px">A resource: the model reads it (<code>read_skill_file</code>) or runs it (<code>run_skill_script</code>) only when the instructions say so. Name it in <code>SKILL.md</code> with its relative path, and say when to use it.</p>
+    <div class="sk-edit"><span>Path</span><div><input class="field mono" id="fPath" value="${esc(path || "references/")}" ${isNew ? "" : "disabled"} aria-label="Path in the skill folder" spellcheck="false">
+      ${isNew ? `<div class="cnt">${FILE_DIRS.map(([d, w]) => `<button type="button" class="linkbtn" data-fdir="${d}">${d}</button> ${w}`).join(" · ")} · or any other folder</div>` : ""}</div>
+      <span>Content</span><div><textarea class="field" id="fText" rows="14" spellcheck="false" placeholder="The text of the file">${esc(text)}</textarea>
+      ${isNew ? `<div class="cnt">Or upload a file (at most 1 MB): <input type="file" id="fUp" aria-label="Upload a file"></div>` : ""}</div></div>
+    <div class="error" id="fErr"></div>
+    <div class="sk-dlg-foot"><span class="grow"></span><button type="button" class="btn ghost" data-dlg-close>Cancel</button><button type="button" class="btn" id="fSave">Save</button></div>`);
+  const box = $("skDlg"); let upload = null;
+  box.querySelectorAll("[data-dlg-close]").forEach(b => b.onclick = closeDlg);
+  box.querySelectorAll("[data-fdir]").forEach(b => b.onclick = () => { const f = $("fPath"), base = f.value.split("/").pop(); f.value = b.dataset.fdir + base; f.focus(); });
+  if ($("fUp")) $("fUp").onchange = async e => {
+    const file = e.target.files[0]; if (!file) return;
+    if (file.size > 1_000_000) { $("fErr").textContent = "A file can have at most 1 MB."; return; }
+    const buf = new Uint8Array(await file.arrayBuffer());
+    let bin = ""; for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode(...buf.subarray(i, i + 0x8000));
+    upload = btoa(bin);
+    const dir = $("fPath").value.includes("/") ? $("fPath").value.slice(0, $("fPath").value.lastIndexOf("/") + 1) : "";
+    $("fPath").value = dir + file.name;
+    $("fText").value = ""; $("fText").placeholder = `${file.name}: ${file.size.toLocaleString()} bytes, uploaded as it is`; $("fText").disabled = true;
+  };
+  $("fSave").onclick = async () => {
+    const rel = $("fPath").value.trim();
+    try {
+      await post("/skill-file-save", upload ? { name, path: rel, b64: upload } : { name, path: rel, text: $("fText").value });
+      closeDlg(); await loadSkills(); renderAll(); viewFile = rel; viewSrc = false; renderView();
+    } catch (e) { $("fErr").textContent = e.message; }
+  };
+}
+function deleteFile(name, path) {
+  dlgSkill = null;
+  dlg(`<div class="sk-dlg-top"><h3 id="skDlgTitle">Delete ${esc(path)}?</h3><span class="grow"></span><button type="button" class="x-btn" data-dlg-close aria-label="Close">${ICON_X}</button></div>
+    <p class="lead">This removes the file from <code>skills/${esc(name)}/</code>. If <code>SKILL.md</code> names it, change the instructions too.</p>
+    <div class="sk-dlg-foot"><span class="grow"></span><button type="button" class="btn ghost" data-dlg-close>Cancel</button><button type="button" class="btn danger-soft" id="fDelGo">Delete</button></div>`);
+  $("skDlg").querySelectorAll("[data-dlg-close]").forEach(b => b.onclick = closeDlg);
+  $("fDelGo").onclick = async () => {
+    try { await post("/skill-file-delete", { name, path }); } catch (e) { $("skErr").textContent = e.message; }
+    closeDlg(); await loadSkills(); renderAll(); viewFile = "SKILL.md"; renderView();
   };
 }
 async function deleteSkill(name) {
@@ -2123,10 +2188,10 @@ $("resetSkills").onclick = async () => { if (busy) return; try { await post("/sk
 
 // ---- Examples. A click puts the message into the box; you send it.
 const PRESETS = [
-  { name: "Meeting notes", skill: "meeting-notes", msg: "Clean up the notes of our weekly team meeting:\n\nAna: The demo on Friday went well, the client liked the new dashboard.\nBen: I will fix the login bug by Wednesday.\nAna: Chen, can you send the slides to the client?\nChen: Yes, tomorrow morning.\nAna: We decided to move the release to December 3.\nBen: Who updates the roadmap? Nobody knows yet.", tip: "Layers 1, 2 and 3: the model loads meeting-notes, reads the team-meeting format in references/, and runs the script (you allow it)." },
-  { name: "Release notes", skill: "release-notes", msg: "Write release notes for version 2.4.0, released today, from these changes:\n- feat: dark mode for the dashboard (ABC-412)\n- fix: export to CSV lost the last row\n- chore: update dependencies\n- refactor: split the API client\n- feat: favorite reports, by Maria", tip: "Layer 2 only: the skill has no files. Look for the rules the model cannot know: no ticket numbers, no names, no chores, Canadian spelling." },
-  { name: "Good vs. bad skill", skill: "release-notes-verbose", msg: "Write release notes for version 2.4.0, released today, from these changes:\n- feat: dark mode for the dashboard (ABC-412)\n- fix: export to CSV lost the last row\n- chore: update dependencies\n- refactor: split the API client\n- feat: favorite reports, by Maria", tip: "Turn release-notes off and release-notes-verbose on, then send. Compare the tokens of layer 2 and the answer: the rules hide in a reference file, and the description is vague." },
-  { name: "No skill needed", msg: "What is the capital of Canada?", tip: "The model should answer without loading a skill: layer 1 is the only cost." },
+  { name: "Meeting notes", skill: "meeting-notes", msg: "Clean up the notes of our weekly team meeting:\n\nAna: The demo on Friday went well, the client liked the new dashboard.\nBen: I will fix the login bug by Wednesday.\nAna: Chen, can you send the slides to the client?\nChen: Yes, tomorrow morning.\nAna: We decided to move the release to December 3.\nBen: Who updates the roadmap? Nobody knows yet.", tip: "Metadata, instructions and resources: the model loads meeting-notes, reads the team-meeting format in references/, and runs the script (you allow it)." },
+  { name: "Release notes", skill: "release-notes", msg: "Write release notes for version 2.4.0, released today, from these changes:\n- feat: dark mode for the dashboard (ABC-412)\n- fix: export to CSV lost the last row\n- chore: update dependencies\n- refactor: split the API client\n- feat: favorite reports, by Maria", tip: "Instructions only: the skill has no other files. Look for the rules the model cannot know: no ticket numbers, no names, no chores, Canadian spelling." },
+  { name: "Good vs. bad skill", skill: "release-notes-verbose", msg: "Write release notes for version 2.4.0, released today, from these changes:\n- feat: dark mode for the dashboard (ABC-412)\n- fix: export to CSV lost the last row\n- chore: update dependencies\n- refactor: split the API client\n- feat: favorite reports, by Maria", tip: "Turn release-notes off and release-notes-verbose on, then send. Compare the tokens of the instructions and the answer: the rules hide in a reference file, and the description is vague." },
+  { name: "No skill needed", msg: "What is the capital of Canada?", tip: "The model should answer without loading a skill: the metadata is the only cost." },
 ];
 // Examples: one chip per example, below the message box, then your saved prompts. A click puts the message
 // into the box; you send it. Saved prompts are stored by the server (/tool-prompts) and have a delete button.
@@ -2199,7 +2264,7 @@ function showStarters() {
 
 // ---- Context by layer: what the context of the last model call holds, in tokens. System prompt (yours), layer 1
 // (the skill list and the three tool definitions), layer 2 (SKILL.md bodies from load_skill), layer 3 (files and script
-// output), and the rest (your messages and the replies). Layers 2 and 3 are counted with the tokenizer of the model;
+// output), and the rest (your messages and the replies). Instructions and resources are counted with the tokenizer of the model;
 // the total is LM Studio's prompt + output tokens of the last call, so "Messages" is the rest.
 async function countText(model, text) {
   if (!model || !text) return 0;
@@ -2224,10 +2289,10 @@ function layersHtml() {
   const l3 = runs.filter(x => x.r.layer === 3).reduce((a, x) => a + (x.r.tokens || 0), 0);
   const fixed = sysTok.sys + sysTok.l1 + l2 + l3, total = Math.max(stats.ctx || 0, fixed), msg = Math.max(0, total - fixed);
   const size = ctxSize() || total || 1;
-  const parts = [["sys", "System prompt", sysTok.sys], ["1", "Layer 1 · skill list + tools", sysTok.l1], ["2", "Layer 2 · SKILL.md", l2], ["3", "Layer 3 · files, scripts", l3], ["msg", "Messages", stats.ctx ? msg : 0]];
-  const tip = parts.map(([, n, v]) => `${n}: ${v.toLocaleString()} tokens`).join(". ") + `. Out of ${size.toLocaleString()} tokens of context. ` + (stats.ctx ? "Layers 2 and 3 are counted with the tokenizer of the model; Messages is the rest of LM Studio's count of the last model call." : "Before the first call: only the system prompt and layer 1.");
+  const parts = [["sys", "System prompt", sysTok.sys], ["1", "Metadata · skill list + tools", sysTok.l1], ["2", "Instructions · SKILL.md", l2], ["3", "Resources · files, scripts", l3], ["msg", "Messages", stats.ctx ? msg : 0]];
+  const tip = parts.map(([, n, v]) => `${n}: ${v.toLocaleString()} tokens`).join(". ") + `. Out of ${size.toLocaleString()} tokens of context. ` + (stats.ctx ? "Instructions and resources are counted with the tokenizer of the model; Messages is the rest of LM Studio's count of the last model call." : "Before the first call: only the system prompt and the metadata.");
   return `<span class="bar">${parts.map(([c, , v]) => v ? `<i class="L-${c}" style="width:${(v / size * 100).toFixed(2)}%"></i>` : "").join("")}</span>`
-    + parts.filter(([c, , v]) => v || c === "1").map(([c, n, v]) => `<span><span class="dot L-${c}"></span>${c === "sys" ? "System" : c === "msg" ? "Messages" : "L" + c} ${fmtTok(v)}</span>`).join("")
+    + parts.filter(([c, , v]) => v || c === "1").map(([c, n, v]) => `<span><span class="dot L-${c}"></span>${{ sys: "System", msg: "Messages", 1: "Metadata", 2: "Instructions", 3: "Resources" }[c]} ${fmtTok(v)}</span>`).join("")
     + `<span class="sr">${esc(tip)}</span>`.replace('class="sr"', 'hidden') ;
 }
 document.addEventListener("mouseover", e => { const el = e.target.closest?.("#layers"); if (el && !el.dataset.tip) el.dataset.tipTitle = "Context by layer"; });
