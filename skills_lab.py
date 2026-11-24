@@ -320,6 +320,18 @@ def delete_file(name, rel):
     return 200, {"ok": True}
 
 
+def zip_skill(name):
+    """The skill folder as a .zip, with the folder at the top (meeting-notes/SKILL.md…), as skills are shared."""
+    import io, zipfile
+    d = skill_dir(name)
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        z.write(os.path.join(d, "SKILL.md"), f"{name}/SKILL.md")
+        for f in files_of(d):
+            z.write(os.path.join(d, f["path"]), f"{name}/{f['path']}")
+    return buf.getvalue()
+
+
 def delete_skill(name):
     d = skill_dir(name)
     if not d:

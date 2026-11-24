@@ -969,6 +969,26 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 return self._json(200, LIST_START.get(self.path, []))
         if self.path == "/skills":  # the Skills page: every skill folder, with its SKILL.md, files and problems
             return self._json(200, skills_lab.list_skills())
+        if self.path.startswith(("/skill-zip?", "/skill-raw?")):  # Download: the whole skill as a .zip, or one file as it is
+            q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            name = q.get("name", [""])[0]
+            d = skills_lab.skill_dir(name)
+            if not d:
+                return self._json(404, {"error": {"message": "No such skill."}})
+            if self.path.startswith("/skill-zip?"):
+                data, fname, ctype = skills_lab.zip_skill(name), f"{name}.zip", "application/zip"
+            else:
+                p = skills_lab.safe_path(d, q.get("path", [""])[0])
+                if not p:
+                    return self._json(404, {"error": {"message": "No such file."}})
+                data, fname, ctype = open(p, "rb").read(), os.path.basename(p), "application/octet-stream"
+            self.send_response(200)
+            self.send_header("Content-Type", ctype)
+            self.send_header("Content-Disposition", "attachment; filename*=UTF-8''" + urllib.parse.quote(fname))
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+            return
         if self.path.startswith("/skill-file?"):  # one file of a skill, to show it (the model reads files with read_skill_file)
             q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
             d = skills_lab.skill_dir(q.get("name", [""])[0])

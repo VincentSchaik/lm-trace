@@ -722,6 +722,11 @@
   .up-row .up-msg { grid-column: 1 / -1; color: var(--danger); font-size: 12px; }
   details.write > summary { cursor: pointer; font-size: 13px; color: var(--ink-2); }
   #skillView.over { outline: 2px dashed var(--red); outline-offset: 4px; border-radius: 12px; }
+  .ic-btn { width: 34px; height: 34px; display: inline-grid; place-items: center; padding: 0; border: 1px solid var(--line); border-radius: 8px; background: var(--field); color: var(--ink-2); cursor: pointer; flex: none; }
+  .ic-btn:hover { color: var(--ink); background: var(--paper-2); }
+  .ic-btn.warn:hover { color: var(--danger); }
+  .ic-btn svg { width: 16px; height: 16px; }
+  .ic-row { display: inline-flex; gap: 6px; align-items: center; }
   .sk-valid { margin: 0 0 14px; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--line); }
   .sk-valid .hd { font: 500 12px var(--sans); color: var(--ink-3); margin-bottom: 6px; }
   .sk-valid .hd code { font: 12px var(--mono); }
@@ -1979,7 +1984,7 @@ function openSkMenu(btn) {
   const name = btn.dataset.skMore;
   skMenu = Object.assign(document.createElement("div"), { className: "sk-menu", role: "menu" });
   skMenu.innerHTML = `<button type="button" role="menuitem" data-sk-act="open">Open</button><button type="button" role="menuitem" data-sk-act="details">Details</button>`
-    + `<button type="button" role="menuitem" data-sk-act="edit">Edit</button><button type="button" role="menuitem" class="del" data-sk-act="delete">Delete</button>`;
+    + `<button type="button" role="menuitem" class="del" data-sk-act="uninstall">Uninstall</button>`;
   skMenu.dataset.name = name;
   document.body.append(skMenu);
   const r = btn.getBoundingClientRect();
@@ -1991,7 +1996,7 @@ function openSkMenu(btn) {
 document.addEventListener("click", e => {
   const more = e.target.closest("[data-sk-more]"), act = e.target.closest("[data-sk-act]"), open = e.target.closest("[data-sk-open]");
   if (more) { skMenu?.dataset.name === more.dataset.skMore ? closeSkMenu() : openSkMenu(more); return; }
-  if (act) { const n = skMenu.dataset.name, a = act.dataset.skAct; closeSkMenu(); if (a === "open") openView(n); else if (a === "details") openDetails(n); else if (a === "edit") openEditorSk(n); else deleteSkill(n); return; }
+  if (act) { const n = skMenu.dataset.name, a = act.dataset.skAct; closeSkMenu(); if (a === "open") openView(n); else if (a === "details") openDetails(n); else deleteSkill(n); return; }
   if (open) { openDetails(open.dataset.skOpen); return; }
   if (skMenu && !e.target.closest(".sk-menu")) closeSkMenu();
 });
@@ -2071,13 +2076,13 @@ async function renderView() {
     body = /\.md$/i.test(viewFile) && !viewSrc ? `<div class="mdv">${mdView(text)}</div>` : `<pre class="src-pre">${esc(text)}</pre>`;
   }
   $("skillView").innerHTML = `<div class="sk-crumbs"><button type="button" class="btn ghost small" id="skBack">← Skills</button><span class="sk-path">skills / ${esc(sk.name)} / <b>${esc(viewFile)}</b></span><span class="grow" style="flex:1"></span>`
-    + `<button type="button" class="btn ghost small" id="skAddFile" title="Add files to the skill: drag and drop, or browse. scripts/, references/, assets/ or any other folder">Add files</button>`
-    + `<button type="button" class="btn ghost small" id="skSrc">${viewSrc ? "View rendered" : "View source"}</button><button type="button" class="btn ghost small" id="skEdit" title="${viewFile === "SKILL.md" ? "Edit SKILL.md" : "Edit " + esc(viewFile)}">Edit</button>`
-    + (viewFile === "SKILL.md" ? "" : `<button type="button" class="btn ghost small warn" id="skDelFile" title="Delete ${esc(viewFile)}">Delete file</button>`) + `${swHtml(sk, "view")}</div>`
+    + `<span class="ic-row">${iconBtn("skAddFile", "add", "Add files")}${/\.md$/i.test(viewFile) ? iconBtn("skSrc", viewSrc ? "eye" : "code", viewSrc ? "View rendered" : "View source") : ""}${iconBtn("skEdit", "edit", `Edit ${viewFile}`)}`
+    + `${iconBtn("skDown", "down", `Download ${viewFile}`)}${viewFile === "SKILL.md" ? "" : iconBtn("skDelFile", "trash", `Delete ${viewFile}`, " warn")}</span>${swHtml(sk, "view")}</div>`
     + treeHtml(sk, viewFile) + body;
-  $("skBack").onclick = closeView; $("skSrc").onclick = () => { viewSrc = !viewSrc; renderView(); };
+  $("skBack").onclick = closeView; if ($("skSrc")) $("skSrc").onclick = () => { viewSrc = !viewSrc; renderView(); };
   $("skEdit").onclick = () => viewFile === "SKILL.md" ? openEditorSk(sk.name) : openFileEditor(sk.name, viewFile);
   $("skAddFile").onclick = () => openFileEditor(sk.name, null);
+  $("skDown").onclick = () => { location.href = `/skill-raw?name=${encodeURIComponent(sk.name)}&path=${encodeURIComponent(viewFile)}`; };
   if ($("skDelFile")) $("skDelFile").onclick = () => deleteFile(sk.name, viewFile);
   $("skillView").querySelectorAll("[data-sk-file]").forEach(b => b.onclick = () => { viewFile = b.dataset.skFile; renderView(); });
 }
@@ -2095,11 +2100,12 @@ function openDetails(name) {
     <h3 id="skDlgTitle">${esc(titleOf(sk.name))} <span>Skill</span></h3>
     <p class="lead">${esc(sk.description)}</p>${layersLine(sk)}${lintHtml(sk)}
     <div class="bodybox mdv">${mdView(sk.body)}</div>
-    <div class="sk-dlg-foot"><button type="button" class="btn danger-soft" data-dlg-del>Delete</button><span class="grow"></span><button type="button" class="btn ghost" data-dlg-open>Open</button><button type="button" class="btn" data-dlg-try${sk.errors.length ? " disabled" : ""}>Try now</button></div>`);
+    <div class="sk-dlg-foot"><button type="button" class="btn danger-soft" data-dlg-del>Uninstall</button><span class="grow"></span><button type="button" class="btn ghost" data-dlg-down title="Download the skill folder as a .zip file">Download</button><button type="button" class="btn ghost" data-dlg-open>Open</button><button type="button" class="btn" data-dlg-try${sk.errors.length ? " disabled" : ""}>Try now</button></div>`);
   const box = $("skDlg");
   box.querySelector("[data-dlg-close]").onclick = closeDlg;
   box.querySelector("[data-dlg-open]").onclick = () => { closeDlg(); setTab("skills"); openView(name); };
   box.querySelector("[data-dlg-del]").onclick = () => { closeDlg(); deleteSkill(name); };
+  box.querySelector("[data-dlg-down]").onclick = () => { location.href = `/skill-zip?name=${encodeURIComponent(name)}`; };
   box.querySelector("[data-dlg-try]").onclick = async () => {
     closeDlg(); if (!sk.on) await setSkillOn(name, true);
     setTab("chat"); const ex = PRESETS.find(p => p.skill === name);
@@ -2142,6 +2148,15 @@ function openEditorSk(name) {
 
 // Add or change one file of a skill (resources), and delete one. SKILL.md changes with Edit (openEditorSk).
 const FILE_DIRS = [["scripts/", "executable code"], ["references/", "documentation"], ["assets/", "templates, images, data"]];
+const IC_SK = {
+  add: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></svg>',
+  code: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 18 6-6-6-6M8 6l-6 6 6 6"/></svg>',
+  eye: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>',
+  edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
+  down: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></svg>',
+  trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/></svg>',
+};
+const iconBtn = (id, icon, label, cls = "") => `<button type="button" class="ic-btn${cls}" id="${id}" aria-label="${esc(label)}" data-tooltip="${esc(label)}">${IC_SK[icon]}</button>`;
 const ICON_UP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></svg>';
 // Auto: where a file goes by its type, as the specification recommends: code in scripts/, documentation in
 // references/, everything else (templates, images, data) in assets/.
@@ -2253,9 +2268,9 @@ async function deleteSkill(name) {
   if (busy) return;
   dlgSkill = null;
   // A dialog in the page (no browser confirm): Delete removes the folder skills/<name>.
-  dlg(`<div class="sk-dlg-top"><h3 id="skDlgTitle">Delete ${esc(titleOf(name))}?</h3><span class="grow"></span><button type="button" class="x-btn" data-dlg-close aria-label="Close">${ICON_X}</button></div>
-    <p class="lead">This removes the folder <code>skills/${esc(name)}</code> and all its files. A starter skill comes back with Reset skills; your own skill does not.</p>
-    <div class="sk-dlg-foot"><span class="grow"></span><button type="button" class="btn ghost" data-dlg-close>Cancel</button><button type="button" class="btn danger-soft" id="skDelGo">Delete</button></div>`);
+  dlg(`<div class="sk-dlg-top"><h3 id="skDlgTitle">Uninstall ${esc(titleOf(name))}?</h3><span class="grow"></span><button type="button" class="x-btn" data-dlg-close aria-label="Close">${ICON_X}</button></div>
+    <p class="lead">This removes the folder <code>skills/${esc(name)}</code> and all its files. A starter skill comes back with Reset skills; your own skill does not, so Download it first if you want to keep it.</p>
+    <div class="sk-dlg-foot"><span class="grow"></span><button type="button" class="btn ghost" data-dlg-close>Cancel</button><button type="button" class="btn danger-soft" id="skDelGo">Uninstall</button></div>`);
   $("skDlg").querySelectorAll("[data-dlg-close]").forEach(b => b.onclick = closeDlg);
   $("skDelGo").onclick = async () => {
     try { await post("/skill-delete", { name }); } catch (e) { $("skErr").textContent = e.message; }
