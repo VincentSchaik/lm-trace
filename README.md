@@ -310,6 +310,28 @@ The page has two tabs:
 
 Your tools are in `tools.json`, and your archived chats are in `chats/`. Git ignores them.
 
+## Skills
+
+Open **Skills** in the sidebar. The page is a playground for [Agent Skills](https://agentskills.io): folders of instructions that a model loads only when a task needs them. A skill is a folder with a `SKILL.md` file (YAML frontmatter with a `name` and a `description`, then instructions in Markdown) and optional files: scripts, formats and references.
+
+LM Studio has no skills of its own, so LM Trace is the harness, as on the Tools page. The model gets more of a skill as it needs it (progressive disclosure):
+
+1. **Metadata** (~100 tokens, always loaded): the harness puts the name and description of each skill that is on into the system prompt, as an `<available_skills>` block in the format of `skills-ref to-prompt`.
+2. **Instructions** (fewer than 5,000 tokens recommended, loaded when the skill is activated): the model calls `load_skill`, and gets the body of `SKILL.md` and the list of its files.
+3. **Resources** (as needed): files in `scripts/`, `references/`, `assets/` or any other folder. The model calls `read_skill_file` to read one, or `run_skill_script` to run a script. A script runs on your computer, so the page asks you before each run: **Allow** or **Deny**.
+
+The page has two tabs:
+
+- **Skills:** each skill with its source and an **On** switch. The **⋯** menu has **Open**, **Details** and **Uninstall**. **Details** also has **Download**: the skill folder as a `.zip` file. **Try now** in **Details** puts the example message of the skill in the message box. Edit the example in **Open**, under the instructions: LM Trace keeps it; it is not part of the skill. A starter skill has a built-in example; **Reset** brings it back. **Open** shows the file tree of the skill, its metadata, the tokens of each layer, and the result of the validation. In **Open**, **Add files** adds resources: drag and drop files or folders (or **Browse files**), at most 1 MB each, with the progress of each file. **Auto** puts each file in the folder that the specification recommends: code in `scripts/`, documentation in `references/`, and static resources in `assets/`: templates (document and configuration templates, any file with "template" in its name), images (diagrams, examples) and data files (lookup tables, schemas). You can change each path. You can also write a file. The icons at the top of **Open** edit, download or delete the file on screen (`SKILL.md` can only be edited); you can also drop files on the **Open** view.
+- **Validation:** the page runs the checks of [`skills-ref validate`](https://github.com/agentskills/agentskills/tree/main/skills-ref), the reference library of the specification, with the same messages: the allowed frontmatter fields, the name rules, and the length of the description and compatibility. A skill that is not valid cannot be turned on. **Validate**, in **Create skill** and **Edit**, runs the same checks on the text before you save it. Best-practice hints show apart. **Create skill** writes a new `SKILL.md`, with the name and description checked against the standard. **Import from GitHub** downloads a skill folder, for example from [anthropics/skills](https://github.com/anthropics/skills); an imported skill starts off.
+- **Chat:** the same rows as on the Tools page. A **Skill** row shows each layer as it joins the context, with its tokens.
+
+The starter skills show the three layers and the best practices of the standard: **meeting-notes** (format files in `references/` and a script in `scripts/`), **release-notes**, which follows the best practices of agentskills.io, and **release-notes-verbose**, which breaks them: a vague description, text that the model already knows, a menu of formats, and rules hidden in a reference file. **release-notes-verbose** starts off. Use the **Good vs. bad skill** example: turn **release-notes** off and **release-notes-verbose** on, send the same message, and compare the tokens and the answers.
+
+Your skills are in `skills/` (the starters come from `skill-starters/`), and your archived chats are in `skill-chats/`. Git ignores them.
+
+Tests for saving skills (create, edit, rename, collisions, rollback): `python3 -m unittest discover tests`.
+
 ## Limitations
 
 These limitations come from LM Studio:
