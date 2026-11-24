@@ -101,3 +101,15 @@
 [data-tooltip]:hover::before, [data-tooltip]:focus-visible::before { opacity: 1; translate: -50% 0; }
 #theme[data-tooltip]::before { left: auto; right: 0; translate: 0 -4px; }  /* the last button in the header: keep the tip on the page */
 #theme[data-tooltip]:hover::before, #theme[data-tooltip]:focus-visible::before { translate: 0 0; }
+
+/* Chat stats (Tools and MCP pages): one row above the message box, on the right. */
+.stats-row { display: flex; justify-content: flex-end; padding: 0 4px 8px; }
+.stats-row .stats { font-size: 13px; color: var(--ink-3); }
+.stats-row .stats > span + span { margin-left: 14px; }
+.stats b { color: var(--ink); font-weight: 600; font-family: var(--mono); }
+.ctx { display: inline-flex; align-items: center; gap: 6px; cursor: help; }
+.ctx svg { width: 15px; height: 15px; transform: rotate(-90deg); }
+.ctx circle { fill: none; stroke: var(--line); stroke-width: 2.5; }
+.ctx circle.arc { stroke: var(--primary); stroke-linecap: round; }
+.ctx.high circle.arc { stroke: #d98e04; }
+.ctx.full circle.arc { stroke: var(--danger); }

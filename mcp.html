@@ -1068,10 +1068,11 @@
     </div>
   </section>
   <section class="panel" aria-label="Chat log">
-    <div class="log-head"><div class="flow2" id="flow" aria-label="The steps of MCP"></div><span class="stats" id="stats"></span></div>
+    <div class="log-head"><div class="flow2" id="flow" aria-label="The steps of MCP"></div></div>
     <div class="chatlog" id="log"></div>
   </section>
   <section class="panel sendbar" aria-label="Your message">
+    <div class="stats-row"><span class="stats" id="stats"></span></div>
     <div class="cbox">
       <div class="attach" id="attach" hidden></div>
       <div class="cbox-top"><textarea id="msg" class="cbox-input" rows="1" placeholder="Ask something, or select an example." title="Enter sends the message. Shift + Enter adds a line."></textarea><div class="input-tools"><button type="button" class="copy" id="saveMsg" title="Save as an example: it shows below the message box" aria-label="Save as an example"></button><button type="button" class="copy" id="copyMsg" title="Copy the message" aria-label="Copy the message"></button></div></div>
@@ -2451,7 +2452,20 @@ function renderStats() {
   $("stats").innerHTML = `<span title="The MCP servers that the chat sends in integrations">Servers on <b>${on.length}</b></span>`
     + `<span title="The tools of these servers that LM Studio gives to the model">Tools on <b>${nt.every(n => n != null) ? nt.reduce((a, b) => a + b, 0) : "–"}</b></span>`
     + `<span title="The model calls of this chat: LM Studio calls the model once, then again after each tool result">Model calls <b>${calls}</b></span>`
-    + `<span title="The tools/call requests that LM Studio sent to the servers in this chat">Tool calls <b>${tcalls}</b></span>`;
+    + `<span title="The tools/call requests that LM Studio sent to the servers in this chat">Tool calls <b>${tcalls}</b></span>`
+    + ctxHtml();
+}
+// Context window, as on the Tools page: the prompt of the last model call against the loaded context length.
+// LM Studio reports input_tokens for call 1 only; a later call's prompt is counted with the tokenizer (~).
+function ctxHtml() {
+  const t = [...chat].reverse().find(x => x.stats), pr = t ? promptToks(t) : [];
+  const model = t?.req?.model || $("chatModel").value;
+  const size = loadedCtx(model) || Composer.info(model)?.max_context_length || 0;
+  const used = !t ? 0 : pr.length > 1 ? pr.at(-1) : t.stats.input_tokens;
+  if (!size || !used) return `<span class="ctx" tabindex="0" data-tip-title="Context window" data-tip="The prompt of the last model call against the context length. It shows after the first answer.${size ? ` Context length: ${size.toLocaleString()} tokens.` : ""}"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6"/></svg>Context <b>–</b> / ${size ? size.toLocaleString() : "–"}</span>`;
+  const approx = pr.length > 1, pct = Math.min(1, used / size), lvl = pct > .9 ? " full" : pct > .75 ? " high" : "", C = 2 * Math.PI * 6;
+  const tip = `The prompt of the last model call took ${approx ? "about " : ""}${used.toLocaleString()} of ${size.toLocaleString()} tokens of the context window (${(pct * 100).toFixed(1)}%): the system prompt, the tool definitions and the history. The reply adds to it. ${approx ? "LM Studio reports only the first call, so the page counts this prompt with the tokenizer of the model." : "From LM Studio: input_tokens."}`;
+  return `<span class="ctx${lvl}" tabindex="0" data-tip-title="Context window" data-tip="${esc(tip)}"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6"/><circle cx="8" cy="8" r="6" class="arc" stroke-dasharray="${(pct * C).toFixed(2)} ${C.toFixed(2)}"/></svg>Context <b>${approx ? "≈ " : ""}${used.toLocaleString()}</b> / ${size.toLocaleString()}</span>`;
 }
 
 // ---------------------------------------------------------------- System prompt: examples, save, delete and copy

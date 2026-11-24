@@ -596,12 +596,6 @@
   .icon-row .ti svg { width: 20px; height: 20px; }
   .icon-row input { flex: 1; min-width: 0; }
   .icon-row a { flex: none; font-size: 13px; color: var(--primary); }
-  .ctx { display: inline-flex; align-items: center; gap: 6px; cursor: help; }
-  .ctx svg { width: 15px; height: 15px; transform: rotate(-90deg); }
-  .ctx circle { fill: none; stroke: var(--line); stroke-width: 2.5; }
-  .ctx circle.arc { stroke: var(--primary); stroke-linecap: round; }
-  .ctx.high circle.arc { stroke: #d98e04; }
-  .ctx.full circle.arc { stroke: var(--danger); }
   .edit-actions { display: flex; justify-content: flex-end; gap: 8px; padding-top: 10px; }
   .note-box { padding: 0 0 14px; display: grid; gap: 10px; }
   .opt > summary .sum-ctl { margin-left: auto; display: inline-flex; align-items: center; gap: 10px; cursor: default; }
@@ -693,8 +687,7 @@
   <section class="panel" aria-label="Chat">
     <div class="panel-head"><button type="button" id="newChat" class="btn ghost" title="Start a new chat: clear the conversation. The settings and the tools stay.">New</button>
       <div class="perm-wrap chats-wrap"><button type="button" id="chatsBtn" class="btn ghost" aria-haspopup="menu" aria-expanded="false" aria-controls="chatsMenu" title="Archived chats: each chat is archived when a message finishes. Open one to view it again, read only.">Archived</button>
-        <div class="perm-menu chats-menu" id="chatsMenu" role="menu" aria-label="Archived chats" hidden></div></div>
-      <span class="stats" id="stats"></span></div>
+        <div class="perm-menu chats-menu" id="chatsMenu" role="menu" aria-label="Archived chats" hidden></div></div></div>
     <!-- System prompt: the same row as on the Trace page. Sent first, in every model call. -->
     <div class="opts sysrow">
       <details class="opt" id="optSystem">
@@ -751,6 +744,7 @@
     <div class="chatlog" id="log"></div>
   </section>
   <section class="panel sendbar" aria-label="Your message">
+    <div class="stats-row"><span class="stats" id="stats"></span></div>
     <div class="cbox">
       <div class="cbox-top"><textarea id="msg" class="cbox-input" rows="1" placeholder="Ask something, or select an example." title="Enter sends the message. Shift + Enter adds a line."></textarea><div class="input-tools"><button type="button" class="copy" id="saveMsg" title="Save as an example: it shows below the message box" aria-label="Save as an example"></button><button type="button" class="copy" id="copyMsg" title="Copy the message" aria-label="Copy the message"></button></div></div>
       <div class="cbox-bar">
