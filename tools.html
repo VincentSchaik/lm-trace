@@ -1769,7 +1769,10 @@ function renderChat(hold) {
     return out;
   }).join("") + archEnd();
   log.scrollTop = atEnd ? log.scrollHeight : top;
-  $("stats").innerHTML = `<span title="The tools that are on: the harness sends their definitions in each model call">Tools on <b>${viewing ? (viewing.tools || []).length : active().length}</b></span><span>Model calls <b>${stats.calls}</b></span><span>Tool calls <b>${stats.tools}</b></span>${ctxHtml()}`;
+  $("stats").innerHTML = `<span title="MCP servers: this page uses none. The MCP page connects a model to MCP servers.">MCP <b>0</b></span>`
+    + `<span title="The tools that are on: the harness sends their definitions in each model call">Tools <b>${viewing ? (viewing.tools || []).length : active().length}</b></span>`
+    + `<span title="The tool calls of this chat: the harness ran each one">Tools called <b>${stats.tools}</b></span>`
+    + `<span title="The model calls of this chat: the harness calls the model once, then again after each tool result">Model calls <b>${stats.calls}</b></span>${ctxHtml()}`;
   estimateCtx();
 }
 document.addEventListener("toggle", e => { const d = e.target; if (d.matches?.("details.x, details.ev")) d.open ? openKeys.add(d.dataset.key) : openKeys.delete(d.dataset.key); }, true);
