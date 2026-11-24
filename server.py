@@ -1216,6 +1216,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return self._json(*skills_lab.save_skill(req.get("name"), req.get("skillMd"), req.get("old")))
         if path == "/skill-validate":  # the Validate button: the skills-ref checks on SKILL.md text, not saved
             return self._json(*skills_lab.validate_text(req.get("skillMd")))
+        if path == "/skill-example":  # {name, example}: the Try now message; example null = the built-in one
+            return self._json(*skills_lab.set_example(req.get("name"), req.get("example")))
         if path == "/skill-on":
             return self._json(*skills_lab.set_on(req.get("name"), req.get("on") is True))
         if path == "/skill-file-save":  # add or change one file: {name, path, text} or {name, path, b64}

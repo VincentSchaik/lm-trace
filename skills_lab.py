@@ -309,7 +309,7 @@ def list_skills():
         out.append({"name": folder, "file": os.path.basename(f), "description": fm.get("description") if isinstance(fm.get("description"), str) else "",
                     "frontmatter": fm, "body": body, "skillMd": text, "files": files_of(d),
                     "on": m.get("on", True), "source": m.get("source", "Created"), "url": m.get("url"),
-                    "errors": errors, "hints": hints})
+                    "example": m.get("example"), "errors": errors, "hints": hints})
     return out
 
 
@@ -319,6 +319,23 @@ def set_on(name, on):
     with lock:
         meta = read_meta()
         meta.setdefault(name, {"source": "Created"})["on"] = bool(on)
+        write_meta(meta)
+    return 200, {"ok": True}
+
+
+def set_example(name, example):
+    """The message that Try now puts in the message box. None removes it (back to the built-in example, if any)."""
+    if not skill_dir(name):
+        return 404, {"error": {"message": f"No skill named {name}."}}
+    if example is not None and (not isinstance(example, str) or len(example) > 20_000):
+        return 400, {"error": {"message": "The example must be text, at most 20,000 characters."}}
+    with lock:
+        meta = read_meta()
+        m = meta.setdefault(name, {"source": "Created"})
+        if example is None:
+            m.pop("example", None)
+        else:
+            m["example"] = example
         write_meta(meta)
     return 200, {"ok": True}
 

@@ -772,12 +772,25 @@
   .sk-dlg-top .grow { flex: 1; }
   .sk-dlg h3 { margin: 0; font-size: 22px; font-weight: 600; }
   .sk-dlg h3 span { color: var(--ink-3); font-weight: 400; }
+  .sk-ex { flex: none; border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; margin-top: 14px; }
+  .sk-dlg .sk-ex { margin-top: 0; }
+  .sk-dlg > * { flex: none; } .sk-dlg > .bodybox { flex: 0 1 auto; }  /* only the instructions scroll */
+  .sk-dlg:focus { outline: none; }
+  .sk-ex-hd { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+  .sk-ex-hd span:not(.grow):not(.ic-row) { color: var(--ink-3); font-size: 13px; }
+  .sk-ex-hd .grow { flex: 1; }
+  .sk-ex-text { margin-top: 10px; max-height: 140px; overflow: auto; white-space: pre-wrap; font-size: 13.5px; line-height: 1.5; color: var(--ink-2); background: var(--paper); border-radius: 8px; padding: 10px 12px; }
+  .sk-ex-none { margin-top: 8px; font-size: 13px; color: var(--ink-3); }
+  .sk-ex textarea { display: block; width: 100%; margin-top: 10px; font: 13.5px/1.5 var(--sans); padding: 10px 12px; resize: vertical; }
+  .sk-ex-bar { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+  .sk-ex-bar .grow { flex: 1; }
+  .sk-ex-st { font-size: 12.5px; color: var(--danger); }
   .sk-dlg .lead { color: var(--ink-2); font-size: 15px; margin: 0; }
   .sk-dlg .bodybox { overflow: auto; border: 1px solid var(--line); border-radius: 12px; padding: 16px 20px; min-height: 120px; background: var(--paper); }
-  .sk-dlg-foot { display: flex; align-items: center; gap: 10px; }
-  .sk-dlg-foot .grow { flex: 1; }
   .btn.danger-soft { background: rgba(217, 48, 37, .1); color: var(--danger); border-color: transparent; box-shadow: none; }
   .btn.danger-soft:hover { background: rgba(217, 48, 37, .18); color: var(--danger); }
+  .sk-dlg-foot { display: flex; align-items: center; gap: 10px; }
+  .sk-dlg-foot .grow { flex: 1; }
   .x-btn { width: 32px; height: 32px; border: 0; border-radius: 8px; background: transparent; color: var(--ink-2); cursor: pointer; display: grid; place-items: center; }
   .x-btn:hover { background: var(--paper-2); }
   .x-btn svg { width: 18px; height: 18px; }
@@ -2101,12 +2114,12 @@ function treeHtml(sk, current) {
 }
 // Open: the files of the skill in the tab, SKILL.md first (metadata + rendered body), like a file view.
 let viewSk = null, viewFile = "SKILL.md", viewSrc = false, viewText = null, viewBinary = false;
-function openView(name) { viewSk = name; viewFile = "SKILL.md"; viewSrc = false; $("skillList").hidden = true; $("skillView").hidden = false; document.querySelector("#pane-skills .card-tools").hidden = true; renderView(); }
+function openView(name) { viewSk = name; viewFile = "SKILL.md"; viewSrc = false; exEdit = false; $("skillList").hidden = true; $("skillView").hidden = false; document.querySelector("#pane-skills .card-tools").hidden = true; renderView(); }
 function closeView() { viewSk = null; $("skillList").hidden = false; $("skillView").hidden = true; document.querySelector("#pane-skills .card-tools").hidden = false; renderSkills(); }
 async function renderView() {
   const sk = skills.find(x => x.name === viewSk); if (!sk) return closeView();
   let body;
-  if (viewFile === "SKILL.md") body = viewSrc ? `<pre class="src-pre">${esc(sk.skillMd)}</pre>` : metaHtml(sk) + layersLine(sk) + lintHtml(sk) + `<div class="mdv">${mdView(sk.body)}</div>`;
+  if (viewFile === "SKILL.md") body = viewSrc ? `<pre class="src-pre">${esc(sk.skillMd)}</pre>` : metaHtml(sk) + layersLine(sk) + lintHtml(sk) + `<div class="mdv">${mdView(sk.body)}</div>` + exampleHtml(sk, true);
   else {
     const t = await fetch(`/skill-file?name=${encodeURIComponent(sk.name)}&path=${encodeURIComponent(viewFile)}`).then(r => r.json()).catch(() => ({}));
     viewText = t.text ?? null; viewBinary = !!t.binary;
@@ -2121,6 +2134,7 @@ async function renderView() {
     + `<span class="ic-row">${iconBtn("skAddFile", "add", "Add files")}${/\.md$/i.test(viewFile) ? iconBtn("skSrc", viewSrc ? "eye" : "code", viewSrc ? "View rendered" : "View source") : ""}${viewFile !== "SKILL.md" && (sk.files.find(f => f.path === viewFile)?.binary || /^image\//.test(sk.files.find(f => f.path === viewFile)?.type || "")) ? "" : iconBtn("skEdit", "edit", `Edit ${viewFile}`)}`
     + `${iconBtn("skDown", "down", `Download ${viewFile}`)}${viewFile === "SKILL.md" ? "" : iconBtn("skDelFile", "trash", `Delete ${viewFile}`, " warn")}</span>${swHtml(sk, "view")}</div>`
     + treeHtml(sk, viewFile) + body;
+  wireExample(sk);
   $("skBack").onclick = closeView; if ($("skSrc")) $("skSrc").onclick = () => { viewSrc = !viewSrc; renderView(); };
   if ($("skEdit")) $("skEdit").onclick = () => viewFile === "SKILL.md" ? openEditorSk(sk.name) : openFileEditor(sk.name, viewFile);
   $("skAddFile").onclick = () => openFileEditor(sk.name, null);
@@ -2131,7 +2145,7 @@ async function renderView() {
   $("skillView").querySelectorAll("[data-sk-adddir]").forEach(b => b.onclick = () => openFileEditor(sk.name, null, null, b.dataset.skAdddir));
 }
 
-// Details: a dialog with the switch, the description, the instructions, Delete and Try now.
+// Details: a dialog with Open, Download, Uninstall and the switch, the description, the instructions, and the example with Try now.
 function dlg(html) { const d = $("skDlg"); d.querySelector(".sk-dlg").innerHTML = html; d.hidden = false; d.querySelector("button, input, textarea")?.focus(); }
 var dlgSkill = null;  // the skill of the open Details dialog
 function closeDlg() { $("skDlg").hidden = true; dlgSkill = null; }
@@ -2140,21 +2154,50 @@ document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("skDlg"
 function openDetails(name) {
   const sk = skills.find(x => x.name === name); if (!sk) return;
   dlgSkill = name;
-  dlg(`<div class="sk-dlg-top"><span class="sk-ic">${ICON_BOX}</span><span class="grow"></span>${swHtml(sk, "dlg")}<button type="button" class="x-btn" data-dlg-close aria-label="Close">${ICON_X}</button></div>
+  // The same controls as in Open: icon buttons, then the switch.
+  dlg(`<div class="sk-dlg-top"><span class="sk-ic">${ICON_BOX}</span><span class="grow"></span>
+      <span class="ic-row">${iconBtn("dlgOpen", "open", "Open: the files of the skill")}${iconBtn("dlgDown", "down", "Download the skill folder as a .zip file")}${iconBtn("dlgDel", "trash", "Uninstall", " warn")}</span>${swHtml(sk, "dlg")}<button type="button" class="x-btn" data-dlg-close aria-label="Close">${ICON_X}</button></div>
     <h3 id="skDlgTitle">${esc(titleOf(sk.name))} <span>Skill</span></h3>
     <p class="lead">${esc(sk.description)}</p>${layersLine(sk)}${lintHtml(sk)}
     <div class="bodybox mdv">${mdView(sk.body)}</div>
-    <div class="sk-dlg-foot"><button type="button" class="btn danger-soft" data-dlg-del>Uninstall</button><span class="grow"></span><button type="button" class="btn ghost" data-dlg-down title="Download the skill folder as a .zip file">Download</button><button type="button" class="btn ghost" data-dlg-open>Open</button><button type="button" class="btn" data-dlg-try${sk.errors.length ? " disabled" : ""}>Try now</button></div>`);
-  const box = $("skDlg");
+    ${exampleHtml(sk, false)}`);
+  const box = $("skDlg"), card = box.querySelector(".sk-dlg");
+  card.tabIndex = -1; card.focus();  // no button gets the focus (and its tooltip) when the dialog opens
   box.querySelector("[data-dlg-close]").onclick = closeDlg;
-  box.querySelector("[data-dlg-open]").onclick = () => { closeDlg(); setTab("skills"); openView(name); };
-  box.querySelector("[data-dlg-del]").onclick = () => { closeDlg(); deleteSkill(name); };
-  box.querySelector("[data-dlg-down]").onclick = () => { location.href = `/skill-zip?name=${encodeURIComponent(name)}`; };
-  box.querySelector("[data-dlg-try]").onclick = async () => {
-    closeDlg(); if (!sk.on) await setSkillOn(name, true);
-    setTab("chat"); const ex = PRESETS.find(p => p.skill === name);
-    useMsg(ex ? ex.msg : "");
+  $("dlgOpen").onclick = () => { closeDlg(); setTab("skills"); openView(name); };
+  $("dlgDel").onclick = () => { closeDlg(); deleteSkill(name); };
+  $("dlgDown").onclick = () => { location.href = `/skill-zip?name=${encodeURIComponent(name)}`; };
+  $("exTry").onclick = () => tryNow(sk);
+}
+// Try now: the skill on, then its example message in the message box of the chat. You send it.
+async function tryNow(sk) {
+  closeDlg(); if (!sk.on) await setSkillOn(sk.name, true);
+  setTab("chat"); useMsg(exampleOf(sk));
+}
+// The example message of a skill: the one you saved in Open, else the built-in example of a starter, else none.
+const exampleOf = sk => sk.example ?? PRESETS.find(p => p.skill === sk.name)?.msg ?? "";
+// The Example message card. Details shows it with Try now; Open shows it with Edit (edit = the text box).
+var exEdit = false;
+function exampleHtml(sk, inOpen) {
+  const ex = exampleOf(sk), builtIn = PRESETS.some(p => p.skill === sk.name);
+  const head = `<div class="sk-ex-hd"><b>Example message</b><span>Try now puts it in the message box of the chat</span><span class="grow"></span>`;
+  if (inOpen && exEdit) return `<div class="sk-ex">${head}</div>
+    <textarea id="exText" rows="6" placeholder="A message that needs this skill: a task in the words of a user.">${esc(ex)}</textarea>
+    <div class="sk-ex-bar"><span class="sk-ex-st" id="exSt"></span><span class="grow"></span>${builtIn && sk.example != null ? '<button type="button" class="btn ghost" id="exReset" title="Use the built-in example again">Reset</button>' : ""}<button type="button" class="btn ghost" id="exCancel">Cancel</button><button type="button" class="btn" id="exSave">Save</button></div></div>`;
+  const btn = inOpen ? iconBtn("exEditBtn", "edit", "Edit the example message")
+    : `<button type="button" class="btn" id="exTry"${sk.errors.length ? " disabled" : ""}>Try now</button>`;
+  return `<div class="sk-ex">${head}${btn}</div>${ex ? `<div class="sk-ex-text">${esc(ex)}</div>` : `<div class="sk-ex-none">No example yet.${inOpen ? " Click Edit to write one." : " Write one in Open."}</div>`}</div>`;
+}
+function wireExample(sk) {
+  if ($("exEditBtn")) $("exEditBtn").onclick = () => { exEdit = true; renderView().then(() => $("exText")?.focus()); };
+  if (!$("exText")) return;
+  const store = async example => {
+    try { await post("/skill-example", { name: sk.name, example }); exEdit = false; await loadSkills(); await renderView(); }
+    catch (e) { $("exSt").textContent = e.message; }
   };
+  $("exSave").onclick = () => store($("exText").value);
+  $("exCancel").onclick = () => { exEdit = false; renderView(); };
+  if ($("exReset")) $("exReset").onclick = () => store(null);
 }
 document.addEventListener("change", e => { if (e.target.dataset?.where === "dlg") setTimeout(() => { if (!$("skDlg").hidden) openDetails(e.target.dataset.skOn); }, 0); });
 
@@ -2196,6 +2239,7 @@ function openEditorSk(name) {
 // Add or change one file of a skill (resources), and delete one. SKILL.md changes with Edit (openEditorSk).
 const FILE_DIRS = [["scripts/", "executable code"], ["references/", "documentation"], ["assets/", "templates, images, data files"]];
 const IC_SK = {
+  open: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2"/></svg>',
   add: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></svg>',
   code: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 18 6-6-6-6M8 6l-6 6 6 6"/></svg>',
   eye: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>',
