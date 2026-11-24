@@ -17,7 +17,8 @@ class Temp(unittest.TestCase):
     def setUp(self):
         self.root = tempfile.mkdtemp()
         self.p = [mock.patch.object(sl, "SKILLS", os.path.join(self.root, "skills")),
-                  mock.patch.object(sl, "META", os.path.join(self.root, "skills-meta.json"))]
+                  mock.patch.object(sl, "META", os.path.join(self.root, "skills-meta.json")),
+                  mock.patch.object(sl, "STARTERS", os.path.join(self.root, "no-starters"))]  # no seeding
         for p in self.p:
             p.start()
         os.makedirs(sl.SKILLS)
@@ -141,10 +142,11 @@ class Route(Temp):
     def test_activate_not_json_object(self):
         self.assertEqual(self.req("POST", "/skill-activate", ["alpha"])[0], 400)
 
-    def test_script_is_served(self):
-        status, data = self.req("GET", "/skill-slash.js")
-        self.assertEqual(status, 200)
-        self.assertIn(b"parseSlash", data)
+    def test_scripts_are_served(self):
+        for path, word in (("/skill-slash.js", b"parseSlash"), ("/skill-draft.js", b"findSkillDrafts")):
+            status, data = self.req("GET", path)
+            self.assertEqual(status, 200, path)
+            self.assertIn(word, data, path)
 
 
 if __name__ == "__main__":

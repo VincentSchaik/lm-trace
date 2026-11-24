@@ -185,13 +185,35 @@ def validate_text(text):
 
 # ---------------------------------------------------------------- the skills folder
 
+SEEDED_BEFORE = {"meeting-notes", "release-notes", "release-notes-verbose"}  # the starters before "_starters" was kept
+
+
 def seed():
-    """Copy the starter skills to skills/ the first time."""
+    """Copy the starter skills to skills/ the first time. Later, add each new starter once: meta["_starters"] lists
+    the starters already given (a name with "_" cannot be a skill). A starter you uninstall does not come back;
+    Reset brings all of them back. A skill of yours with the name of a new starter stays as it is."""
     with lock:
-        if not os.path.isdir(SKILLS) and os.path.isdir(STARTERS):
+        if not os.path.isdir(STARTERS):
+            return
+        names = sorted(n for n in os.listdir(STARTERS) if os.path.isdir(os.path.join(STARTERS, n)))
+        if not os.path.isdir(SKILLS):
             shutil.copytree(STARTERS, SKILLS)
-            meta = {n: {"on": starter_on(n), "source": "Starter"} for n in os.listdir(SKILLS) if os.path.isdir(os.path.join(SKILLS, n))}
+            meta = {n: {"on": starter_on(n), "source": "Starter"} for n in names}
+            meta["_starters"] = names
             write_meta(meta)
+            return
+        meta = read_meta()
+        given = meta.get("_starters")
+        if isinstance(given, list) and set(names) <= set(given):
+            return
+        given = given if isinstance(given, list) else sorted(SEEDED_BEFORE)
+        for n in names:
+            dst = os.path.join(SKILLS, n)
+            if n not in given and not os.path.exists(dst):
+                shutil.copytree(os.path.join(STARTERS, n), dst)
+                meta[n] = {"on": starter_on(n), "source": "Starter"}
+        meta["_starters"] = sorted(set(given) | set(names))
+        write_meta(meta)
 
 
 STARTERS_OFF = {"release-notes-verbose"}  # the bad example starts off: turn it on to compare
@@ -507,6 +529,7 @@ def reset():
                     shutil.rmtree(dst)
                 shutil.copytree(src, dst)
                 meta[n] = {"on": starter_on(n), "source": "Starter"}
+                meta["_starters"] = sorted(set(meta.get("_starters") or []) | {n})
         write_meta(meta)
     return 200, {"ok": True}
 

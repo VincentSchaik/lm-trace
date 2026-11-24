@@ -808,6 +808,13 @@
   .stats-row .stats { margin-left: auto; }
   /* The stage tags (Discovery, Activation, Execution): neutral, like the other badges of the page. */
   .layer-tag { font: 500 11px var(--sans); padding: 0 7px; border: 1px solid var(--line); border-radius: 9px; background: var(--paper-2); color: var(--ink-2); margin-left: 6px; }
+  /* Create skill under an answer that has a SKILL.md */
+  .draft-bar { display: flex; align-items: center; gap: 10px; align-self: flex-start; max-width: 100%; margin: 2px 0 10px; padding: 8px 8px 8px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); }
+  .draft-ic svg { width: 18px; height: 18px; color: var(--ink-2); display: block; }
+  .draft-nm { display: grid; line-height: 1.25; min-width: 0; }
+  .draft-nm b { font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .draft-nm span { font-size: 12px; color: var(--ink-3); }
+  .draft-bar .btn { margin-left: 14px; }
   /* The / menu: the skills that are on, above the message box, while you type /name. */
   .slash-menu { position: absolute; left: 0; bottom: calc(100% + 10px); z-index: 30; width: min(460px, 100%); max-height: 300px; overflow-y: auto;
     padding: 6px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); box-shadow: 0 12px 32px -8px rgba(0,0,0,.25); }
@@ -995,6 +1002,7 @@
 <div class="sk-dlg-back" id="skDlg" hidden><div class="sk-dlg" role="dialog" aria-modal="true" aria-labelledby="skDlgTitle"></div></div>
 <script src="/composer.js"></script>
 <script src="/skill-slash.js"></script>
+<script src="/skill-draft.js"></script>
 <script>
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -1066,8 +1074,8 @@ function skillTools() {
   const names = skillsOn().map(s => s.name), N = P("name", "string", true, "The name of the skill, as in the list of skills", { enum: names });
   return [
     { name: "load_skill", on: true, description: "Load a skill: returns the instructions of its SKILL.md and the list of its other files. Call it first when the task matches the description of a skill, then follow the instructions. Do not call it for a skill whose <skill_content> block is already in the conversation.", params: [N] },
-    { name: "read_skill_file", on: true, description: "Read one file of a skill that you loaded, for example a format or a reference file that its instructions name. Returns the text of the file.", params: [N, P("path", "string", true, "The path of the file in the skill folder, as load_skill lists it, for example references/team-meeting.md")] },
-    { name: "run_skill_script", on: true, description: "Run one script of a skill that you loaded, when its instructions say so. The input goes to the script on stdin. Returns what the script prints. The user approves each run.", params: [N, P("path", "string", true, "The path of the script in the skill folder, for example scripts/extract_action_items.py"), P("input", "string", false, "Text for the script, on stdin, for example the transcript")] },
+    { name: "read_skill_file", on: true, description: "Read one file of a loaded skill (by load_skill, or a <skill_content> block in the conversation), for example a format or a reference file that its instructions name. Returns the text of the file.", params: [N, P("path", "string", true, "The path of the file in the skill folder, as load_skill lists it, for example references/team-meeting.md")] },
+    { name: "run_skill_script", on: true, description: "Run one script of a loaded skill (by load_skill, or a <skill_content> block in the conversation), when its instructions say so. The input goes to the script on stdin. Returns what the script prints. The user approves each run.", params: [N, P("path", "string", true, "The path of the script in the skill folder, for example scripts/extract_action_items.py"), P("input", "string", false, "Text for the script, on stdin, for example the transcript")] },
   ];
 }
 let tools = [];
@@ -1083,7 +1091,7 @@ let noteText = "";
 // Metadata (layer 1), as text in the system prompt: the <available_skills> block in the format of skills-ref to-prompt
 // (the reference library of the Agent Skills specification): name, description and location of each skill, escaped.
 // The last sentence is for /name: the harness already put the instructions in the message, so no load_skill call is needed.
-const SKILL_INTRO = "You have skills: folders of instructions for special tasks. When a task matches the description of a skill, call load_skill with its name first, then follow its instructions. If a <skill_content> block with the skill is already in the conversation, do not call load_skill: follow the instructions in the block.";
+const SKILL_INTRO = "You have skills: folders of instructions for special tasks. When a task matches the description of a skill, call load_skill with its name first, then follow its instructions. If a <skill_content> block with the skill is already in the conversation, the skill is loaded: do not call load_skill, follow the instructions in the block, and use read_skill_file and run_skill_script for its files.";
 const xmlEsc = t => String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#x27;");
 const skillEntry = x => `<skill>\n<name>\n${xmlEsc(x.name)}\n</name>\n<description>\n${xmlEsc(x.description)}\n</description>\n<location>\nskills/${x.name}/SKILL.md\n</location>\n</skill>`;
 function skillListText(list = skillsOn()) {
@@ -1513,7 +1521,22 @@ function chatMd() {
   });
   return out.join("\n") + "\n";
 }
+// A SKILL.md in the answer (skill-creator-lite writes one): a button that opens Create skill with the text, or Edit
+// when you have a skill with that name. You check it and save; the page validates first.
+function draftBar(ti, answer) {
+  return SkillDraft.findSkillDrafts(answer).map((d, i) => {
+    const have = skills.some(x => x.name === d.name);
+    return `<div class="draft-bar"><span class="draft-ic" aria-hidden="true">${ICON_BOX}</span><span class="draft-nm"><b>${esc(d.name)}</b><span>SKILL.md · ${plural(d.text.split("\n").length - 1, "line")}</span></span>`
+      + `<button type="button" class="btn" data-draft="${ti}.${i}" title="${have ? `Open Edit for ${esc(d.name)} with this text. You check it and save.` : "Open Create skill with this text. You check it and save."}">${have ? "Update skill" : "Create skill"}</button></div>`;
+  }).join("");
+}
 $("log").addEventListener("click", e => {
+  const dr = e.target.closest("[data-draft]");
+  if (dr) {
+    const [ti, i] = dr.dataset.draft.split(".").map(Number), d = SkillDraft.findSkillDrafts(chat[ti]?.answer)[i];
+    if (d) openEditorSk(skills.some(x => x.name === d.name) ? d.name : null, d.text);
+    return;
+  }
   const c = e.target.closest("[data-ans-copy]"); if (c) { Composer.copyAns(c, (chat[+c.dataset.ansCopy]?.answer || "").trim()); return; }
   if (e.target.closest("[data-ans-export]")) Composer.download(`skills-chat-${Composer.stamp()}.md`, chatMd());
 });
@@ -1567,7 +1590,7 @@ function renderViewBar() {
   const box = $("msg");
   setBusy();
   box.disabled = !!v; $("sendBtn").disabled = !!v && !busy;
-  box.placeholder = v ? "This chat is archived: read only. Click New to start a new chat." : "Ask something, or select an example.";
+  box.placeholder = v ? "This chat is archived: read only. Click New to start a new chat." : "Ask something, select an example, or type / for a skill.";
   document.querySelector(".cbox").classList.toggle("archived", !!v);
   document.querySelectorAll(".starter").forEach(b => b.disabled = !!v || busy);
   syncSave();
@@ -1999,7 +2022,7 @@ function renderChat(hold) {
     const live = !t.done && ti === last;
     let out = `<div class="bubble user">${esc(t.user)}</div>`;
     if (sent) out += `<div class="tok-meta user"><span tabindex="0" data-tip-title="Tokens sent" data-tip="What the harness sent in the first model call for this message: the system prompt, the tool definitions, the earlier messages and your message.">↑ ${fmtTok(sent)} tokens</span></div>`;
-    out += cards + ans;
+    out += cards + ans + (t.answer ? draftBar(ti, t.answer) : "");
     if (live) out += `<div class="tok-meta assistant" id="liveMeta">${liveText(t)}</div>`;
     else if (t.answer != null && t.t1) out += Composer.ansBar(ti, `<div class="tok-meta assistant"><span tabindex="0" data-tip-title="Time" data-tip="From Send to the answer: all the model calls and tool calls of this message. With Permissions set to Ask every time, it also counts the time the page waited for you.">${fmtSecs((t.t1 - t.t0) / 1000)}</span> · <span tabindex="0" data-tip-title="Tokens generated" data-tip="What the model wrote for this message, in all its model calls: ${used.length > 1 ? "the tool calls and the answer" : "the answer"}.${used.length > 1 ? ` The answer alone is ${(used.at(-1)?.completion_tokens || 0).toLocaleString()} tokens.` : ""}">↓ ${fmtTok(made)} tokens</span></div>`);
     return out;
@@ -2272,11 +2295,12 @@ document.addEventListener("change", e => { if (e.target.dataset?.where === "dlg"
 
 // Create and Edit: SKILL.md in one text box, with the name and description checked as you type.
 const SK_TEMPLATE = n => `---\nname: ${n}\ndescription: What the skill does. Use this skill when … (the tasks and words that should activate it).\n---\n\n# ${titleOf(n)}\n\n1. Steps the model must follow: only what it cannot know.\n\n## Gotchas\n\n- Mistakes the model makes without this skill.\n`;
-function openEditorSk(name) {
+// draft: SKILL.md text from an answer (the Create skill button under it). With the name of a skill you have, it is Edit.
+function openEditorSk(name, draft) {
   dlgSkill = null;
   const sk = name && skills.find(x => x.name === name);
   let n = 1; while (!sk && skills.some(x => x.name === `my-skill-${n}`)) n++;
-  const text = sk ? sk.skillMd : SK_TEMPLATE(`my-skill-${n}`);
+  const text = draft ?? (sk ? sk.skillMd : SK_TEMPLATE(`my-skill-${n}`));
   dlg(`<div class="sk-dlg-top"><h3 id="skDlgTitle">${sk ? `Edit ${esc(titleOf(sk.name))}` : "Create skill"}</h3><span class="grow"></span><button type="button" class="x-btn" data-dlg-close aria-label="Close">${ICON_X}</button></div>
     <p class="lead" style="font-size:13.5px">SKILL.md: YAML frontmatter between <code>---</code> lines (name, description), then the instructions. Other files (scripts/, references/, assets/, or any other) can be added in <code>skills/${esc(sk ? sk.name : "<name>")}/</code>.</p>
     <div class="sk-edit"><span>SKILL.md</span><div><textarea class="field" id="skMd" rows="18" spellcheck="false">${esc(text)}</textarea><div class="cnt" id="skCnt"></div></div></div>
@@ -2468,6 +2492,7 @@ const PRESETS = [
   { name: "Meeting notes", skill: "meeting-notes", msg: "Clean up the notes of our weekly team meeting:\n\nAna: The demo on Friday went well, the client liked the new dashboard.\nBen: I will fix the login bug by Wednesday.\nAna: Chen, can you send the slides to the client?\nChen: Yes, tomorrow morning.\nAna: We decided to move the release to December 3.\nBen: Who updates the roadmap? Nobody knows yet.", tip: "Metadata, instructions and resources: the model loads meeting-notes, reads the team-meeting format in references/, and runs the script (you allow it)." },
   { name: "Release notes", skill: "release-notes", msg: "Write release notes for version 2.4.0, released today, from these changes:\n- feat: dark mode for the dashboard (ABC-412)\n- fix: export to CSV lost the last row\n- chore: update dependencies\n- refactor: split the API client\n- feat: favorite reports, by Maria", tip: "Instructions only: the skill has no other files. Look for the rules the model cannot know: no ticket numbers, no names, no chores, Canadian spelling." },
   { name: "Good vs. bad skill", skill: "release-notes-verbose", msg: "Write release notes for version 2.4.0, released today, from these changes:\n- feat: dark mode for the dashboard (ABC-412)\n- fix: export to CSV lost the last row\n- chore: update dependencies\n- refactor: split the API client\n- feat: favorite reports, by Maria", tip: "Turn release-notes off and release-notes-verbose on, then send. Compare the tokens of the instructions and the answer: the rules hide in a reference file, and the description is vague." },
+  { name: "Create a skill", skill: "skill-creator-lite", msg: "/skill-creator-lite Make a skill that writes my daily standup update from rough notes. Output: three headings, Yesterday, Today, Blockers, with short bullets. Use it when I ask for a standup or a daily update. Without it, the model writes long paragraphs and invents blockers.\n\nExample notes: fixed login bug, reviewed PR 12, today the export feature, waiting on API keys from Sam.", tip: "Set Max tokens to 4,096: a thinking model can use more than 1,500 tokens before it writes the skill, and the reply is cut." },
   { name: "No skill needed", msg: "What is the capital of Canada?", tip: "The model should answer without loading a skill: the metadata is the only cost." },
 ];
 // Examples: one chip per example, below the message box, then your saved prompts. A click puts the message
