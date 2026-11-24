@@ -775,7 +775,8 @@
   .sk-dlg h3 span { color: var(--ink-3); font-weight: 400; }
   .sk-ex { flex: none; border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; margin-top: 22px; background: var(--paper); }
   .sk-ex .sk-ex-text { background: var(--field); }
-  .sk-break { border: 0; border-top: 1px dashed var(--line); margin: 22px 0 0; }
+  .sk-ex-panel { padding: 16px 20px; }
+  .sk-ex-panel .sk-ex { border: 0; border-radius: 0; padding: 0; margin: 0; background: none; }
   .sk-dlg > * { flex: none; } .sk-dlg > .bodybox { flex: 0 1 auto; }  /* only the instructions scroll */
   .sk-dlg:focus { outline: none; }
   .sk-ex-hd { display: flex; align-items: center; gap: 8px; font-size: 14px; }
@@ -998,6 +999,8 @@
     <div class="sk-view" id="skillView" hidden></div>
     <div class="hint sk-foot">Saved in <code>skills/</code>, one folder per skill</div>
   </section>
+  <!-- The example message of the skill in Open: its own card, apart from the skill (LM Trace keeps it, not SKILL.md). -->
+  <section class="panel sk-ex-panel" id="exPanel" aria-label="Example message" hidden></section>
   </div>
   </div>
   </div>
@@ -2213,11 +2216,11 @@ function treeHtml(sk, current) {
 // Open: the files of the skill in the tab, SKILL.md first (metadata + rendered body), like a file view.
 let viewSk = null, viewFile = "SKILL.md", viewSrc = false, viewText = null, viewBinary = false;
 function openView(name) { viewSk = name; viewFile = "SKILL.md"; viewSrc = false; exEdit = false; $("skillList").hidden = true; $("skillView").hidden = false; document.querySelector("#pane-skills .card-tools").hidden = true; renderView(); }
-function closeView() { viewSk = null; $("skillList").hidden = false; $("skillView").hidden = true; document.querySelector("#pane-skills .card-tools").hidden = false; renderSkills(); }
+function closeView() { viewSk = null; $("exPanel").hidden = true; $("skillList").hidden = false; $("skillView").hidden = true; document.querySelector("#pane-skills .card-tools").hidden = false; renderSkills(); }
 async function renderView() {
   const sk = skills.find(x => x.name === viewSk); if (!sk) return closeView();
   let body;
-  if (viewFile === "SKILL.md") body = viewSrc ? `<pre class="src-pre">${esc(sk.skillMd)}</pre>` : metaHtml(sk) + layersLine(sk) + lintHtml(sk) + `<div class="mdv">${mdView(sk.body)}</div><hr class="sk-break">` + exampleHtml(sk, true);
+  if (viewFile === "SKILL.md") body = viewSrc ? `<pre class="src-pre">${esc(sk.skillMd)}</pre>` : metaHtml(sk) + layersLine(sk) + lintHtml(sk) + `<div class="mdv">${mdView(sk.body)}</div>`;
   else {
     const t = await fetch(`/skill-file?name=${encodeURIComponent(sk.name)}&path=${encodeURIComponent(viewFile)}`).then(r => r.json()).catch(() => ({}));
     viewText = t.text ?? null; viewBinary = !!t.binary;
@@ -2232,6 +2235,8 @@ async function renderView() {
     + `<span class="ic-row">${iconBtn("skAddFile", "add", "Add files")}${/\.md$/i.test(viewFile) ? iconBtn("skSrc", viewSrc ? "eye" : "code", viewSrc ? "View rendered" : "View source") : ""}${viewFile !== "SKILL.md" && (sk.files.find(f => f.path === viewFile)?.binary || /^image\//.test(sk.files.find(f => f.path === viewFile)?.type || "")) ? "" : iconBtn("skEdit", "edit", `Edit ${viewFile}`)}`
     + `${iconBtn("skDown", "down", `Download ${viewFile}`)}${viewFile === "SKILL.md" ? "" : iconBtn("skDelFile", "trash", `Delete ${viewFile}`, " warn")}</span>${swHtml(sk, "view")}</div>`
     + treeHtml(sk, viewFile) + body;
+  const exOn = viewFile === "SKILL.md" && !viewSrc;
+  $("exPanel").hidden = !exOn; $("exPanel").innerHTML = exOn ? exampleHtml(sk, true) : "";
   wireExample(sk);
   $("skBack").onclick = closeView; if ($("skSrc")) $("skSrc").onclick = () => { viewSrc = !viewSrc; renderView(); };
   if ($("skEdit")) $("skEdit").onclick = () => viewFile === "SKILL.md" ? openEditorSk(sk.name) : openFileEditor(sk.name, viewFile);
