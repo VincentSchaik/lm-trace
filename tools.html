@@ -553,6 +553,16 @@
   /* Sliders: as on the Trace page (.ctl), the label above the slider */
   .sampling { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 10px 20px; padding: 12px 18px 14px; }
   .sysrow .sampling { padding: 2px 0 14px 26px; }  /* inside a row: under its title */
+  #ctxLenV { min-width: 7ch; text-align: right; }  /* up to 262,144: the slider keeps its width */
+  .icon-btn { width: 28px; height: 28px; display: inline-grid; place-items: center; border: 1px solid var(--line); border-radius: 7px; background: var(--field); color: var(--ink-2); cursor: pointer; padding: 0; flex: none; }
+  .icon-btn svg { width: 15px; height: 15px; }
+  .icon-btn.go { background: var(--primary); border-color: var(--primary); color: var(--on-primary, #fff); }
+  .icon-btn.go:hover { filter: brightness(1.08); background: var(--primary); color: var(--on-primary, #fff); }
+  .icon-btn:disabled { cursor: default; opacity: .5; }
+  .icon-btn.spin:disabled { opacity: 1; }
+  .icon-btn.spin svg { animation: ctxspin 1s linear infinite; }
+  @keyframes ctxspin { to { transform: rotate(-360deg); } }  /* counterclockwise: the way the arrow of the icon points */
+  @media (prefers-reduced-motion: reduce) { .icon-btn.spin svg { animation: none; } }
   .sampling .ctl { flex: 1 1 190px; min-width: 150px; max-width: 300px; }
   .sampling .ctl-label { gap: 8px; }
   .sampling .ctl output { min-width: 52px; }
@@ -710,7 +720,7 @@
     <!-- Inference parameters: sent with each request. Harness: the loop around the model. As on the MCP page. -->
     <div class="opts sysrow">
       <details class="opt" id="optInf">
-        <summary><span class="chev"></span><span class="opt-title">Inference parameters</span><span class="opt-state" id="stInf"></span><span class="sum-ctl"><span class="info" tabindex="0" data-tip-title="Inference parameters" data-tip="Sent with each request (temperature, max_tokens). They can change for every message.">i</span></span></summary>
+        <summary><span class="chev"></span><span class="opt-title">Inference parameters</span><span class="opt-state" id="stInf"></span><span class="sum-ctl"><span class="info" tabindex="0" data-tip-title="Inference parameters" data-tip="Temperature and Max tokens go with each request (temperature, max_tokens) and can change for every message. Context length is set when LM Studio loads the model: a new length needs a reload (↻).">i</span></span></summary>
         <div class="sampling">
           <div class="ctl">
             <div class="ctl-label"><label for="temp">Temperature</label><span class="info" tabindex="0" data-tip-title="Temperature" data-tip="0: the model always picks the most likely token, so each run is the same. Higher: more random. The model may think more or less, call a tool that is not needed, or write a call with wrong arguments.">i</span></div>
@@ -719,6 +729,10 @@
           <div class="ctl">
             <div class="ctl-label"><label for="maxTok">Max tokens</label><span class="info" tabindex="0" data-tip-title="Max tokens" data-tip="The most tokens the model can write in one reply, its thinking included. A low limit cuts the reply: the model may stop in its thinking, before it writes the tool call or the answer.">i</span></div>
             <div class="ctl-row"><input type="range" id="maxTok" min="0" max="9" step="1" aria-describedby="maxTokV"><output id="maxTokV"></output></div>
+          </div>
+          <div class="ctl">
+            <div class="ctl-label"><label for="ctxLen">Context length</label><span class="info" tabindex="0" data-tip-title="Context length" data-tip="The most tokens that fit in one model call: the prompt (system prompt, tool definitions, messages, tool results) and the reply. It is a load setting: LM Studio must unload the model and load it again (POST /api/v1/models/load). A larger context uses more memory.">i</span></div>
+            <div class="ctl-row"><input type="range" id="ctxLen" min="0" max="6" step="1" aria-describedby="ctxLenV"><output id="ctxLenV"></output><button type="button" class="icon-btn" id="ctxReload" hidden></button></div>
           </div>
         </div>
       </details>
@@ -1005,6 +1019,7 @@ try { Object.assign(S, JSON.parse(localStorage.getItem("toolsPage2") || "{}")); 
 delete S.stepMode;  // the Mode switch (Step | Auto) is gone: the harness always runs each step by itself
 const keep = () => { try { localStorage.setItem("toolsPage2", JSON.stringify(S)); localStorage.setItem("toolNote", noteText); } catch {} };
 const TOK_STEPS = [16, 32, 64, 128, 256, 512, 1024, 1500, 2048, 4096];
+var ctxSummary = "";  // Context length in the closed row: set by renderCtx (it knows the loaded model)
 function renderSampling() {
   const t = $("temp"), m = $("maxTok");
   t.value = S.temp; t.style.setProperty("--fill", (S.temp / 2 * 100) + "%"); $("tempV").textContent = (+S.temp).toFixed(1);
@@ -1014,7 +1029,7 @@ function renderSampling() {
 }
 // The closed rows: the values, in the same words as on the other pages.
 function renderRowStates() {
-  $("stInf").textContent = `Temperature ${(+S.temp).toFixed(1)} · Max tokens ${S.maxTokens.toLocaleString()}`;
+  $("stInf").textContent = [`Temperature ${(+S.temp).toFixed(1)}`, `Max tokens ${S.maxTokens.toLocaleString()}`, ctxSummary].filter(Boolean).join(" · ");
   $("stHarness").textContent = S.harness === "off" ? "Off" : `On · Max model calls ${S.maxCalls}`;
 }
 function setSeg(id, v) {
@@ -1046,10 +1061,10 @@ async function loadModels() {
     let saved = null; try { saved = localStorage.getItem("toolsModel"); } catch {}
     $("chatModel").value = keys.includes(saved) ? saved : keys.find(k => /gemma-4-e4b/i.test(k)) || keys.find(k => k === "google/gemma-4-12b") || keys.find(k => trained(k)) || keys[0];
   } catch (e) { $("error").textContent = `LM Studio unreachable: ${e.message || e}`; }
-  renderChat(true);  // the context meter needs the model list
+  renderCtx(); renderChat(true);  // the context meter needs the model list
 }
 const trained = k => modelInfo.find(m => m.key === k)?.capabilities?.trained_for_tool_use;
-$("chatModel").onchange = () => { try { localStorage.setItem("toolsModel", $("chatModel").value); } catch {} renderChat(true); };
+$("chatModel").onchange = () => { try { localStorage.setItem("toolsModel", $("chatModel").value); } catch {} ctxWant = null; renderCtx(); renderChat(true); };
 // ---- The message box: the model picker and the Send button come from composer.js, the same on all pages.
 const chatPick = Composer.picker({ select: $("chatModel"), mount: $("chatPick"), label: "Chat model", isBusy: () => busy, onError: m => { $("error").textContent = m; } });
 Composer.setSend($("sendBtn"), false, { key: "Enter" });
@@ -1265,6 +1280,48 @@ async function logEntry(kind, since, keepWaiting = () => false) {
 // ---- Chat state. chat = list of turns; each turn has the steps of the harness.
 // history = the messages that the harness sends to the model (the conversation memory of the book: the full history).
 let chat = [], history = [], busy = false, ctrl = null, pending = null;
+
+// ---- Context length: a load setting, as on the MCP page. The page unloads the model and loads it again with context_length.
+const CTX_STEPS = [4096, 8192, 16384, 32768, 65536, 131072, 262144];
+const RELOAD_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>';
+let ctxWant = null;  // the value of the slider; null: the loaded value
+let ctxJob = null;   // {phase, n, t0} while it loads; {end, n, ms} just after
+const loadedCtx = k => Composer.info(k)?.loaded_instances?.[0]?.config?.context_length || null;
+function ctxSteps(k) { const max = Composer.info(k)?.max_context_length; return CTX_STEPS.filter(x => !max || x <= max); }
+function renderCtx() {
+  const k = $("chatModel").value, steps = ctxSteps(k), loaded = loadedCtx(k), r = $("ctxLen");
+  const want = ctxJob?.n ?? ctxWant ?? loaded ?? steps.find(x => x >= 8192) ?? steps[0];  // while loading: the length it loads
+  let i = steps.indexOf(want); if (i < 0) i = steps.findIndex(x => x >= want); if (i < 0) i = steps.length - 1;
+  r.max = steps.length - 1; r.value = i; r.style.setProperty("--fill", (i / Math.max(1, steps.length - 1) * 100) + "%");
+  $("ctxLenV").textContent = (steps[i] || 0).toLocaleString();
+  // ↻: grey and off at the loaded length, filled when the slider shows another length, turning while LM Studio loads.
+  const b = $("ctxReload"), job = ctxJob, change = !loaded || steps[i] !== loaded;
+  b.classList.toggle("spin", !!job && !job.end);
+  b.classList.toggle("go", change && !job);
+  ctxSummary = `Context length ${(steps[i] || 0).toLocaleString()}${job && !job.end ? " (loading…)" : loaded && steps[i] !== loaded ? " (not loaded yet)" : ""}`; renderRowStates();
+  b.hidden = !!viewing; if (!b.innerHTML) b.innerHTML = RELOAD_ICON; b.disabled = busy || !!viewing || !change;
+  b.title = job && !job.end ? `Loading ${k} with ${job.n.toLocaleString()} tokens…` : change ? `${loaded ? "Reload" : "Load"} ${k} with a context length of ${(steps[i] || 0).toLocaleString()} tokens` : `${k} is loaded with ${loaded.toLocaleString()} tokens. Move the slider to change it.`;
+  b.setAttribute("aria-label", b.title);
+}
+$("ctxLen").oninput = e => { ctxWant = ctxSteps($("chatModel").value)[+e.target.value]; renderCtx(); };
+$("ctxReload").onclick = () => reloadCtx($("chatModel").value, ctxSteps($("chatModel").value)[+$("ctxLen").value]);
+async function reloadCtx(model, n) {
+  if (busy || !model || !n) return;
+  busy = true; $("error").textContent = "";
+  ctxJob = { phase: "Unloading", n, t0: Date.now() }; setBusy();
+  try {
+    for (const inst of Composer.info(model)?.loaded_instances || []) await post("/api/v1/models/unload", { instance_id: inst.id });
+    ctxJob.phase = "Loading"; renderCtx();
+    await post("/api/v1/models/load", { model, context_length: n });
+    await Composer.load(); Composer.renderAll?.();
+    ctxWant = null;
+    ctxJob = { end: "done", n, ms: Date.now() - ctxJob.t0 };
+  } catch (e) {
+    ctxJob = { end: "error", ms: Date.now() - ctxJob.t0 };
+    $("error").textContent = `Model not loaded: ${e.message}`; await Composer.load();
+  }
+  busy = false; ctxJob = null; setBusy(); renderChat(true);  // the Context meter shows the new size
+}
 const openKeys = new Set();  // the open ▸ sections, kept when the chat draws again
 let stats = { calls: 0, tools: 0, tokens: 0, ctx: 0 };
 // New chat: clear the chat, the history and the counts. The tools and the settings stay.
@@ -2130,11 +2187,12 @@ function contextError(msg) {
 function stop() { ctrl?.abort(); if (pending) { const p = pending; pending = null; p.resolve(null); } }
 function setBusy() {
   Composer.setSend($("sendBtn"), busy, { key: "Enter", stop: "Stop the run" });
+  renderCtx();
   // An archived chat: the settings are read only too (they are the settings of that run).
   const lock = busy || !!viewing;
   chatPick.setDisabled(lock);
   ["newChat", "chatsBtn", "resetTools", "addTool", "library"].forEach(id => $(id).disabled = busy);
-  ["chatModel", "temp", "maxTok", "maxCalls", "system", "sysExamples", "saveSystem", "delSystem", "plusBtn", "permBtn"].forEach(id => $(id).disabled = lock);
+  ["chatModel", "temp", "maxTok", "ctxLen", "maxCalls", "system", "sysExamples", "saveSystem", "delSystem", "plusBtn", "permBtn"].forEach(id => $(id).disabled = lock);
   document.querySelectorAll("#noteBy button, #harness button, .starter").forEach(b => b.disabled = lock);
   syncSave();
 }
