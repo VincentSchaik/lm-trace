@@ -708,8 +708,8 @@
   .drop .btn { margin-top: 6px; }
   .up-opts { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 13px; color: var(--ink-2); }
   .up-opts select { height: 32px; }
-  .up-list { display: grid; gap: 6px; max-height: 34vh; overflow: auto; }
-  .up-row { display: grid; grid-template-columns: minmax(0, 1fr) 80px 120px 22px; align-items: center; gap: 10px; font-size: 13px; padding: 6px 10px; border-radius: 8px; background: var(--paper-2); }
+  .up-list { display: grid; gap: 6px; max-height: 34vh; overflow-y: auto; overflow-x: hidden; }
+  .up-row { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) 72px 110px 22px; align-items: center; gap: 10px; font-size: 13px; padding: 6px 10px; border-radius: 8px; background: var(--paper-2); }
   .up-row input { height: 28px; font: 12.5px var(--mono); }
   .up-row .sz { color: var(--ink-3); text-align: right; }
   .up-row .prog { display: grid; gap: 3px; }
@@ -718,7 +718,9 @@
   .up-row.done .up-bar i { background: #22a559; } .up-row.err .up-bar i { background: var(--danger); }
   .up-row .st { font-size: 12px; color: var(--ink-3); }
   .up-row.done .st { color: #1a7f45; } .up-row.err .st { color: var(--danger); }
-  .up-row .rm { border: 0; background: transparent; color: var(--ink-3); cursor: pointer; padding: 0; }
+  .up-row .rm { width: 22px; height: 22px; display: grid; place-items: center; border: 0; border-radius: 6px; background: transparent; color: var(--ink-3); cursor: pointer; padding: 0; }
+  .up-row .rm:hover { color: var(--danger); background: var(--line); }
+  .up-row .rm svg { width: 15px; height: 15px; }
   .up-row .up-msg { grid-column: 1 / -1; color: var(--danger); font-size: 12px; }
   details.write > summary { cursor: pointer; font-size: 13px; color: var(--ink-2); }
   #skillView.over { outline: 2px dashed var(--red); outline-offset: 4px; border-radius: 12px; }
@@ -2160,6 +2162,7 @@ const iconBtn = (id, icon, label, cls = "") => `<button type="button" class="ic-
 const ICON_UP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></svg>';
 // Auto: where a file goes by its type, as the specification recommends: code in scripts/, documentation in
 // references/, everything else (templates, images, data) in assets/.
+const safeName = p => p.split("/").map(x => x.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^\w.-]+/g, "-").replace(/-{2,}/g, "-").replace(/^-|-$/g, "") || "file").join("/");
 const autoDir = n => /\.(py|sh|js|mjs|ts|rb|pl)$/i.test(n) ? "scripts/" : /\.(md|txt|pdf|rst|html?)$/i.test(n) ? "references/" : "assets/";
 const fmtSize = n => n < 1024 ? `${n} B` : n < 1048576 ? `${(n / 1024).toFixed(1)} KB` : `${(n / 1048576).toFixed(2)} MB`;
 // A dropped folder: read its files, with the paths inside it (webkitGetAsEntry).
@@ -2193,15 +2196,27 @@ function openFileEditor(name, path, dropped) {
   box.querySelectorAll("[data-dlg-close]").forEach(b => b.onclick = () => { closeDlg(); if (items.some(x => x.state === "done")) { loadSkills().then(() => { renderAll(); renderView(); }); } });
   const target = it => it.path ?? (($("upDir").value === "auto" ? autoDir(it.rel) : $("upDir").value) + it.rel);
   const draw = () => {
-    $("upList").innerHTML = items.map((it, i) => `<div class="up-row ${it.state || ""}"><input class="field mono" data-up-path="${i}" value="${esc(target(it))}" aria-label="Path of ${esc(it.file.name)}"${it.state ? " disabled" : ""}><span class="sz">${fmtSize(it.file.size)}</span>`
+    $("upList").innerHTML = items.map((it, i) => `<div class="up-row ${it.state || ""}"><input class="field mono" data-up-path="${i}" value="${esc(target(it))}" aria-label="Path of ${esc(it.file.name)}"${it.state === "done" || it.state === "up" ? " disabled" : ""}><span class="sz">${fmtSize(it.file.size)}</span>`
       + `<span class="prog"><span class="up-bar"><i style="width:${it.pct || 0}%"></i></span><span class="st">${it.state === "done" ? "Uploaded" : it.state === "err" ? "Not uploaded" : it.state === "up" ? `${Math.round(it.pct || 0)}%` : "Ready"}</span></span>`
-      + `${it.state ? "<span></span>" : `<button type="button" class="rm" data-up-rm="${i}" aria-label="Remove ${esc(it.file.name)}">${ICON_X}</button>`}${it.msg ? `<span class="up-msg">${esc(it.msg)}</span>` : ""}</div>`).join("");
-    $("fSave").textContent = items.some(x => !x.state) ? `Upload ${items.filter(x => !x.state).length} file${items.filter(x => !x.state).length === 1 ? "" : "s"}` : "Upload";
+      + (it.state === "up" ? "<span></span>" : it.state === "done"
+        ? `<button type="button" class="rm" data-up-del="${i}" aria-label="Delete ${esc(target(it))} from the skill" data-tooltip="Delete from the skill">${IC_SK.trash}</button>`
+        : `<button type="button" class="rm" data-up-rm="${i}" aria-label="Remove ${esc(it.file.name)} from the list" data-tooltip="Remove from the list">${ICON_X}</button>`)
+      + `${it.msg ? `<span class="up-msg">${esc(it.msg)}</span>` : ""}</div>`).join("");
+    const todo = items.filter(x => x.state !== "done" && x.state !== "up" && !x.big);
+    $("fSave").textContent = todo.length ? `Upload ${todo.length} file${todo.length === 1 ? "" : "s"}` : "Upload";
   };
-  const add = list => { items.push(...list.map(x => ({ ...x }))); draw(); };
-  $("upList").addEventListener("input", e => { const i = e.target.dataset.upPath; if (i != null) items[+i].path = e.target.value; });
-  $("upList").addEventListener("click", e => { const b = e.target.closest("[data-up-rm]"); if (b) { items.splice(+b.dataset.upRm, 1); draw(); } });
-  $("upDir").onchange = () => { items.forEach(it => { if (!it.state) delete it.path; }); draw(); };
+  const add = list => { items.push(...list.map(x => ({ ...x, rel: safeName(x.rel) }))); draw(); };
+  $("upList").addEventListener("input", e => { const i = e.target.dataset.upPath; if (i != null) { items[+i].path = e.target.value; if (items[+i].state === "err") { items[+i].state = ""; items[+i].msg = ""; items[+i].pct = 0; } } });
+  $("upList").addEventListener("click", async e => {
+    const b = e.target.closest("[data-up-rm]"), d = e.target.closest("[data-up-del]");
+    if (b) { items.splice(+b.dataset.upRm, 1); draw(); }
+    if (d) {  // an uploaded file: delete it from the skill again
+      const it = items[+d.dataset.upDel];
+      try { await post("/skill-file-delete", { name, path: target(it) }); items.splice(+d.dataset.upDel, 1); draw(); await loadSkills(); renderAll(); renderView(); }
+      catch (err) { it.msg = err.message; draw(); }
+    }
+  });
+  $("upDir").onchange = () => { items.forEach(it => { if (it.state !== "done") { delete it.path; if (it.state === "err") Object.assign(it, { state: "", msg: "", pct: 0 }); } }); draw(); };
   $("upBrowse").onclick = () => $("upInput").click();
   $("upInput").onchange = e => { add([...e.target.files].map(f => ({ file: f, rel: f.name }))); e.target.value = ""; };
   ["dragenter", "dragover"].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.add("over"); }));
@@ -2210,7 +2225,7 @@ function openFileEditor(name, path, dropped) {
   if (dropped?.length) add(dropped);
   // One request per file, with its progress (XMLHttpRequest upload events). The server checks each path.
   const upload = it => new Promise(async done => {
-    if (it.file.size > 1_000_000) { Object.assign(it, { state: "err", msg: "A file can have at most 1 MB." }); draw(); return done(); }
+    if (it.file.size > 1_000_000) { Object.assign(it, { state: "err", big: true, msg: "A file can have at most 1 MB." }); draw(); return done(); }
     const buf = new Uint8Array(await it.file.arrayBuffer());
     let bin = ""; for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode(...buf.subarray(i, i + 0x8000));
     const x = new XMLHttpRequest();
@@ -2229,7 +2244,7 @@ function openFileEditor(name, path, dropped) {
       try { await post("/skill-file-save", { name, path: wpath, text }); $("fText").value = ""; items.push({ file: { name: wpath, size: new Blob([text]).size }, rel: wpath, path: wpath, state: "done", pct: 100 }); draw(); }
       catch (e) { $("fErr").textContent = e.message; return; }
     }
-    for (const it of items.filter(x => !x.state)) await upload(it);
+    for (const it of items.filter(x => x.state !== "done" && x.state !== "up" && !x.big)) { it.msg = ""; await upload(it); }
     await loadSkills(); renderAll(); renderView();
     if (!items.some(x => x.state === "err")) { const last = items.at(-1); closeDlg(); if (last) { viewFile = target(last); renderView(); } }
   };
