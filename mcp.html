@@ -5,57 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>LM Trace · MCP</title>
 <style>
-  :root {
-    color-scheme: light;
-    --paper: #f5f5f7;
-    --field: #ffffff;
-    --paper-2: #eeeef1;
-    --line: #e1e1e6;
-    --stone-2: #c7c7cc;
-    --ink: #1d1d1f;
-    --ink-2: #4b4b52;
-    --ink-3: #8e8e93;
-    --red: #1f6ff2;
-    --red-rgb: 31, 111, 242;
-    --neg-rgb: 71, 85, 105;
-    --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
-    --mono: ui-monospace, "SF Mono", Menlo, monospace;
-    --input-bg: #ffffff;
-    --shadow-rgb: 0, 0, 0;
-    --primary: #1f6ff2;
-    --primary-hover: #185ed6;
-    --on-primary: #ffffff;
-    --danger: #d93025;
-    --tip-bg: #1d1d1f;
-    --tip-fg: #f5f5f7;
-    --tip-sub: #c7c7cc;
-    --tip-code: #8ab4ff;
-    --r: 10px;
-    --lift: 0 1px 2px rgba(0, 0, 0, .04), 0 2px 8px -4px rgba(0, 0, 0, .08);
-  }
-  :root[data-theme="dark"] {
-    color-scheme: dark;
-    --paper: #161618;
-    --field: #1f1f22;
-    --paper-2: #2a2a2e;
-    --line: #333338;
-    --stone-2: #4a4a50;
-    --ink: #ececf0;
-    --ink-2: #b9b9c0;
-    --ink-3: #85858c;
-    --red: #4c8dff;
-    --red-rgb: 76, 141, 255;
-    --neg-rgb: 148, 163, 184;
-    --input-bg: #18181a;
-    --primary: #3b7cf5;
-    --primary-hover: #5a90f7;
-    --danger: #ff6b5e;
-    --tip-bg: #f0f0f3;
-    --tip-fg: #1d1d1f;
-    --tip-sub: #4b4b52;
-    --tip-code: #185ed6;
-    --lift: 0 1px 2px rgba(0, 0, 0, .3), 0 2px 10px -4px rgba(0, 0, 0, .5);
-  }
+  /* The colours, buttons, tabs and theme button: theme.css, linked after this block. */
   * { font-variant-ligatures: none !important; font-feature-settings: "calt" 0, "liga" 0 !important; }
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; }
@@ -1007,6 +957,7 @@
     .srv .d { padding-left: 12px; }
   }
 </style>
+<link rel="stylesheet" href="/theme.css">
 <link rel="stylesheet" href="/composer.css">
 <script>
   // Saved choice, else the system setting. Set before the page draws, so there is no flash.
@@ -1036,10 +987,10 @@
     <h1>MCP</h1>
     <select id="chatModel" class="field" aria-label="Chat model" hidden></select>
     <span class="spacer"></span>
-    <span class="seg" id="theme" role="group" aria-label="Theme">
-      <button data-theme="light" aria-pressed="false">Light</button>
-      <button data-theme="dark" aria-pressed="false">Dark</button>
-    </span>
+    <button type="button" id="theme" class="hdr-btn" aria-label="Toggle dark mode" data-tooltip="Toggle dark mode">
+      <span class="tm-sun"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg></span>
+      <span class="tm-moon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg></span>
+    </button>
   </header>
 
   <section class="composer" aria-label="About">
@@ -1251,10 +1202,9 @@ $("sideToggle").onclick = () => {
 };
 function setTheme(v, save) {
   document.documentElement.dataset.theme = v;
-  document.querySelectorAll("#theme button").forEach(b => b.setAttribute("aria-pressed", b.dataset.theme === v));
   if (save) try { localStorage.setItem("theme", v); } catch {}
 }
-document.querySelectorAll("#theme button").forEach(b => { b.onclick = () => setTheme(b.dataset.theme, true); });
+document.getElementById("theme").onclick = () => setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark", true);
 setTheme(document.documentElement.dataset.theme, false);
 function setTab(v) {
   S.tab = v; keep();
