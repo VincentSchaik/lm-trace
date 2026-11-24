@@ -5,10 +5,7 @@
   if (!theme) return;
   const css = document.createElement("style");
   css.textContent = `
-  .lms-st { display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 12px; margin-right: 4px;
-    font: 500 13px var(--sans, system-ui); color: var(--ink-2); background: var(--field, var(--paper)); border: 1px solid var(--line);
-    border-radius: 8px; cursor: pointer; }
-  .lms-st:hover { color: var(--ink); border-color: var(--stone-2, var(--line)); }
+  .lms-st { gap: 7px; margin-right: 4px; }  /* the button look: .hdr-btn in theme.css */
   .lms-st:disabled { cursor: default; opacity: .7; }
   .lms-st .dot { width: 8px; height: 8px; border-radius: 50%; background: #a1a1aa; }
   .lms-st.on .dot { background: #22a559; }`;
@@ -16,7 +13,7 @@
 
   const btn = document.createElement("button");
   btn.type = "button";
-  btn.className = "lms-st";
+  btn.className = "hdr-btn lms-st";
   btn.innerHTML = '<span class="dot" aria-hidden="true"></span><span class="txt">Status: …</span>';
   theme.before(btn);
   const txt = btn.querySelector(".txt");
