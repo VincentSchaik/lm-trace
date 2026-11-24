@@ -16,8 +16,9 @@
   function findSkillDrafts(answer) {
     const text = String(answer ?? ""), out = [], lines = text.split(/\r?\n/);
     for (let i = 0; i < lines.length; i++) {
-      const open = /^ {0,3}(`{3,}|~{3,})[ \t]*([\w.+-]*)[ \t]*$/.exec(lines[i]);
-      if (!open) continue;
+      // CommonMark: any info string after the fence ("markdown title=x"), but no backtick after a backtick fence.
+      const open = /^ {0,3}(`{3,}|~{3,})(.*)$/.exec(lines[i]);
+      if (!open || (open[1][0] === "`" && open[2].includes("`"))) continue;
       const fence = open[1], body = [];
       let j = i + 1;
       for (; j < lines.length; j++) {

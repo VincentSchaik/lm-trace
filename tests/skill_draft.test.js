@@ -78,3 +78,10 @@ test("examplePrompt: the SKILL.md and the rules for the message", () => {
   assert.match(m[1].content, /name: a/);
   assert.match(m[1].content, /Do not name the skill/);
 });
+
+test("findSkillDrafts: any CommonMark info string after the fence", () => {
+  for (const o of ["```markdown title", "```markdown title=\"SKILL.md\"", "``` md", "~~~markdown {.skill}", "~~~ yaml `x`"])
+    assert.equal(findSkillDrafts(`${o}\n${MD("info-ok")}\n${o[0].repeat(3)}`)[0]?.name, "info-ok", o);
+  // A backtick fence cannot have a backtick in its info string (CommonMark): this line is not a fence.
+  assert.deepEqual(findSkillDrafts("```md `x`\n---\nname: no\n---\n```").map(d => d.name), []);
+});

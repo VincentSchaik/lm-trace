@@ -38,6 +38,11 @@ CASES = [
     "---\nname: open\n",
     "---\nname: x\ndescription: >\n  Folded text that says\n  when to use it.\n---\nBody\n",
     "---\nname: x\nthis is not yaml\n---\nBody\n",
+    # A quoted value, then a YAML comment: the comment is not part of the value (near the 1,024 limit).
+    md(desc='"' + "d" * 1020 + ' Use it when testing." # a comment'),
+    md(desc="'" + "d" * 1020 + " it''s' # a comment"),
+    md(desc='"' + "d" * 1030 + '" # too long without the comment too'),
+    md(desc='"not closed'),
 ]
 
 
@@ -48,6 +53,24 @@ class Script(unittest.TestCase):
         for text in CASES:
             page = sl.validate_text(text)[1]
             self.assertEqual(vs.check(text)["errors"], page["errors"], text[:60])
+
+    def test_quoted_value_with_a_comment(self):
+        # GitHub Copilot review of PR #14: the page and the script must agree, and both must read YAML right.
+        text = md(desc='"' + "d" * 1000 + ' Use it when testing." # note')
+        self.assertTrue(vs.check(text)["valid"])
+        self.assertEqual(sl.validate_text(text)[1]["errors"], [])
+        for v, want in (('"abc" # c', "abc"), ("'it''s' # x", "it's"), ('"a \\"q\\" b"', 'a "q" b'), ('"open', '"open'),
+                        ("plain # c", "plain"), ("a#b", "a#b"), ('"abc"#c', '"abc"#c'), ('""', "")):
+            self.assertEqual(sl.scalar(v), want, v)
+            self.assertEqual(vs.scalar(v), want, v)
+
+    def test_longer_closing_fence(self):
+        # CommonMark: the closing fence can be longer than the opening one; the info string can have words.
+        for o, c in (("```", "````"), ("```markdown title", "```"), ("~~~md", "~~~~~"), ("````", "````")):
+            self.assertTrue(vs.check(f"{o}\n{md()}\n{c}\n")["valid"], (o, c))
+        # A shorter closing fence, or another character, does not close the block.
+        self.assertFalse(vs.check(f"````\n{md()}\n```\n")["valid"])
+        self.assertFalse(vs.check(f"```\n{md()}\n~~~\n")["valid"])
 
     def test_valid(self):
         r = vs.check(md())

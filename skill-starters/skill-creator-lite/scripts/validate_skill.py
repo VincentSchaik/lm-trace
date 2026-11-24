@@ -11,15 +11,29 @@ ALLOWED = {"name", "description", "license", "allowed-tools", "metadata", "compa
 
 
 def unfence(text):
-    """The draft without a code block around it: ```markdown … ``` or ````markdown … ````."""
-    m = re.match(r"^\s*(`{3,}|~{3,})[\w.+-]*[ \t]*\r?\n(.*?)\r?\n[ \t]*\1[ \t]*\s*$", text, re.S)
-    return m.group(2) if m else text
+    """The draft without a code block around it (```markdown … ```, ````md title … ````, ~~~ … ~~~). As in
+    CommonMark, the closing fence uses the same character and is at least as long as the opening fence."""
+    lines = text.strip().splitlines()
+    if len(lines) >= 2:
+        o = re.match(r"^ {0,3}(`{3,}|~{3,})(.*)$", lines[0])
+        c = re.match(r"^ {0,3}(`{3,}|~{3,})[ \t]*$", lines[-1])
+        if o and c and c.group(1)[0] == o.group(1)[0] and len(c.group(1)) >= len(o.group(1)) \
+                and not (o.group(1)[0] == "`" and "`" in o.group(2)):
+            return "\n".join(lines[1:-1])
+    return text
 
 
 def scalar(v):
+    """A YAML scalar. Quoted: the text between the quotes ("…" with \\" escapes, '…' with '' escapes); a comment after
+    the closing quote is not part of the value. Without quotes: a comment (space, then #) is removed. A quote that is
+    not closed stays as written."""
     v = v.strip()
-    if len(v) >= 2 and v[0] == v[-1] and v[0] in "\"'":
-        return v[1:-1].replace('\\"', '"')
+    if v[:1] == '"':
+        m = re.match(r'^"((?:[^"\\]|\\.)*)"(?:[ \t]+#.*)?[ \t]*$', v)
+        return m.group(1).replace('\\"', '"') if m else v
+    if v[:1] == "'":
+        m = re.match(r"^'((?:[^']|'')*)'(?:[ \t]+#.*)?[ \t]*$", v)
+        return m.group(1).replace("''", "'") if m else v
     return re.sub(r"\s+#.*$", "", v)
 
 

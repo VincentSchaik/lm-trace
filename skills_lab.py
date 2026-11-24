@@ -77,18 +77,17 @@ def parse_skill_md(text):
 
 
 def scalar(v):
-    """A YAML scalar: quotes removed; a comment (space, then #) removed from a value without quotes."""
+    """A YAML scalar. Quoted: the text between the quotes ("…" with \\" escapes, '…' with '' escapes); a comment after
+    the closing quote is not part of the value. Without quotes: a comment (space, then #) is removed. A quote that is
+    not closed stays as written."""
     v = v.strip()
-    if v[:1] in "\"'":
-        return unquote(v)
+    if v[:1] == '"':
+        m = re.match(r'^"((?:[^"\\]|\\.)*)"(?:[ \t]+#.*)?[ \t]*$', v)
+        return m.group(1).replace('\\"', '"') if m else v
+    if v[:1] == "'":
+        m = re.match(r"^'((?:[^']|'')*)'(?:[ \t]+#.*)?[ \t]*$", v)
+        return m.group(1).replace("''", "'") if m else v
     return re.sub(r"\s+#.*$", "", v)
-
-
-def unquote(v):
-    if len(v) >= 2 and v[0] == v[-1] and v[0] in "\"'":
-        v = v[1:-1]
-        return v.replace('\\"', '"') if v else v
-    return v
 
 
 ALLOWED_FIELDS = {"name", "description", "license", "allowed-tools", "metadata", "compatibility"}

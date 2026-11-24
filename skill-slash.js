@@ -38,14 +38,18 @@
   const withSkill = (content, rest) => rest ? `${content}\n\n${rest}` : content;
 
   // Is the skill already in the conversation? From an earlier /name (the <skill_content> block in a user message),
-  // or from a load_skill call of the model. Then the harness does not add it again (agentskills.io: "Deduplicate activations").
+  // or from a load_skill call of the model that worked: its tool result (same tool_call_id) is there and is not an
+  // error (the harness starts each failed result with "Error:"). Then the harness does not add the skill again
+  // (agentskills.io: "Deduplicate activations"). A failed call does not count, so /name or a retry loads the skill.
   function skillInHistory(history, name) {
-    const tag = `<skill_content name="${name}">`;
-    return (history || []).some(m =>
+    const list = history || [], tag = `<skill_content name="${name}">`;
+    const worked = id => list.some(m => m.role === "tool" && m.tool_call_id === id && typeof m.content === "string" && !/^\s*Error\b/.test(m.content));
+    return list.some(m =>
       (m.role === "user" && typeof m.content === "string" && m.content.includes(tag))
       || (m.role === "assistant" && (m.tool_calls || []).some(c => {
         if (c.function?.name !== "load_skill") return false;
-        try { return JSON.parse(c.function.arguments || "{}").name === name; } catch { return false; }
+        let args; try { args = JSON.parse(c.function.arguments || "{}"); } catch { return false; }
+        return args?.name === name && worked(c.id);
       })));
   }
 
