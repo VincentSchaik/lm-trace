@@ -803,10 +803,6 @@
   .insp details.x > .rpc { border: 0; border-top: 1px solid var(--paper-2); border-radius: 0; margin: 0; }
   .insp details.x > pre { margin: 0 14px 12px; }
   /* Chat card head: the steps and the numbers, as on the RAG page */
-  .log-head { display: flex; align-items: center; gap: 8px 16px; flex-wrap: wrap; border-bottom: 1px solid var(--paper-2); padding-right: 18px; }
-  .log-head .flow2 { border-bottom: 0; padding: 12px 18px; }
-  .log-head .stats { margin-left: auto; font-size: 13px; color: var(--ink-3); }
-  .log-head .stats > span + span { margin-left: 12px; }
   /* MCP list: one row per server, its tools below when open */
   .mcp-list { padding: 4px 18px 14px; display: grid; gap: 6px; }
   .ml-srv { border: 1px solid var(--line); border-radius: 8px; background: var(--field); overflow: hidden; }
@@ -939,12 +935,6 @@
   @media (max-width: 860px) { #log .ev > summary, #log .ev-row { grid-template-columns: minmax(0, 1fr) auto; } #log .ev-bd { padding-left: 14px; } }
   .setup a { color: var(--red); text-decoration: none; } .setup a:hover { text-decoration: underline; }
   .ev .what .q { color: var(--ink-3); }
-  .flow2 { display: flex; align-items: center; gap: 6px 8px; flex-wrap: wrap; padding: 10px 18px; border-bottom: 1px solid var(--paper-2); font-size: 12.5px; color: var(--ink-2); }
-  .flow2 .fs { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px 2px 3px; border-radius: 12px; cursor: help; }
-  .flow2 .fs.on { background: rgba(var(--red-rgb), .1); color: var(--ink); }
-  .flow2 .fs.on .stepnum { background: var(--primary); color: var(--on-primary); }
-  .flow2 .fs.done .stepnum { background: var(--ink-3); color: var(--field); }
-  .flow2 .arrow { color: var(--stone-2); }
   .roles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 8px 0 4px; }
   .roles > div { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; background: var(--field); }
   .roles b { display: block; color: var(--ink-2); }
@@ -1068,7 +1058,6 @@
     </div>
   </section>
   <section class="panel" aria-label="Chat log">
-    <div class="log-head"><div class="flow2" id="flow" aria-label="The steps of MCP"></div></div>
     <div class="chatlog" id="log"></div>
     <div class="stats-row"><span class="stats" id="stats"></span></div>
   </section>
@@ -1625,7 +1614,7 @@ document.addEventListener("click", e => { if (!e.composedPath().some(n => n.clas
 document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("plusMenu").hidden) { openPlus(false); $("plusBtn").focus(); } });
 
 // ---------------------------------------------------------------- Chat: the run
-// The steps of MCP, as in the How it works list. The step of the newest event is marked.
+// The steps of MCP, as in the How it works list. While a message runs, the live line names the step of the newest event.
 const FLOW = [
   ["Discovery", "Each MCP client connects to its server and asks for the tools (tools/list)."],
   ["Prompt and tools", "The MCP host puts your message and the tool definitions into the prompt of the LLM."],
@@ -1636,10 +1625,7 @@ const FLOW = [
   ["Answer", "The LLM reads the result and writes the answer."],
 ];
 let flowStep = -1;
-function renderFlow() {
-  $("flow").innerHTML = `<span class="who" style="font:500 10.5px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);margin-right:4px">Steps</span>` + FLOW.map(([t, d], i) => `${i ? '<span class="arrow">→</span>' : ""}<span class="fs${i === flowStep ? " on" : i < flowStep ? " done" : ""}" tabindex="0" data-tip-title="${i + 1}. ${esc(t)}" data-tip="${esc(d)}"><span class="stepnum">${i + 1}</span>${esc(t)}</span>`).join("");
-}
-const setFlow = i => { if (i !== flowStep) { flowStep = i; renderFlow(); } };
+const setFlow = i => { flowStep = i; };
 const setStatus = s => { $("status").innerHTML = s; };
 const fmtS = ms => ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1)} s`;
 const pretty = s => { try { return JSON.stringify(typeof s === "string" ? JSON.parse(s) : s, null, 2); } catch { return String(s); } };
@@ -1853,7 +1839,7 @@ function rowHtml(r, key) {
     : `<div class="ev${r.cls ? " " + r.cls : ""}"><div class="ev-row">${head}<span></span></div></div>`;
 }
 const liveSecs = t => `${Math.max(0, Math.round((Date.now() - t) / 1000))} s`;
-const liveText = turn => { const x = (Date.now() - turn.t0) / 1000; return `Running… (${x < 10 ? x.toFixed(1) : Math.round(x)} s)`; };
+const liveText = turn => { const x = (Date.now() - turn.t0) / 1000; return `Running… (${x < 10 ? x.toFixed(1) : Math.round(x)} s)${FLOW[flowStep] ? ` · Step ${flowStep + 1} of ${FLOW.length}: ${FLOW[flowStep][0]}` : ""}`; };
 setInterval(() => {
   if (!busy) return;
   document.querySelectorAll("[data-live]").forEach(el => { el.textContent = liveSecs(+el.dataset.live); });
@@ -2666,7 +2652,6 @@ $("chatsMenu").onclick = async e => {
 document.addEventListener("click", e => { if (!e.target.closest(".chats-wrap")) openChats(false); });
 document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("chatsMenu").hidden) { openChats(false); $("chatsBtn").focus(); } });
 
-renderFlow();
 (async () => {
   await Promise.all([loadConfig(), loadTools(), loadToken(), loadModels(), loadMeta()]);
   for (const s of cfg.servers) if (S.on[s.name]) loadServerTools(s.name);
