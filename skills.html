@@ -742,7 +742,8 @@
   .sk-valid.ok .res { color: #1a7f45; } :root[data-theme="dark"] .sk-valid.ok .res { color: #4ade80; }
   .sk-valid.bad { border-color: rgba(217, 48, 37, .4); } .sk-valid.bad .res { color: var(--danger); }
   .sk-valid .lbl { color: var(--ink-3); }
-  .sk-valid ul { flex-basis: 100%; margin: 2px 0 0; padding-left: 20px; color: var(--danger); font: 12.5px/1.5 var(--mono); }
+  .sk-valid ul { flex-basis: 100%; margin: 2px 0 0; padding-left: 18px; color: var(--ink); font-size: 13px; line-height: 1.6; }
+  .sk-valid li::marker { color: var(--danger); }
   .sk-lint { margin: 0 0 14px; padding: 10px 14px; border-radius: 10px; font-size: 13px; }
   .sk-lint.err { background: rgba(217, 48, 37, .08); color: var(--danger); }
   .sk-lint.hint { background: rgba(217, 142, 4, .1); color: var(--ink-2); }
@@ -782,9 +783,9 @@
   .sk-edit { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 10px 14px; align-items: start; overflow: auto; }
   .sk-edit > span { padding-top: 8px; font-size: 13px; color: var(--ink-2); }
   .sk-edit input, .sk-edit textarea { width: 100%; }
-  .sk-edit textarea { font: 13px/1.5 var(--mono); height: 50vh; min-height: 280px; padding: 10px 12px; resize: vertical; }
+  .sk-edit textarea { font: 13px/1.5 var(--mono); height: 36vh; min-height: 240px; padding: 10px 12px; resize: vertical; }
   .sk-edit .cnt { font-size: 12px; color: var(--ink-3); margin-top: 2px; }
-  .sk-edit .cnt.over { color: var(--danger); }
+  .sk-edit .cnt .over { color: var(--danger); font-weight: 500; }
   /* Context by layer, at the left of the stats row */
   .layers { display: inline-flex; align-items: center; gap: 8px; margin-right: auto; font-size: 12.5px; color: var(--ink-3); cursor: help; }
   .layers .bar { display: inline-flex; width: 160px; height: 8px; border-radius: 4px; overflow: hidden; background: var(--paper-2); }
@@ -2043,11 +2044,31 @@ const layersLine = sk => { const t = skTok[sk.name], n = k => t ? t[k].toLocaleS
 // Validation: the checks of skills-ref validate (the reference library of the specification), run by the server.
 // One line: the result, and an i with what it checks. The errors show only when the skill is not valid.
 const VALID_TIP = "skills-ref validate ./<skill>: the reference library of the Agent Skills specification. It checks the frontmatter of SKILL.md: only the allowed fields; the name (lowercase letters, digits and single hyphens, at most 64 characters, the same as the folder); the description (at most 1,024 characters); compatibility (at most 500). A skill that is not valid cannot be turned on.";
+// Short words for the messages of skills-ref; the exact message is the tooltip of each line.
+const FIELDS = "name, description, license, compatibility, metadata, allowed-tools";
+function crisp(e) {
+  let m;
+  if ((m = e.match(/^Missing required field in frontmatter: (\w+)/))) return `${m[1]} is missing.`;
+  if ((m = e.match(/^Unexpected fields in frontmatter: (.+?)\. Only/))) return `${m[1]} ${m[1].includes(",") ? "are not allowed fields" : "is not an allowed field"}. Allowed: ${FIELDS}.`;
+  if (/must be lowercase$/.test(e)) return "name: use lowercase letters only.";
+  if (/cannot start or end with a hyphen/.test(e)) return "name: no hyphen at the start or the end.";
+  if (/consecutive hyphens/.test(e)) return "name: no double hyphens (--).";
+  if (/contains invalid characters/.test(e)) return "name: only letters, digits and hyphens.";
+  if ((m = e.match(/exceeds 64 character limit \((\d+) chars\)/))) return `name: ${m[1]} characters, at most 64.`;
+  if ((m = e.match(/^Directory name '(.+)' must match skill name '(.+)'/))) return `name (${m[2]}) must be the same as the folder (${m[1]}).`;
+  if ((m = e.match(/^Description exceeds 1024 character limit \((\d+) chars\)/))) return `description: ${Number(m[1]).toLocaleString()} characters, at most 1,024.`;
+  if ((m = e.match(/^Compatibility exceeds 500 character limit \((\d+) chars\)/))) return `compatibility: ${m[1]} characters, at most 500.`;
+  if ((m = e.match(/^Field '(\w+)' must be a (non-empty )?string/))) return `${m[1]} must be text${m[2] ? " and not empty" : ""}.`;
+  if (/must start with YAML frontmatter/.test(e)) return "Start SKILL.md with a --- line (the frontmatter).";
+  if (/not properly closed/.test(e)) return "Close the frontmatter with a --- line.";
+  if (/^Invalid YAML/.test(e)) return e.replace(/^Invalid YAML in frontmatter: /, "Frontmatter: ");
+  return e;
+}
 function validHtml(errors) {
   const n = errors.length;
   return `<div class="sk-valid ${n ? "bad" : "ok"}"><span class="lbl">Validation</span><span class="res">${n ? `✗ Not valid · ${n} error${n === 1 ? "" : "s"}` : "✓ Valid"}</span>`
     + `<span class="info" tabindex="0" data-tip-title="Validation · skills-ref validate" data-tip="${esc(VALID_TIP)}">i</span>`
-    + (n ? `<ul>${errors.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : "") + `</div>`;
+    + (n ? `<ul>${errors.map(x => `<li title="skills-ref: ${esc(x)}">${esc(crisp(x))}</li>`).join("")}</ul>` : "") + `</div>`;
 }
 const hintsHtml = hints => hints.length ? `<div class="sk-lint hint"><b>Best practices</b><ul>${hints.map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>` : "";
 const lintHtml = sk => validHtml(sk.errors) + hintsHtml(sk.hints)
@@ -2150,25 +2171,22 @@ function openEditorSk(name) {
     <div class="sk-dlg-foot"><button type="button" class="btn ghost" id="skValidate" title="Run the skills-ref checks on this text. It does not save.">Validate</button><span class="grow"></span><button type="button" class="btn ghost" data-dlg-close>Cancel</button><button type="button" class="btn" id="skSave">Save</button></div>`);
   const box = $("skDlg"), ta = $("skMd");
   box.querySelectorAll("[data-dlg-close]").forEach(b => b.onclick = closeDlg);
-  const check = () => {
-    const t = ta.value, nm = (t.match(/^name:\s*(.*)$/m) || [])[1]?.trim().replace(/^["']|["']$/g, "") || "", ds = (t.match(/^description:\s*(.*)$/m) || [])[1]?.trim() || "";
-    const lines = t.split("\n").length, bad = [];
-    const nn = nm.normalize("NFKC");
-    if (!nn || nn.length > 64 || nn !== nn.toLowerCase() || /^-|-$|--/.test(nn) || !/^[\p{L}\p{N}-]+$/u.test(nn)) bad.push("name: lowercase letters, digits and single hyphens, at most 64 characters");
-    if (!ds) bad.push("description is required"); else if (ds.length > 1024) bad.push(`description: ${ds.length} of 1,024 characters`);
-    $("skCnt").textContent = `name ${nn.length}/64 · description ${ds.length.toLocaleString()}/1,024 characters · ${lines} lines (keep under 500)` + (bad.length ? ` · ${bad.join(" · ")}` : "");
-    $("skCnt").classList.toggle("over", bad.length > 0);
-    return !bad.length;
+  const check = () => {  // counts only; the errors are in the Validation box
+    const t = ta.value, nm = ((t.match(/^name:\s*(.*)$/m) || [])[1] || "").trim().replace(/^["']|["']$/g, "").normalize("NFKC"), ds = ((t.match(/^description:\s*(.*)$/m) || [])[1] || "").trim();
+    const lines = t.split("\n").length, c = (n, max, w) => `<span${n > max ? ' class="over"' : ""}>${w} ${n.toLocaleString()}/${max.toLocaleString()}</span>`;
+    $("skCnt").innerHTML = [c(nm.length, 64, "name"), c(ds.length, 1024, "description"), c(lines, 500, "lines")].join(" · ");
   };
   ta.oninput = () => { check(); $("skValid").innerHTML = ""; };  // a change makes the last result old
   check();
-  $("skValidate").onclick = async () => {
-    try { const r = await post("/skill-validate", { skillMd: ta.value }); $("skValid").innerHTML = validHtml(r.errors) + hintsHtml(r.hints); }
-    catch (e) { $("skEditErr").textContent = e.message; }
+  const validate = async () => {
+    const r = await post("/skill-validate", { skillMd: ta.value });
+    $("skValid").innerHTML = validHtml(r.errors) + hintsHtml(r.hints);
+    return !r.errors.length;
   };
-  $("skSave").onclick = async () => {
-    if (!check()) return;
-    try { const r = await post("/skill-save", { skillMd: ta.value, old: sk ? sk.name : null }); closeDlg(); await loadSkills(); renderAll(); if (viewSk) { viewSk = r.name; renderView(); } }
+  $("skValidate").onclick = () => validate().catch(e => { $("skEditErr").textContent = e.message; });
+  $("skSave").onclick = async () => {  // validates first: a skill that is not valid is not saved
+    $("skEditErr").textContent = "";
+    try { if (!(await validate())) return; const r = await post("/skill-save", { skillMd: ta.value, old: sk ? sk.name : null }); closeDlg(); await loadSkills(); renderAll(); if (viewSk) { viewSk = r.name; renderView(); } }
     catch (e) { $("skEditErr").textContent = e.message; }
   };
 }

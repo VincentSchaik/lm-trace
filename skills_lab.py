@@ -134,14 +134,14 @@ def lint(folder, fm, body, err):
     desc = fm.get("description")
     if isinstance(desc, str) and desc.strip():
         if not re.search(r"\b(use|when)\b", desc, re.I):
-            hints.append("description: say when to use the skill (\"Use this skill when…\"). It is the only text the model sees before it activates the skill.")
+            hints.append("description: say when to use the skill (\"Use this skill when…\").")
         elif len(desc) < 60:
-            hints.append("description is very short: list the tasks and the words that should activate the skill.")
+            hints.append("description: name the tasks and words that should activate the skill.")
     lines = body.count("\n") + 1 if body.strip() else 0
     if lines > 500:
-        hints.append(f"SKILL.md body has {lines} lines: keep it under 500. Move detailed reference material to separate files.")
+        hints.append(f"SKILL.md has {lines} lines: keep it under 500; move details to other files.")
     if re.search(r"\bsee (the )?(references?|docs?)/? for (more )?details\b", body, re.I):
-        hints.append("Say when to read each reference file, not only \"see references/ for details\".")
+        hints.append("Say when to read each reference file, not only \"see references/\".")
     return errors, hints
 
 
