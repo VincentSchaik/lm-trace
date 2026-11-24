@@ -981,10 +981,14 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 p = skills_lab.safe_path(d, q.get("path", [""])[0])
                 if not p:
                     return self._json(404, {"error": {"message": "No such file."}})
-                data, fname, ctype = open(p, "rb").read(), os.path.basename(p), "application/octet-stream"
+                data, fname, ctype = open(p, "rb").read(), os.path.basename(p), skills_lab.mime_of(p)
+            inline = q.get("inline", [""])[0] == "1"  # the Open view shows an image or a PDF; else a download
             self.send_response(200)
             self.send_header("Content-Type", ctype)
-            self.send_header("Content-Disposition", "attachment; filename*=UTF-8''" + urllib.parse.quote(fname))
+            self.send_header("Content-Disposition", ("inline" if inline else "attachment") + "; filename*=UTF-8''" + urllib.parse.quote(fname))
+            self.send_header("X-Content-Type-Options", "nosniff")
+            if inline and ctype != "application/pdf":  # a file may come from GitHub: nothing in it runs (Chrome's PDF viewer needs no sandbox)
+                self.send_header("Content-Security-Policy", "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; sandbox")
             self.send_header("Content-Length", str(len(data)))
             self.end_headers()
             self.wfile.write(data)
@@ -995,7 +999,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             p = d and skills_lab.safe_path(d, q.get("path", [""])[0])
             if not p:
                 return self._json(404, {"error": {"message": "No such file."}})
-            return self._json(200, {"text": open(p, encoding="utf-8", errors="replace").read(skills_lab.MAX_FILE)})
+            if skills_lab.is_binary(p):
+                return self._json(200, {"binary": True, "type": skills_lab.mime_of(p), "size": os.path.getsize(p)})
+            return self._json(200, {"text": open(p, encoding="utf-8", errors="replace").read(skills_lab.MAX_FILE), "type": skills_lab.mime_of(p)})
         if self.path in ("/chats", "/mcp-chats", "/skill-chats"):
             return self._json(200, chat_list(CHAT_STORES[self.path + "/"]))
         if self.path.startswith(("/chats/", "/mcp-chats/", "/skill-chats/")):

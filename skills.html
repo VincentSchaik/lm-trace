@@ -729,6 +729,14 @@
   .ic-btn.warn:hover { color: var(--danger); }
   .ic-btn svg { width: 16px; height: 16px; }
   .ic-row { display: inline-flex; gap: 6px; align-items: center; }
+  .sk-bin { display: grid; place-items: center; padding: 16px; border: 1px solid var(--line); border-radius: 10px; background-color: var(--field);
+    background-image: linear-gradient(45deg, var(--paper-2) 25%, transparent 25%, transparent 75%, var(--paper-2) 75%), linear-gradient(45deg, var(--paper-2) 25%, transparent 25%, transparent 75%, var(--paper-2) 75%);
+    background-size: 16px 16px; background-position: 0 0, 8px 8px; }
+  .sk-bin img { max-width: 100%; max-height: 60vh; display: block; }
+  .sk-bin-none { gap: 10px; color: var(--ink-2); background-image: none; padding: 28px; }
+  .sk-bin-none svg { width: 22px; height: 22px; }
+  .sk-pdf { width: 100%; height: 70vh; border: 1px solid var(--line); border-radius: 10px; background: var(--field); }
+  .sk-bin-info { margin-top: 8px; font-size: 12.5px; color: var(--ink-3); }
   .sk-valid { margin: 0 0 14px; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--line); }
   .sk-valid .hd { font: 500 12px var(--sans); color: var(--ink-3); margin-bottom: 6px; }
   .sk-valid .hd code { font: 12px var(--mono); }
@@ -1083,7 +1091,7 @@ async function countSkillTokens() {
       const texts = [entry, sk.body.trim()];
       const j = await post("/tokenize", { model, texts, count: true });
       let l3 = 0;
-      for (const f of sk.files.filter(f => f.size < 60000)) {
+      for (const f of sk.files.filter(f => f.size < 60000 && !f.binary)) {
         const t = await fetch(`/skill-file?name=${encodeURIComponent(sk.name)}&path=${encodeURIComponent(f.path)}`).then(r => r.json());
         if (typeof t.text === "string") l3 += (await post("/tokenize", { model, texts: [t.text.slice(0, 59000)], count: true })).counts[0];
       }
@@ -2065,7 +2073,7 @@ function treeHtml(sk, current) {
   return `<div class="sk-tree" aria-label="Files of the skill">${esc(sk.name)}/\n${rows.map(line).join("\n")}</div>`;
 }
 // Open: the files of the skill in the tab, SKILL.md first (metadata + rendered body), like a file view.
-let viewSk = null, viewFile = "SKILL.md", viewSrc = false, viewText = null;
+let viewSk = null, viewFile = "SKILL.md", viewSrc = false, viewText = null, viewBinary = false;
 function openView(name) { viewSk = name; viewFile = "SKILL.md"; viewSrc = false; $("skillList").hidden = true; $("skillView").hidden = false; document.querySelector("#pane-skills .card-tools").hidden = true; renderView(); }
 function closeView() { viewSk = null; $("skillList").hidden = false; $("skillView").hidden = true; document.querySelector("#pane-skills .card-tools").hidden = false; renderSkills(); }
 async function renderView() {
@@ -2074,16 +2082,22 @@ async function renderView() {
   if (viewFile === "SKILL.md") body = viewSrc ? `<pre class="src-pre">${esc(sk.skillMd)}</pre>` : metaHtml(sk) + layersLine(sk) + lintHtml(sk) + `<div class="mdv">${mdView(sk.body)}</div>`;
   else {
     const t = await fetch(`/skill-file?name=${encodeURIComponent(sk.name)}&path=${encodeURIComponent(viewFile)}`).then(r => r.json()).catch(() => ({}));
-    const text = t.text ?? "(cannot show this file)"; viewText = t.text ?? null;
-    body = /\.md$/i.test(viewFile) && !viewSrc ? `<div class="mdv">${mdView(text)}</div>` : `<pre class="src-pre">${esc(text)}</pre>`;
+    viewText = t.text ?? null; viewBinary = !!t.binary;
+    const raw = `/skill-raw?name=${encodeURIComponent(sk.name)}&path=${encodeURIComponent(viewFile)}&inline=1`, type = t.type || "";
+    const info = `<div class="sk-bin-info">${esc(type || "binary file")} · ${fmtSize(t.size ?? new Blob([t.text || ""]).size)}${t.binary ? " · The model gets no text from this file: read_skill_file says what it is. A script can use it by its path." : ""}</div>`;
+    if (type.startsWith("image/")) body = `<div class="sk-bin"><img src="${raw}" alt="${esc(viewFile)}"></div>` + info;
+    else if (type === "application/pdf") body = `<iframe class="sk-pdf" src="${raw}" title="${esc(viewFile)}"></iframe>` + info;
+    else if (t.binary) body = `<div class="sk-bin sk-bin-none">${IC_SK.down}<span>A binary file: LM Trace cannot show it.</span><button type="button" class="btn ghost small" id="skBinDown">Download</button></div>` + info;
+    else body = /\.md$/i.test(viewFile) && !viewSrc ? `<div class="mdv">${mdView(t.text ?? "")}</div>` : `<pre class="src-pre">${esc(t.text ?? "(cannot show this file)")}</pre>`;
   }
   $("skillView").innerHTML = `<div class="sk-crumbs"><button type="button" class="btn ghost small" id="skBack">← Skills</button><span class="sk-path">skills / ${esc(sk.name)} / <b>${esc(viewFile)}</b></span><span class="grow" style="flex:1"></span>`
-    + `<span class="ic-row">${iconBtn("skAddFile", "add", "Add files")}${/\.md$/i.test(viewFile) ? iconBtn("skSrc", viewSrc ? "eye" : "code", viewSrc ? "View rendered" : "View source") : ""}${iconBtn("skEdit", "edit", `Edit ${viewFile}`)}`
+    + `<span class="ic-row">${iconBtn("skAddFile", "add", "Add files")}${/\.md$/i.test(viewFile) ? iconBtn("skSrc", viewSrc ? "eye" : "code", viewSrc ? "View rendered" : "View source") : ""}${viewFile !== "SKILL.md" && (sk.files.find(f => f.path === viewFile)?.binary || /^image\//.test(sk.files.find(f => f.path === viewFile)?.type || "")) ? "" : iconBtn("skEdit", "edit", `Edit ${viewFile}`)}`
     + `${iconBtn("skDown", "down", `Download ${viewFile}`)}${viewFile === "SKILL.md" ? "" : iconBtn("skDelFile", "trash", `Delete ${viewFile}`, " warn")}</span>${swHtml(sk, "view")}</div>`
     + treeHtml(sk, viewFile) + body;
   $("skBack").onclick = closeView; if ($("skSrc")) $("skSrc").onclick = () => { viewSrc = !viewSrc; renderView(); };
-  $("skEdit").onclick = () => viewFile === "SKILL.md" ? openEditorSk(sk.name) : openFileEditor(sk.name, viewFile);
+  if ($("skEdit")) $("skEdit").onclick = () => viewFile === "SKILL.md" ? openEditorSk(sk.name) : openFileEditor(sk.name, viewFile);
   $("skAddFile").onclick = () => openFileEditor(sk.name, null);
+  if ($("skBinDown")) $("skBinDown").onclick = () => $("skDown").click();
   $("skDown").onclick = () => { location.href = `/skill-raw?name=${encodeURIComponent(sk.name)}&path=${encodeURIComponent(viewFile)}`; };
   if ($("skDelFile")) $("skDelFile").onclick = () => deleteFile(sk.name, viewFile);
   $("skillView").querySelectorAll("[data-sk-file]").forEach(b => b.onclick = () => { viewFile = b.dataset.skFile; renderView(); });

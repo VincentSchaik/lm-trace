@@ -16,7 +16,7 @@ LM Trace is the harness: the page puts the name and description of each skill th
 Import: a skill folder from GitHub (github.com/<owner>/<repo>/tree/<ref>/<path>), with the GitHub contents API.
 Standard library only.
 """
-import base64, json, os, re, shutil, subprocess, threading, time, unicodedata, urllib.error, urllib.parse, urllib.request
+import base64, json, mimetypes, os, re, shutil, subprocess, threading, time, unicodedata, urllib.error, urllib.parse, urllib.request
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 SKILLS = os.path.join(ROOT, "skills")
@@ -198,6 +198,27 @@ def safe_path(d, rel):
     return p if p.startswith(root + os.sep) and os.path.isfile(p) else None
 
 
+def is_binary(p):
+    """A file that is not text for the model: a PDF or an image (not SVG) by its type, else a null byte or bytes
+    that do not decode as UTF-8 (archives, data)."""
+    t = mimetypes.guess_type(p)[0] or ""
+    if t == "application/pdf" or (t.startswith("image/") and t != "image/svg+xml"):
+        return True
+    with open(p, "rb") as f:
+        head = f.read(8192)
+    if b"\x00" in head:
+        return True
+    try:
+        head.decode("utf-8")
+    except UnicodeDecodeError as e:
+        return e.start < len(head) - 4  # a character cut at the end of the 8 KB is still text
+    return False
+
+
+def mime_of(p):
+    return mimetypes.guess_type(p)[0] or ("application/octet-stream" if is_binary(p) else "text/plain")
+
+
 def files_of(d):
     out = []
     for base, dirs, names in os.walk(d):
@@ -207,7 +228,8 @@ def files_of(d):
                 continue
             rel = os.path.relpath(os.path.join(base, n), d).replace(os.sep, "/")
             if rel != "SKILL.md":
-                out.append({"path": rel, "size": os.path.getsize(os.path.join(base, n))})
+                full = os.path.join(base, n)
+                out.append({"path": rel, "size": os.path.getsize(full), "binary": is_binary(full), "type": mime_of(full)})
     return out
 
 
@@ -385,6 +407,8 @@ def call(tool, args):
         if not p:
             files = [f["path"] for f in files_of(d)]
             return {"ok": False, "result": f"Error: {name} has no file {rel!r}. The files are: {', '.join(files) or 'none'}."}
+        if is_binary(p):  # an image, a PDF…: no text for the model, only what it is
+            return {"ok": True, "result": f"{rel} is a binary file ({mime_of(p)}, {os.path.getsize(p):,} bytes). It has no text to read. Use it by its path, for example in a script or as an attachment.", "layer": 3}
         text = open(p, encoding="utf-8", errors="replace").read()
         cut = len(text) > MAX_FILE
         return {"ok": True, "result": text[:MAX_FILE] + ("\n[cut: the file is longer]" if cut else ""), "layer": 3}
