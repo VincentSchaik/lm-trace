@@ -1828,6 +1828,7 @@ function renderChat(hold) {
   }).join("") + archEnd();
   log.scrollTop = atEnd ? log.scrollHeight : top;
   $("stats").innerHTML = `<span title="MCP servers: this page uses none. The MCP page connects a model to MCP servers.">MCP <b>–</b></span>`
+    + `<span title="Skills: this page uses none. The Skills page gives the model skills.">Skills <b>–</b></span>`
     + `<span title="The tools that are on: the harness sends their definitions in each model call">Tools <b>${viewing ? (viewing.tools || []).length : active().length}</b></span>`
     + `<span title="The tool calls of this chat: the harness ran each one">Tools called <b>${stats.tools}</b></span>`
     + `<span title="The model calls of this chat: the harness calls the model once, then again after each tool result">Model calls <b>${stats.calls}</b></span>${ctxHtml()}`;

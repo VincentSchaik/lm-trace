@@ -2437,6 +2437,7 @@ function renderStats() {
   const nt = on.map(s => viewing ? (viewing.allowed?.[s.name]?.length ?? toolCache[s.name]?.tools?.length ?? null) : toolCount(s.name));
   const calls = chat.reduce((a, t) => a + new Set(t.rows.filter(r => r.kind !== "close" && r.call > 0).map(r => r.call)).size, 0), tcalls = chat.reduce((a, t) => a + t.rows.filter(r => r.kind === "call").length, 0);
   $("stats").innerHTML = `<span title="The MCP servers that are on: the chat sends them in integrations">MCP <b>${on.length}</b></span>`
+    + `<span title="Skills: this page uses none. The Skills page gives the model skills.">Skills <b>–</b></span>`
     + `<span title="The tools that are on: the tools of these servers that LM Studio gives to the model">Tools <b>${nt.every(n => n != null) ? nt.reduce((a, b) => a + b, 0) : "–"}</b></span>`
     + `<span title="The tool calls of this chat: the tools/call requests that LM Studio sent to the servers">Tools called <b>${tcalls}</b></span>`
     + `<span title="The model calls of this chat: LM Studio calls the model once, then again after each tool result">Model calls <b>${calls}</b></span>`

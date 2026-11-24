@@ -787,14 +787,10 @@
   .sk-edit textarea { font: 13px/1.5 var(--mono); height: 36vh; min-height: 240px; padding: 10px 12px; resize: vertical; }
   .sk-edit .cnt { font-size: 12px; color: var(--ink-3); margin-top: 2px; }
   .sk-edit .cnt .over { color: var(--danger); font-weight: 500; }
-  /* Context by layer, at the left of the stats row */
-  .layers { display: inline-flex; align-items: center; gap: 8px; margin-right: auto; font-size: 12.5px; color: var(--ink-3); cursor: help; }
-  .layers .bar { display: inline-flex; width: 160px; height: 8px; border-radius: 4px; overflow: hidden; background: var(--paper-2); }
-  .layers .bar i { display: block; height: 100%; }
-  .layers .dot { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 4px; vertical-align: 0; }
-  .stats-row { gap: 12px; align-items: center; }
-  .L-sys { background: #a1a1aa; } .L-1 { background: #60a5fa; } .L-2 { background: #2563eb; } .L-3 { background: #7c3aed; } .L-msg { background: #d4d4d8; }
-  :root[data-theme="dark"] .L-msg { background: #52525b; } :root[data-theme="dark"] .L-sys { background: #71717a; }
+  .stats-row { gap: 8px 12px; align-items: center; flex-wrap: wrap; }
+  /* No squeeze: each label keeps its number on one line; when the row is too narrow, the stats go to a second line. */
+  .stats > span { white-space: nowrap; }
+  .stats-row .stats { margin-left: auto; }
   .layer-tag { font: 500 11px var(--sans); padding: 1px 7px; border-radius: 9px; color: #fff; margin-left: 6px; }
 </style>
 <link rel="stylesheet" href="/theme.css">
@@ -924,7 +920,7 @@
   <!-- The chat: its own card below the settings, as on the Trace page -->
   <section class="panel" aria-label="Chat log">
     <div class="chatlog" id="log"></div>
-    <div class="stats-row"><span class="layers" id="layers" tabindex="0"></span><span class="stats" id="stats"></span></div>
+    <div class="stats-row"><span class="stats" id="stats"></span></div>
   </section>
   <section class="panel sendbar" aria-label="Your message">
     <div class="cbox">
@@ -933,6 +929,8 @@
         <div class="perm-wrap plus-wrap"><button type="button" class="perm-btn" id="plusBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="plusMenu" title="Skills" aria-label="Skills"></button>
           <div class="perm-menu plus-menu" id="plusMenu" role="menu" aria-label="Add" hidden></div>
           <div class="perm-menu tools-menu" id="toolsMenu" role="menu" aria-label="Skills" hidden></div></div>
+        <div class="perm-wrap"><button type="button" class="perm-btn" id="permBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="permMenu"></button>
+          <div class="perm-menu" id="permMenu" role="menu" aria-label="Permissions" hidden></div></div>
         <div id="chatPick" class="grow"></div>
         <button id="sendBtn" class="send-round" title="Send the message (Enter)" aria-label="Send"></button>
       </div>
@@ -1106,7 +1104,7 @@ async function countSkillTokens() {
 const tokOf = (name, k) => skTok[name]?.[k];
 
 // ---- Settings (remembered in this browser)
-const S_DEFAULT = { noteBy: "lmstudio", harness: "on", tab: "chat", temp: 0, maxTokens: 1500, maxCalls: 5 };
+const S_DEFAULT = { noteBy: "lmstudio", harness: "on", perm: "ask", tab: "chat", temp: 0, maxTokens: 1500, maxCalls: 5 };
 const S = { ...S_DEFAULT };
 try { Object.assign(S, JSON.parse(localStorage.getItem("skillsPage") || "{}")); } catch {}
 S.noteBy = "lmstudio";  // the skill tools always go in the tools parameter
@@ -1429,7 +1427,7 @@ function newChat() {
 // viewing: the archived settings while an archived chat is on screen, else null.
 var chatId = null, viewing = null;  // var: renderChat may run before this line
 function chatSettings() {
-  return { model: $("chatModel").value, system: $("system").value, harness: S.harness,
+  return { model: $("chatModel").value, system: $("system").value, harness: S.harness, perm: S.perm,
     temp: S.temp, maxTokens: S.maxTokens, maxCalls: S.maxCalls, skills: skillsOn().map(x => x.name), skillList: skillListText(), ctxSize: ctxSize() };
 }
 // Copy the answer, or export the whole chat as Markdown: the settings, and for each message every step as the page
@@ -1715,12 +1713,13 @@ async function runTurn(text) {
           step(turn, { type: "skip", call, c, text: t });
           continue;
         }
-        // Human in the loop: a script runs on this computer, so the harness asks you before each run: Allow or Deny.
-        // Reading the skill files needs no approval.
+        // Human in the loop: a script runs on this computer, so Permissions decides: Ask every time waits for your
+        // click (Allow or Deny); Deny all never runs a script; Allow all runs it. Reading the skill files needs no approval.
         const script = c.name === "run_skill_script";
-        const ok = script ? await must({ call, who: "You", text: `Allow the script? ${ck.args.name} › ${ck.args.path}` }, true, true)
-          : await must({ call, who: "Skill", text: c.name === "load_skill" ? "Activating skill" : "Reading file" });
-        if (script) step(turn, { type: "decide", call, c, args: ck.args, ok, auto: false });
+        const ok = !script ? await must({ call, who: "Skill", text: c.name === "load_skill" ? "Activating skill" : "Reading file" })
+          : S.perm === "ask" ? await must({ call, who: "You", text: `Allow the script? ${ck.args.name} › ${ck.args.path}` }, true, true)
+          : S.perm === "deny" ? false : await must({ call, who: "Skill", text: "Running script" });
+        if (script && S.perm !== "allow") step(turn, { type: "decide", call, c, args: ck.args, ok, auto: S.perm === "deny" });
         if (!ok) { results.push({ call: c, ok: false, text: `The user denied the script ${ck.args.path}.` }); continue; }
         const run = step(turn, { type: "run", call, c, args: ck.args, wait: true });
         const tr = Date.now();
@@ -1926,7 +1925,6 @@ function renderChat(hold) {
     return out;
   }).join("") + archEnd();
   log.scrollTop = atEnd ? log.scrollHeight : top;
-  $("layers").innerHTML = layersHtml();
   $("stats").innerHTML = `<span title="MCP servers: this page uses none. The MCP page connects a model to MCP servers.">MCP <b>–</b></span>`
     + `<span title="The skills that are on: their names and descriptions are in the system prompt (metadata)">Skills <b>${viewing ? (viewing.skills || []).length : skillsOn().length}</b></span>`
     + `<span title="The skill tools: load_skill, read_skill_file and run_skill_script. The harness sends their definitions in each model call when a skill is on.">Tools <b>${viewing ? ((viewing.skills || []).length ? 3 : 0) : active().length}</b></span>`
@@ -2428,10 +2426,7 @@ function showStarters() {
 }
 
 
-// ---- Context by layer: what the context of the last model call holds, in tokens. System prompt (yours), layer 1
-// (the skill list and the three tool definitions), layer 2 (SKILL.md bodies from load_skill), layer 3 (files and script
-// output), and the rest (your messages and the replies). Instructions and resources are counted with the tokenizer of the model;
-// the total is LM Studio's prompt + output tokens of the last call, so "Messages" is the rest.
+// Token count of a text with the tokenizer of the model: the tokens of each skill file and script output.
 async function countText(model, text) {
   if (!model || !text) return 0;
   const parts = []; for (let i = 0; i < text.length; i += 3000) parts.push(text.slice(i, i + 3000));
@@ -2440,28 +2435,6 @@ async function countText(model, text) {
   catch { return null; }
   return n;
 }
-let sysTok = { key: "", sys: 0, l1: 0 };
-function countSys() {
-  const model = $("chatModel").value, sys = $("system").value.trim(), l1 = skillListText() + (active().length ? JSON.stringify(active().map(schemaOf)) : "");
-  const key = model + "\u0000" + sys + "\u0000" + l1;
-  if (!model || key === sysTok.key) return;
-  sysTok.key = key;
-  Promise.all([countText(model, sys), countText(model, l1)]).then(([a, b]) => { if (sysTok.key === key) { sysTok = { key, sys: a || 0, l1: b || 0 }; renderChat(true); } });
-}
-function layersHtml() {
-  countSys();
-  const runs = chat.flatMap(t => t.steps.filter(x => x.type === "run" && x.r?.ok));
-  const l2 = runs.filter(x => x.r.layer === 2).reduce((a, x) => a + (x.r.tokens || 0), 0);
-  const l3 = runs.filter(x => x.r.layer === 3).reduce((a, x) => a + (x.r.tokens || 0), 0);
-  const fixed = sysTok.sys + sysTok.l1 + l2 + l3, total = Math.max(stats.ctx || 0, fixed), msg = Math.max(0, total - fixed);
-  const size = ctxSize() || total || 1;
-  const parts = [["sys", "System prompt", sysTok.sys], ["1", "Metadata · skill list + tools", sysTok.l1], ["2", "Instructions · SKILL.md", l2], ["3", "Resources · files, scripts", l3], ["msg", "Messages", stats.ctx ? msg : 0]];
-  const tip = parts.map(([, n, v]) => `${n}: ${v.toLocaleString()} tokens`).join(". ") + `. Out of ${size.toLocaleString()} tokens of context. ` + (stats.ctx ? "Instructions and resources are counted with the tokenizer of the model; Messages is the rest of LM Studio's count of the last model call." : "Before the first call: only the system prompt and the metadata.");
-  return `<span class="bar">${parts.map(([c, , v]) => v ? `<i class="L-${c}" style="width:${(v / size * 100).toFixed(2)}%"></i>` : "").join("")}</span>`
-    + parts.filter(([c, , v]) => v || c === "1").map(([c, n, v]) => `<span><span class="dot L-${c}"></span>${{ sys: "System", msg: "Messages", 1: "Metadata", 2: "Instructions", 3: "Resources" }[c]} ${fmtTok(v)}</span>`).join("")
-    + `<span class="sr">${esc(tip)}</span>`.replace('class="sr"', 'hidden') ;
-}
-document.addEventListener("mouseover", e => { const el = e.target.closest?.("#layers"); if (el && !el.dataset.tip) el.dataset.tipTitle = "Context by layer"; });
 
 // ---- Context window: how much of the loaded context length the conversation uses.
 // After a model call: exact, from LM Studio (prompt tokens + output tokens of the last call). Before the first call: an
@@ -2613,7 +2586,7 @@ function setBusy() {
   chatPick.setDisabled(lock);
   ["newChat", "chatsBtn", "resetSkills", "addSkill", "importSkill"].forEach(id => $(id).disabled = busy);
   document.querySelectorAll("[data-sk-on]").forEach(b => b.disabled = busy || b.closest(".sk-row")?.querySelector(".sk-badge.err") != null);
-  ["chatModel", "temp", "maxTok", "ctxLen", "maxCalls", "system", "sysExamples", "saveSystem", "delSystem", "plusBtn"].forEach(id => $(id).disabled = lock);
+  ["chatModel", "temp", "maxTok", "ctxLen", "maxCalls", "system", "sysExamples", "saveSystem", "delSystem", "plusBtn", "permBtn"].forEach(id => $(id).disabled = lock);
   document.querySelectorAll("#noteBy button, #harness button, .starter").forEach(b => b.disabled = lock);
   syncSave();
 }
@@ -2649,7 +2622,7 @@ $("resetAll").onclick = async () => {
   Object.assign(S, { ...S_DEFAULT, tab: S.tab }); keep();
   ["harness"].forEach(id => setSeg(id, S[id]));
   $("system").value = SYSTEM; $("system").dispatchEvent(new Event("input"));
-  renderSampling(); renderAll();
+  renderSampling(); renderPerm(); renderAll();
 };
 
 // The chat fills the window above the message box: the box stays in view, and the chat scrolls.
@@ -2712,7 +2685,33 @@ setTheme(document.documentElement.dataset.theme, false);
 ["harness"].forEach(id => setSeg(id, S[id]));
 // ---- Permissions: how the harness gets your approval before a tool runs (human in the loop).
 const SVG = d => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
-function renderPerm() {}  // no Permissions shield on this page: only scripts ask, every time
+// Only run_skill_script asks: a script runs on this computer. Reading the skill files needs no approval.
+const PERMS = [
+  { v: "deny", label: "Deny all", desc: "The harness denies every script run", icon: SVG('<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/>') },
+  { v: "ask", label: "Ask every time", desc: "Allow or deny each script run yourself", icon: SVG('<path d="M18 11V6a2 2 0 0 0-4 0v5M14 10V4a2 2 0 0 0-4 0v6M10 10.5V6a2 2 0 0 0-4 0v8a8 8 0 0 0 16 0v-3a2 2 0 0 0-4 0"/>') },
+  { v: "allow", label: "Allow all", desc: "The harness runs every script", icon: SVG('<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6l8-3z"/><path d="M9 12l2 2 4-4"/>') },
+];
+if (!PERMS.some(p => p.v === S.perm)) S.perm = "ask";
+function renderPerm() {
+  const cur = PERMS.find(p => p.v === S.perm);
+  $("permBtn").innerHTML = cur.icon;
+  $("permBtn").title = `Permissions: ${cur.label}`;
+  $("permBtn").setAttribute("aria-label", `Permissions: ${cur.label}`);
+  $("permMenu").innerHTML = `<div class="hd">Scripts of skills: LM Trace is the harness. Choose how it gets approvals. Reading skill files needs none.</div>` + PERMS.map(p => `<button type="button" role="menuitemradio" aria-checked="${p.v === S.perm}" data-perm="${p.v}">${p.icon}<span>${p.label}</span>${p.v === S.perm ? '<span class="ck">✓</span>' : "<span></span>"}<span class="d">${p.desc}</span></button>`).join("");
+}
+function openPerm(open) {
+  $("permMenu").hidden = !open; $("permBtn").setAttribute("aria-expanded", open);
+  if (open) $("permMenu").querySelector('[aria-checked="true"]')?.focus();
+}
+$("permBtn").onclick = () => openPerm($("permMenu").hidden);
+$("permMenu").onclick = e => { const b = e.target.closest("[data-perm]"); if (!b) return; S.perm = b.dataset.perm; keep(); renderPerm(); openPerm(false); $("permBtn").focus(); };
+document.addEventListener("click", e => { if (!e.target.closest(".perm-wrap:not(.plus-wrap)")) openPerm(false); });
+$("permMenu").addEventListener("keydown", e => {
+  const items = [...$("permMenu").querySelectorAll("[data-perm]")], i = items.indexOf(document.activeElement);
+  if (e.key === "Escape") { openPerm(false); $("permBtn").focus(); }
+  else if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); items[(i + (e.key === "ArrowDown" ? 1 : items.length - 1)) % items.length].focus(); }
+});
+renderPerm();
 // + menu: Tools ›, then each tool with an On/Off switch: the same switch as on the Tools tab.
 // Each row shows the display name (the title field), else the function name, and the icon of the Icon field.
 // Icons: Lucide (ISC license), from the Iconify API.
