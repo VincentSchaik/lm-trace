@@ -17,7 +17,7 @@ POST /tool-run runs one tool of the Tools page: a built-in tool (Python, below) 
 MEMORY.md index (as Claude Code does it), and, with the optional `chromadb` package, the same
 facts as vectors in a Chroma collection on disk. The page sends the vectors (from LM Studio).
 """
-import atexit, glob, http.server, json, math, os, re, shutil, signal, struct, subprocess, sys, threading, time, urllib.parse, urllib.request, urllib.error
+import atexit, glob, http.server, json, math, os, re, shutil, signal, socket, struct, subprocess, sys, threading, time, urllib.parse, urllib.request, urllib.error
 import mcp_lab  # the MCP page: mcp.json, the Inspect client, and the MCP server of LM Trace
 
 LMS = os.environ.get("LMS_URL", "http://localhost:1234")
@@ -102,7 +102,7 @@ def embed_prefixes(model):
     row = next((r for r in rows if r.get("name", "").lower() == m), None) \
         or next((r for r in rows if r.get("name") and r["name"].lower() in m), None)
     return (row.get("query", ""), row.get("doc", "")) if row else ("", "")
-PAGES = ("/index.html", "/embeddings.html", "/rag.html", "/memory.html", "/tools.html", "/mcp.html", "/settings.html", "/composer.js", "/composer.css")
+PAGES = ("/index.html", "/embeddings.html", "/rag.html", "/memory.html", "/tools.html", "/mcp.html", "/settings.html", "/composer.js", "/composer.css", "/lms-status.js")
 MEM_DIR = os.path.join(ROOT, "agent-memory")  # long-term memory of the Memory page
 LMS_CLI = shutil.which("lms") or os.path.expanduser("~/.lmstudio/bin/lms")
 # Only local names: a different Host means DNS rebinding; a different Origin means another website.
@@ -848,6 +848,29 @@ def mcp_resources():
              "description": "The tools of the Tools page, as MCP tool definitions (JSON).", "mimeType": "application/json", "read": tool_list}]
 
 
+def lms_running():
+    """Does the LM Studio server answer on its port? A TCP connect only: no request, no model loads."""
+    u = urllib.parse.urlparse(LMS)
+    try:
+        socket.create_connection((u.hostname, u.port or 80), timeout=1).close()
+        return True
+    except OSError:
+        return False
+
+
+def lms_server(on):
+    """Start or stop the LM Studio server with the lms CLI. `lms server start` also starts LM Studio if it does not run."""
+    try:
+        r = subprocess.run([LMS_CLI, "server", "start" if on else "stop"], capture_output=True, text=True, timeout=60)
+    except (OSError, subprocess.TimeoutExpired) as e:
+        return 502, {"running": lms_running(), "error": {"message": f"lms server: {e}"}}
+    running = lms_running()
+    if running != on:
+        msg = (r.stderr or r.stdout).strip() or f"lms server {'start' if on else 'stop'} did not work"
+        return 502, {"running": running, "error": {"message": msg}}
+    return 200, {"running": running}
+
+
 def lms_check(name):
     """Can the LM Studio API use the mcp.json server `name`? A request with a model name that does not exist:
     LM Studio checks the plugin permission before the model, so no model loads."""
@@ -891,7 +914,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         except urllib.error.HTTPError as e:
             status, data = e.code, e.read()
         except Exception as e:
-            status, data = 502, ('{"error":{"message":"%s"}}' % str(e).replace('"', "'")).encode()
+            msg = str(e)
+            if not lms_running():
+                msg = f"LM Studio does not answer at {LMS}. Start it with the Status control at the top of the page."
+            status, data = 502, json.dumps({"error": {"message": msg}}).encode()
         else:
             # Stream the upstream body through as it arrives (SSE for stream=true).
             with r:
@@ -991,6 +1017,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 except Exception as e:
                     st["vectors"], st["vectorError"] = None, str(e)
             return self._json(200, st)
+        if self.path == "/lms-status":  # the Status control in the header of each page
+            return self._json(200, {"running": lms_running()})
         if self.path.startswith(("/v1/", "/api/v1/models")):  # api/v1/models lists reasoning options
             return self._proxy("GET")
         path = urllib.parse.urlparse(self.path).path
@@ -1071,6 +1099,14 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return
         if self.path.startswith("/v1/") or self.path in ("/api/v1/models/unload", "/api/v1/models/load", "/api/v1/chat"):  # unload: Eject; load: Context length; chat: the MCP page
             return self._proxy("POST")
+        if self.path == "/lms-server":  # the Status control: {"on": true} starts the LM Studio server, false stops it
+            try:
+                on = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))))["on"]
+                if not isinstance(on, bool):
+                    raise TypeError
+            except (ValueError, KeyError, TypeError):
+                return self._json(400, {"error": {"message": 'send {"on": true} or {"on": false}'}})
+            return self._json(*lms_server(on))
         if self.path == "/mcp":
             return self._mcp_server()
         if self.path.startswith("/mcp-"):
