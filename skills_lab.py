@@ -167,13 +167,11 @@ def seed():
             write_meta(meta)
 
 
+STARTERS_OFF = {"release-notes-verbose"}  # the bad example starts off: turn it on to compare
+
+
 def starter_on(name):
-    """A starter skill is on, unless its SKILL.md says lm-trace-on: "false" (the bad examples start off)."""
-    try:
-        fm, _, _ = parse_skill_md(open(os.path.join(STARTERS, name, "SKILL.md"), encoding="utf-8").read())
-        return (fm.get("metadata") or {}).get("lm-trace-on", "true") != "false"
-    except OSError:
-        return True
+    return name not in STARTERS_OFF
 
 
 def read_meta():

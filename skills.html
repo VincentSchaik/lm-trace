@@ -747,7 +747,6 @@
   .sk-valid li::marker { color: var(--danger); }
   .sk-lint { margin: 0 0 14px; padding: 10px 14px; border-radius: 10px; font-size: 13px; }
   .sk-lint.err { background: rgba(217, 48, 37, .08); color: var(--danger); }
-  .sk-lint.demo { background: var(--paper-2); color: var(--ink-2); }
   .sk-lint.hint { background: rgba(217, 142, 4, .1); color: var(--ink-2); }
   .sk-lint ul { margin: 4px 0 0; padding-left: 18px; }
   .mdv { font-size: 14px; line-height: 1.6; color: var(--ink); }
@@ -1964,14 +1963,11 @@ function renderNote() {
 }
 // A title from the name: meeting-notes → Meeting Notes.
 const titleOf = n => n.split("-").map(w => w ? w[0].toUpperCase() + w.slice(1) : w).join(" ");
-const demoOf = sk => sk.frontmatter?.metadata?.["lm-trace-demo"] || "";
 const ICON_BOX = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>';
 const ICON_MORE = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>';
 const ICON_X = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>';
 function badge(sk) {
-  const d = demoOf(sk);
   if (sk.errors.length) return `<span class="sk-badge err" tabindex="0" data-tip-title="Not valid" data-tip="${esc(sk.errors.join(" "))}">Not valid</span>`;
-  if (d) return `<span class="sk-badge" tabindex="0" data-tip-title="Best practices" data-tip="${esc(d)}">${/^bad/i.test(d) ? "Bad example" : "Good example"}</span>`;
   return "";
 }
 const swHtml = (sk, where) => `<label class="sk-sw" title="${sk.on ? "On: the skill is in the skill list" : "Off: the model does not know this skill"}"><input type="checkbox" role="switch" data-sk-on="${esc(sk.name)}" data-where="${where}"${sk.on ? " checked" : ""}${sk.errors.length ? " disabled" : ""} aria-label="${esc(titleOf(sk.name))}"><span></span></label>`;
@@ -2073,8 +2069,7 @@ function validHtml(errors) {
     + (n ? `<ul>${errors.map(x => `<li title="skills-ref: ${esc(x)}">${esc(crisp(x))}</li>`).join("")}</ul>` : "") + `</div>`;
 }
 const hintsHtml = hints => hints.length ? `<div class="sk-lint hint"><b>Best practices</b><ul>${hints.map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>` : "";
-const lintHtml = sk => validHtml(sk.errors) + hintsHtml(sk.hints)
-  + (demoOf(sk) ? `<div class="sk-lint demo">${esc(demoOf(sk))}</div>` : "");
+const lintHtml = sk => validHtml(sk.errors) + hintsHtml(sk.hints);
 
 // The file tree of a skill, as in the Agent Skills specification: SKILL.md (required), then the recommended directories
 // scripts/, references/ and assets/, then any other files and directories (allowed: the directories are conventions,

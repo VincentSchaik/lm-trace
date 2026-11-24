@@ -4,8 +4,6 @@ description: Helps with notes.
 metadata:
   author: lm-trace
   version: "1.0"
-  lm-trace-on: "false"
-  lm-trace-demo: "Bad example: a vague description, it explains what the model already knows, it gives a menu instead of a default, and its pitfalls hide in a reference file."
 ---
 
 # Release notes skill

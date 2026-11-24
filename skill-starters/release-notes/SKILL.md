@@ -4,7 +4,6 @@ description: Write release notes for a new version from a list of changes, commi
 metadata:
   author: lm-trace
   version: "1.0"
-  lm-trace-demo: "Good example: only what the model cannot know (our headings, rules and pitfalls), one template, a pushy description."
 ---
 
 # Release notes
