@@ -172,12 +172,12 @@ def lint(folder, fm, body, err, files=None):
     return errors, hints
 
 
-def validate_text(skill_md):
+def validate_text(text):
     """Validate SKILL.md text before it is saved (the Validate button). Save names the folder after the name in the
     frontmatter, so the folder check uses that name."""
-    if not isinstance(skill_md, str):
+    if not isinstance(text, str):
         return 400, {"error": {"message": "expected {\"skillMd\": str}"}}
-    fm, body, err = parse_skill_md(skill_md)
+    fm, body, err = parse_skill_md(text)
     folder = fm.get("name").strip() if isinstance(fm.get("name"), str) else ""
     errors, hints = lint(unicodedata.normalize("NFKC", folder), fm, body, err)
     return 200, {"name": folder, "errors": errors, "hints": hints}
@@ -217,7 +217,7 @@ def write_meta(meta):
     os.replace(tmp, META)
 
 
-def skill_md(d):
+def find_skill_md(d):
     """The SKILL.md file of a folder: SKILL.md first, else skill.md (as skills-ref accepts it), else None."""
     for n in ("SKILL.md", "skill.md"):
         if os.path.isfile(os.path.join(d, n)) and n in os.listdir(d):  # listdir: the exact case, also on macOS
@@ -238,7 +238,7 @@ def skill_dir(name):
     if not isinstance(name, str) or not name or len(name) > 100 or "/" in name or "\\" in name or name.startswith(".") or "\x00" in name:
         return None
     d = folder_of(name)
-    return d if d and skill_md(d) else None
+    return d if d and find_skill_md(d) else None
 
 
 def safe_path(d, rel):
@@ -272,7 +272,7 @@ def mime_of(p):
 
 
 def files_of(d):
-    main = os.path.basename(skill_md(d) or "SKILL.md")
+    main = os.path.basename(find_skill_md(d) or "SKILL.md")
     out = []
     for base, dirs, names in os.walk(d):
         dirs[:] = sorted(x for x in dirs if not x.startswith(".") and x != "__pycache__")
@@ -296,7 +296,7 @@ def list_skills():
         d = os.path.join(SKILLS, folder)
         if folder.startswith(".") or not os.path.isdir(d):
             continue
-        f = skill_md(d)
+        f = find_skill_md(d)
         if not f:  # as skills-ref validate reports it; the folder can be uninstalled
             out.append({"name": folder, "description": "", "frontmatter": {}, "body": "", "skillMd": "", "files": files_of(d),
                         "on": False, "source": meta.get(folder, {}).get("source", "Created"), "url": None,
@@ -340,11 +340,12 @@ def set_example(name, example):
     return 200, {"ok": True}
 
 
-def save_skill(name, skill_md, old=None):
-    """Create or replace SKILL.md. The folder takes the name of the frontmatter, as the spec asks."""
-    if not isinstance(skill_md, str) or len(skill_md) > 200_000:
+def save_skill(name, text, old=None):
+    """Create or replace SKILL.md. The folder takes the name of the frontmatter, as the spec asks.
+    All or nothing: on a failure the folder, SKILL.md and skills-meta.json stay as they were."""
+    if not isinstance(text, str) or len(text) > 200_000:
         return 400, {"error": {"message": "SKILL.md must be text, at most 200,000 characters."}}
-    fm, body, err = parse_skill_md(skill_md)
+    fm, body, err = parse_skill_md(text)
     new = fm.get("name")
     bad = [err] if err else name_errors(new)
     if bad or "/" in new or new in (".", ".."):
@@ -353,20 +354,56 @@ def save_skill(name, skill_md, old=None):
     with lock:
         meta = read_meta()
         d = os.path.join(SKILLS, new)
-        if old and old != new:
-            if not skill_dir(old):
+        rename = bool(old) and old != new
+        if old:
+            src = skill_dir(old)
+            if not src:
                 return 404, {"error": {"message": f"No skill named {old}."}}
-            if os.path.exists(d):
+            if rename and os.path.exists(d):
                 return 409, {"error": {"message": f"A skill named {new} already exists."}}
-            os.rename(os.path.join(SKILLS, old), d)
-            meta[new] = meta.pop(old, {"source": "Created", "on": True})
-        elif not old and os.path.exists(d):
+        elif os.path.exists(d):
             return 409, {"error": {"message": f"A skill named {new} already exists."}}
-        os.makedirs(d, exist_ok=True)
-        with open(skill_md(d) or os.path.join(d, "SKILL.md"), "w", encoding="utf-8") as f:
-            f.write(skill_md)
-        meta.setdefault(new, {"source": "Created", "on": True})
-        write_meta(meta)
+        else:
+            src = None
+        # 1. Write the new text next to the old file (a temp file), so a failed write changes nothing.
+        work = src or d
+        made = not src
+        main = os.path.basename(find_skill_md(work) or "SKILL.md") if src else "SKILL.md"  # keep skill.md in lowercase
+        tmp = os.path.join(work, ".SKILL.md.tmp")
+        prev, moved = None, False
+        try:
+            if made:
+                os.makedirs(d)
+            else:
+                with open(os.path.join(work, main), encoding="utf-8", errors="replace") as f:
+                    prev = f.read()
+            with open(tmp, "w", encoding="utf-8") as f:
+                f.write(text)
+            # 2. Move the folder, then put the new file in place, then the metadata.
+            if rename:
+                os.rename(src, d)
+                moved = True
+                tmp = os.path.join(d, ".SKILL.md.tmp")
+            os.replace(tmp, os.path.join(d, main))
+            m = meta.pop(old, None) if rename else meta.get(new)
+            meta[new] = m or {"source": "Created", "on": True}
+            write_meta(meta)
+        except OSError as e:
+            # Undo in the reverse order: the file, the folder, the temp file.
+            try:
+                if prev is not None:
+                    with open(os.path.join(d if moved else work, main), "w", encoding="utf-8") as f:
+                        f.write(prev)
+                if moved:
+                    os.rename(d, src)
+                if made and os.path.isdir(d):
+                    shutil.rmtree(d, ignore_errors=True)
+                for t in (os.path.join(work, ".SKILL.md.tmp"), os.path.join(d, ".SKILL.md.tmp")):
+                    if os.path.exists(t):
+                        os.remove(t)
+            except OSError:
+                pass
+            return 500, {"error": {"message": f"Could not save the skill: {e.strerror or e}"}}
     return 200, {"name": new}
 
 
@@ -423,7 +460,7 @@ def zip_skill(name):
     d = skill_dir(name)
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
-        z.write(skill_md(d), f"{name}/{os.path.basename(skill_md(d))}")
+        z.write(find_skill_md(d), f"{name}/{os.path.basename(find_skill_md(d))}")
         for f in files_of(d):
             z.write(os.path.join(d, f["path"]), f"{name}/{f['path']}")
     return buf.getvalue()
@@ -471,7 +508,7 @@ def call(tool, args):
         names = [s["name"] for s in list_skills() if s["on"]]
         return {"ok": False, "result": f"Error: there is no skill named {name!r}. The skills are: {', '.join(names) or 'none'}."}
     if tool == "load_skill":
-        text = open(skill_md(d), encoding="utf-8", errors="replace").read()
+        text = open(find_skill_md(d), encoding="utf-8", errors="replace").read()
         _, body, _ = parse_skill_md(text)
         files = [f["path"] for f in files_of(d)]
         result = body.strip() + f"\n\nSkill folder: skills/{name}\nFiles: " + (", ".join(files) if files else "none")

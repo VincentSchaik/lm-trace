@@ -330,6 +330,8 @@ The starter skills show the three layers and the best practices of the standard:
 
 Your skills are in `skills/` (the starters come from `skill-starters/`), and your archived chats are in `skill-chats/`. Git ignores them.
 
+Tests for saving skills (create, edit, rename, collisions, rollback): `python3 -m unittest discover tests`.
+
 ## Limitations
 
 These limitations come from LM Studio:
