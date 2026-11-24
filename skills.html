@@ -772,8 +772,9 @@
   .sk-dlg-top .grow { flex: 1; }
   .sk-dlg h3 { margin: 0; font-size: 22px; font-weight: 600; }
   .sk-dlg h3 span { color: var(--ink-3); font-weight: 400; }
-  .sk-ex { flex: none; border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; margin-top: 14px; }
-  .sk-dlg .sk-ex { margin-top: 0; }
+  .sk-ex { flex: none; border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; margin-top: 22px; background: var(--paper); }
+  .sk-ex .sk-ex-text { background: var(--field); }
+  .sk-break { border: 0; border-top: 1px dashed var(--line); margin: 22px 0 0; }
   .sk-dlg > * { flex: none; } .sk-dlg > .bodybox { flex: 0 1 auto; }  /* only the instructions scroll */
   .sk-dlg:focus { outline: none; }
   .sk-ex-hd { display: flex; align-items: center; gap: 8px; font-size: 14px; }
@@ -2119,7 +2120,7 @@ function closeView() { viewSk = null; $("skillList").hidden = false; $("skillVie
 async function renderView() {
   const sk = skills.find(x => x.name === viewSk); if (!sk) return closeView();
   let body;
-  if (viewFile === "SKILL.md") body = viewSrc ? `<pre class="src-pre">${esc(sk.skillMd)}</pre>` : metaHtml(sk) + layersLine(sk) + lintHtml(sk) + `<div class="mdv">${mdView(sk.body)}</div>` + exampleHtml(sk, true);
+  if (viewFile === "SKILL.md") body = viewSrc ? `<pre class="src-pre">${esc(sk.skillMd)}</pre>` : metaHtml(sk) + layersLine(sk) + lintHtml(sk) + `<div class="mdv">${mdView(sk.body)}</div><hr class="sk-break">` + exampleHtml(sk, true);
   else {
     const t = await fetch(`/skill-file?name=${encodeURIComponent(sk.name)}&path=${encodeURIComponent(viewFile)}`).then(r => r.json()).catch(() => ({}));
     viewText = t.text ?? null; viewBinary = !!t.binary;
@@ -2160,7 +2161,7 @@ function openDetails(name) {
     <h3 id="skDlgTitle">${esc(titleOf(sk.name))} <span>Skill</span></h3>
     <p class="lead">${esc(sk.description)}</p>${layersLine(sk)}${lintHtml(sk)}
     <div class="bodybox mdv">${mdView(sk.body)}</div>
-    ${exampleHtml(sk, false)}`);
+    <div class="sk-dlg-foot"><span class="grow"></span><button type="button" class="btn" id="exTry"${sk.errors.length ? " disabled" : ""} title="Turn the skill on and put its example message in the message box">Try now</button></div>`);
   const box = $("skDlg"), card = box.querySelector(".sk-dlg");
   card.tabIndex = -1; card.focus();  // no button gets the focus (and its tooltip) when the dialog opens
   box.querySelector("[data-dlg-close]").onclick = closeDlg;
@@ -2176,17 +2177,15 @@ async function tryNow(sk) {
 }
 // The example message of a skill: the one you saved in Open, else the built-in example of a starter, else none.
 const exampleOf = sk => sk.example ?? PRESETS.find(p => p.skill === sk.name)?.msg ?? "";
-// The Example message card. Details shows it with Try now; Open shows it with Edit (edit = the text box).
+// The Example message card in Open, after a break: LM Trace keeps it (skills-meta.json), it is not part of SKILL.md.
 var exEdit = false;
 function exampleHtml(sk, inOpen) {
   const ex = exampleOf(sk), builtIn = PRESETS.some(p => p.skill === sk.name);
-  const head = `<div class="sk-ex-hd"><b>Example message</b><span>Try now puts it in the message box of the chat</span><span class="grow"></span>`;
+  const head = `<div class="sk-ex-hd"><b>Example message</b><span>Not part of the skill: LM Trace keeps it. Try now puts it in the message box.</span><span class="grow"></span>`;
   if (inOpen && exEdit) return `<div class="sk-ex">${head}</div>
     <textarea id="exText" rows="6" placeholder="A message that needs this skill: a task in the words of a user.">${esc(ex)}</textarea>
     <div class="sk-ex-bar"><span class="sk-ex-st" id="exSt"></span><span class="grow"></span>${builtIn && sk.example != null ? '<button type="button" class="btn ghost" id="exReset" title="Use the built-in example again">Reset</button>' : ""}<button type="button" class="btn ghost" id="exCancel">Cancel</button><button type="button" class="btn" id="exSave">Save</button></div></div>`;
-  const btn = inOpen ? iconBtn("exEditBtn", "edit", "Edit the example message")
-    : `<button type="button" class="btn" id="exTry"${sk.errors.length ? " disabled" : ""}>Try now</button>`;
-  return `<div class="sk-ex">${head}${btn}</div>${ex ? `<div class="sk-ex-text">${esc(ex)}</div>` : `<div class="sk-ex-none">No example yet.${inOpen ? " Click Edit to write one." : " Write one in Open."}</div>`}</div>`;
+  return `<div class="sk-ex">${head}${iconBtn("exEditBtn", "edit", "Edit the example message")}</div>${ex ? `<div class="sk-ex-text">${esc(ex)}</div>` : `<div class="sk-ex-none">No example yet. Click Edit to write one.</div>`}</div>`;
 }
 function wireExample(sk) {
   if ($("exEditBtn")) $("exEditBtn").onclick = () => { exEdit = true; renderView().then(() => $("exText")?.focus()); };
