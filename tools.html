@@ -742,9 +742,9 @@
   <!-- The chat: its own card below the settings, as on the Trace page -->
   <section class="panel" aria-label="Chat log">
     <div class="chatlog" id="log"></div>
+    <div class="stats-row"><span class="stats" id="stats"></span></div>
   </section>
   <section class="panel sendbar" aria-label="Your message">
-    <div class="stats-row"><span class="stats" id="stats"></span></div>
     <div class="cbox">
       <div class="cbox-top"><textarea id="msg" class="cbox-input" rows="1" placeholder="Ask something, or select an example." title="Enter sends the message. Shift + Enter adds a line."></textarea><div class="input-tools"><button type="button" class="copy" id="saveMsg" title="Save as an example: it shows below the message box" aria-label="Save as an example"></button><button type="button" class="copy" id="copyMsg" title="Copy the message" aria-label="Copy the message"></button></div></div>
       <div class="cbox-bar">
@@ -2180,7 +2180,7 @@ function sizeChat() {
   if (!log.offsetParent) return;
   if (CAPTURE) { log.style.height = "auto"; return; }
   const top = log.getBoundingClientRect().top + scrollY;
-  log.style.height = Math.max(320, innerHeight - top - bar.offsetHeight - 52) + "px";
+  log.style.height = Math.max(320, innerHeight - top - bar.offsetHeight - (document.querySelector(".stats-row")?.offsetHeight || 0) - 52) + "px";
 }
 addEventListener("resize", sizeChat);
 // Refit the chat log when anything above or below it changes height: the settings card, the rows of the Chat panel
