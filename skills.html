@@ -841,7 +841,7 @@
 <span class="br">├── </span>SKILL.md          <span class="cm"># Required: metadata + instructions</span>
 <span class="br">├── </span>scripts/          <span class="cm"># Optional: executable code · <b>resources</b></span>
 <span class="br">├── </span>references/       <span class="cm"># Optional: documentation, read when needed · <b>resources</b></span>
-<span class="br">├── </span>assets/           <span class="cm"># Optional: static resources: templates, images, data · <b>resources</b></span>
+<span class="br">├── </span>assets/           <span class="cm"># Optional: static resources: templates, images, data files · <b>resources</b></span>
 <span class="br">└── </span>...               <span class="cm"># Any additional files or directories · <b>resources</b></span></pre>
         <p>Only <code>SKILL.md</code> is required. A skill can have any other files and directories; <code>scripts/</code>, <code>references/</code> and <code>assets/</code> are the recommended places for code, documentation and static resources. <code>SKILL.md</code> names each file with a relative path, one level deep, so the model knows when to load it.</p>
         <ol class="how">
@@ -2051,7 +2051,7 @@ const lintHtml = sk => `<div class="sk-valid ${sk.errors.length ? "bad" : "ok"}"
 // The file tree of a skill, as in the Agent Skills specification: SKILL.md (required), then the recommended directories
 // scripts/, references/ and assets/, then any other files and directories (allowed: the directories are conventions,
 // not rules). Each line says what the part is for and when the model gets it (its layer).
-const TREE_NOTE = { "scripts": "Optional: executable code", "references": "Optional: documentation, read when needed", "assets": "Optional: static resources: templates, images, data" };
+const TREE_NOTE = { "scripts": "Optional: executable code", "references": "Optional: documentation, read when needed", "assets": "Optional: static resources: templates, images, data files" };
 function treeHtml(sk, current) {
   const pad = (txt, w) => txt + " ".repeat(Math.max(2, w - txt.length));
   const top = new Map();  // first part of the path -> [rest paths] ("" for a file at the root)
@@ -2163,7 +2163,7 @@ function openEditorSk(name) {
 }
 
 // Add or change one file of a skill (resources), and delete one. SKILL.md changes with Edit (openEditorSk).
-const FILE_DIRS = [["scripts/", "executable code"], ["references/", "documentation"], ["assets/", "templates, images, data"]];
+const FILE_DIRS = [["scripts/", "executable code"], ["references/", "documentation"], ["assets/", "templates, images, data files"]];
 const IC_SK = {
   add: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></svg>',
   code: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 18 6-6-6-6M8 6l-6 6 6 6"/></svg>',
@@ -2175,9 +2175,10 @@ const IC_SK = {
 const iconBtn = (id, icon, label, cls = "") => `<button type="button" class="ic-btn${cls}" id="${id}" aria-label="${esc(label)}" data-tooltip="${esc(label)}">${IC_SK[icon]}</button>`;
 const ICON_UP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></svg>';
 // Auto: where a file goes by its type, as the specification recommends: code in scripts/, documentation in
-// references/, everything else (templates, images, data) in assets/.
+// references/, static resources in assets/: templates (document, configuration), images (diagrams, examples) and data
+// files (lookup tables, schemas). A file named "…template…" is a template, so it goes to assets/ whatever its type.
 const safeName = p => p.split("/").map(x => x.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^\w.-]+/g, "-").replace(/-{2,}/g, "-").replace(/^-|-$/g, "") || "file").join("/");
-const autoDir = n => /\.(py|sh|js|mjs|ts|rb|pl)$/i.test(n) ? "scripts/" : /\.(md|txt|pdf|rst|html?)$/i.test(n) ? "references/" : "assets/";
+const autoDir = n => /\.(py|sh|js|mjs|ts|rb|pl)$/i.test(n) ? "scripts/" : /template/i.test(n.split("/").pop()) ? "assets/" : /\.(md|txt|pdf|rst|html?)$/i.test(n) ? "references/" : "assets/";
 const fmtSize = n => n < 1024 ? `${n} B` : n < 1048576 ? `${(n / 1024).toFixed(1)} KB` : `${(n / 1048576).toFixed(2)} MB`;
 // A dropped folder: read its files, with the paths inside it (webkitGetAsEntry).
 async function droppedFiles(dt) {
@@ -2201,7 +2202,7 @@ function openFileEditor(name, path, dropped) {
   dlg(`<div class="sk-dlg-top"><h3 id="skDlgTitle">Add files <span>${esc(name)}</span></h3><span class="grow"></span><button type="button" class="x-btn" data-dlg-close aria-label="Close">${ICON_X}</button></div>
     <p class="lead" style="font-size:13.5px">Resources: the model reads a file (<code>read_skill_file</code>) or runs a script (<code>run_skill_script</code>) only when the instructions say so. Name each file in <code>SKILL.md</code> with its relative path, and say when to use it.</p>
     <div class="drop" id="upDrop"><span class="up">${ICON_UP}</span><b>Drag &amp; drop files here</b><span class="sub2">Files or folders, at most 1 MB each. Each file shows its upload progress.</span><button type="button" class="btn ghost small" id="upBrowse">Browse files</button><input type="file" id="upInput" multiple hidden></div>
-    <div class="up-opts"><label for="upDir">Folder</label><select class="field" id="upDir"><option value="auto">Auto: by type (scripts/, references/, assets/)</option><option value="scripts/">scripts/ · executable code</option><option value="references/">references/ · documentation</option><option value="assets/">assets/ · templates, images, data</option><option value="">The skill folder (top level)</option></select></div>
+    <div class="up-opts"><label for="upDir">Folder</label><select class="field" id="upDir"><option value="auto">Auto: by type (scripts/, references/, assets/)</option><option value="scripts/">scripts/ · executable code</option><option value="references/">references/ · documentation</option><option value="assets/" title="Templates (document, configuration), images (diagrams, examples), data files (lookup tables, schemas)">assets/ · templates, images, data files</option><option value="">The skill folder (top level)</option></select></div>
     <div class="up-list" id="upList"></div>
     <details class="write"><summary>Or write a file</summary><div class="sk-edit" style="margin-top:10px"><span>Path</span><input class="field mono" id="fPath" value="references/" spellcheck="false" aria-label="Path in the skill folder"><span>Content</span><textarea class="field" id="fText" rows="10" spellcheck="false" style="height:24vh;min-height:160px" placeholder="The text of the file"></textarea></div></details>
     <div class="error" id="fErr"></div>
