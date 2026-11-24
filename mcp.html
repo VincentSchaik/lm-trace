@@ -1887,7 +1887,7 @@ function renderChat() {
   const on = enabled();
   renderStats(); renderMcpList(); renderViewBar();
   const log = $("log");
-  if (!chat.length) { log.innerHTML = `<div class="chat-empty">${on.length ? "Ask something. LM Studio gives the tools of the servers that are on to the model." : "Turn on an MCP server in <b>+</b> › <b>MCP</b>, or add one on the Servers tab."}${permState() && permState() !== "ok" && on.length ? `<br><br><span style="color:var(--danger)">LM Studio does not let the API use the servers of mcp.json yet.</span> <button type="button" class="linkbtn" data-act="setup">How to fix it</button>` : ""}</div>`; return; }
+  if (!chat.length) { log.innerHTML = `<div class="chat-empty">${on.length ? "Type a message, or choose an example below." : "Turn on an MCP server in <b>+</b> › <b>MCP</b>, or add one on the Servers tab."}${permState() && permState() !== "ok" && on.length ? `<br><br><span style="color:var(--danger)">LM Studio does not let the API use the servers of mcp.json yet.</span> <button type="button" class="linkbtn" data-act="setup">How to fix it</button>` : ""}</div>`; return; }
   const atEnd = log.scrollHeight - log.scrollTop - log.clientHeight < 40;
   log.innerHTML = chat.map(turnHtml).join("") + archEnd();
   if (atEnd || busy) log.scrollTop = log.scrollHeight;

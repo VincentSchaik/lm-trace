@@ -1799,7 +1799,7 @@ function renderChat(hold) {
   if (!hold) $("log").style.paddingBottom = "";
   const log = $("log"), atEnd = !hold && log.scrollHeight - log.scrollTop - log.clientHeight < 80, top = log.scrollTop;
   const last = chat.length - 1;
-  if (!chat.length) log.innerHTML = `<div class="chat-empty">Type a message, or choose an example below the message box.</div>`;
+  if (!chat.length) log.innerHTML = `<div class="chat-empty">Type a message, or choose an example below.</div>`;
   else log.innerHTML = chat.map((t, ti) => {
     const groups = new Map();
     t.steps.forEach((s, si) => {
