@@ -1,4 +1,5 @@
-# Runs the tests on each pull request and each push to main. The tests use only the Python standard library.
+# Runs the tests on each pull request and each push to main. The Python tests use only the standard library;
+# the JavaScript tests (the / command of the Skills page) use only the test runner of node.
 name: Tests
 
 on:
@@ -21,3 +22,12 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - run: python -m unittest discover tests -v
+
+  node:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: node --test tests/*.test.js

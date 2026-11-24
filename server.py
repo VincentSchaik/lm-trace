@@ -103,7 +103,7 @@ def embed_prefixes(model):
     row = next((r for r in rows if r.get("name", "").lower() == m), None) \
         or next((r for r in rows if r.get("name") and r["name"].lower() in m), None)
     return (row.get("query", ""), row.get("doc", "")) if row else ("", "")
-PAGES = ("/index.html", "/embeddings.html", "/rag.html", "/memory.html", "/tools.html", "/mcp.html", "/skills.html", "/settings.html", "/composer.js", "/composer.css", "/lms-status.js", "/theme.css")
+PAGES = ("/index.html", "/embeddings.html", "/rag.html", "/memory.html", "/tools.html", "/mcp.html", "/skills.html", "/settings.html", "/composer.js", "/composer.css", "/lms-status.js", "/skill-slash.js", "/skill-draft.js", "/theme.css")
 MEM_DIR = os.path.join(ROOT, "agent-memory")  # long-term memory of the Memory page
 LMS_CLI = shutil.which("lms") or os.path.expanduser("~/.lmstudio/bin/lms")
 # Only local names: a different Host means DNS rebinding; a different Origin means another website.
@@ -1212,6 +1212,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             if not isinstance(tool, str) or not isinstance(args, dict):
                 return self._json(400, {"error": {"message": "expected {\"tool\": str, \"args\": {...}}"}})
             return self._json(200, skills_lab.call(tool, args))
+        if path == "/skill-activate":  # {name}: /name in the message box; the harness adds the skill, not the model
+            return self._json(*skills_lab.activate(req.get("name")))
         if path == "/skill-save":
             return self._json(*skills_lab.save_skill(req.get("name"), req.get("skillMd"), req.get("old")))
         if path == "/skill-validate":  # the Validate button: the skills-ref checks on SKILL.md text, not saved

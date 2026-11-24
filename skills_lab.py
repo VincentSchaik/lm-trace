@@ -77,18 +77,17 @@ def parse_skill_md(text):
 
 
 def scalar(v):
-    """A YAML scalar: quotes removed; a comment (space, then #) removed from a value without quotes."""
+    """A YAML scalar. Quoted: the text between the quotes ("…" with \\" escapes, '…' with '' escapes); a comment after
+    the closing quote is not part of the value. Without quotes: a comment (space, then #) is removed. A quote that is
+    not closed stays as written."""
     v = v.strip()
-    if v[:1] in "\"'":
-        return unquote(v)
+    if v[:1] == '"':
+        m = re.match(r'^"((?:[^"\\]|\\.)*)"(?:[ \t]+#.*)?[ \t]*$', v)
+        return m.group(1).replace('\\"', '"') if m else v
+    if v[:1] == "'":
+        m = re.match(r"^'((?:[^']|'')*)'(?:[ \t]+#.*)?[ \t]*$", v)
+        return m.group(1).replace("''", "'") if m else v
     return re.sub(r"\s+#.*$", "", v)
-
-
-def unquote(v):
-    if len(v) >= 2 and v[0] == v[-1] and v[0] in "\"'":
-        v = v[1:-1]
-        return v.replace('\\"', '"') if v else v
-    return v
 
 
 ALLOWED_FIELDS = {"name", "description", "license", "allowed-tools", "metadata", "compatibility"}
@@ -185,13 +184,35 @@ def validate_text(text):
 
 # ---------------------------------------------------------------- the skills folder
 
+SEEDED_BEFORE = {"meeting-notes", "release-notes", "release-notes-verbose"}  # the starters before "_starters" was kept
+
+
 def seed():
-    """Copy the starter skills to skills/ the first time."""
+    """Copy the starter skills to skills/ the first time. Later, add each new starter once: meta["_starters"] lists
+    the starters already given (a name with "_" cannot be a skill). A starter you uninstall does not come back;
+    Reset brings all of them back. A skill of yours with the name of a new starter stays as it is."""
     with lock:
-        if not os.path.isdir(SKILLS) and os.path.isdir(STARTERS):
+        if not os.path.isdir(STARTERS):
+            return
+        names = sorted(n for n in os.listdir(STARTERS) if os.path.isdir(os.path.join(STARTERS, n)))
+        if not os.path.isdir(SKILLS):
             shutil.copytree(STARTERS, SKILLS)
-            meta = {n: {"on": starter_on(n), "source": "Starter"} for n in os.listdir(SKILLS) if os.path.isdir(os.path.join(SKILLS, n))}
+            meta = {n: {"on": starter_on(n), "source": "Starter"} for n in names}
+            meta["_starters"] = names
             write_meta(meta)
+            return
+        meta = read_meta()
+        given = meta.get("_starters")
+        if isinstance(given, list) and set(names) <= set(given):
+            return
+        given = given if isinstance(given, list) else sorted(SEEDED_BEFORE)
+        for n in names:
+            dst = os.path.join(SKILLS, n)
+            if n not in given and not os.path.exists(dst):
+                shutil.copytree(os.path.join(STARTERS, n), dst)
+                meta[n] = {"on": starter_on(n), "source": "Starter"}
+        meta["_starters"] = sorted(set(given) | set(names))
+        write_meta(meta)
 
 
 STARTERS_OFF = {"release-notes-verbose"}  # the bad example starts off: turn it on to compare
@@ -507,8 +528,29 @@ def reset():
                     shutil.rmtree(dst)
                 shutil.copytree(src, dst)
                 meta[n] = {"on": starter_on(n), "source": "Starter"}
+                meta["_starters"] = sorted(set(meta.get("_starters") or []) | {n})
         write_meta(meta)
     return 200, {"ok": True}
+
+
+# ---------------------------------------------------------------- user-explicit activation
+
+def activate(name):
+    """/name in the message box: the user, not the model, activates the skill (agentskills.io/integrate-skills,
+    "User-explicit activation"). The harness adds the instructions itself, so no tool call is needed. Returns
+    (status, {name, result, files}): result is the <skill_content> block that goes before the user's message."""
+    sk = next((x for x in list_skills() if x["name"] == name), None) if isinstance(name, str) else None
+    if not sk:
+        names = [x["name"] for x in list_skills() if x["on"] and not x["errors"]]
+        return 404, {"error": {"message": f"There is no skill named /{name}. The skills are: {', '.join('/' + n for n in names) or 'none'}."}}
+    if sk["errors"]:
+        return 409, {"error": {"message": f"The skill {name} is not valid: {sk['errors'][0]} Fix it in Skills first."}}
+    if not sk["on"]:
+        return 409, {"error": {"message": f"The skill {name} is off. Turn it on in Skills first."}}
+    files = [f["path"] for f in sk["files"]]
+    result = (f'<skill_content name="{name}">\n{sk["body"].strip()}\n\nSkill folder: skills/{name}\n'
+              f'Files: {", ".join(files) if files else "none"}\n</skill_content>')
+    return 200, {"name": name, "result": result, "files": files}
 
 
 # ---------------------------------------------------------------- the three skill tools

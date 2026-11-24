@@ -2177,7 +2177,11 @@ async function send(text) {
     if (e.name === "AbortError") setStatus("Stopped.");
     else $("error").textContent = contextError(String(e.message || e));
     return false;
-  } finally { busy = false; ctrl = null; setBusy(); renderChat(); saveChat(); }
+  } finally {
+    // LM Studio can load the model at the run (JIT): read its loaded context length again before the meter and the archive use it.
+    await Composer.load().catch(() => {});
+    busy = false; ctrl = null; setBusy(); renderChat(); saveChat();
+  }
 }
 // LM Studio refuses a prompt that is longer than the loaded context length. Say it in plain words, then LM Studio's text.
 function contextError(msg) {

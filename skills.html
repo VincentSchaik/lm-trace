@@ -500,10 +500,11 @@
   .pb details.th[open] > summary { margin-bottom: 2px; }
   .view-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
   .seg.sm { padding: 2px; } .seg.sm button { height: 24px; font-size: 12px; padding: 0 9px; }
-  /* How it works: a short numbered list */
-  ol.how { margin: 8px 0 2px; padding-left: 20px; display: grid; gap: 3px; }
-  ol.how b { color: var(--ink-2); font-weight: 600; }
-  ol.how i { font-style: normal; color: var(--ink); }
+  /* How it works: the three stages, one row each */
+  .stages { display: grid; grid-template-columns: repeat(3, max-content); gap: 8px 24px; align-items: center; margin: 10px 0 12px; }
+  .stages .layer-tag { margin: 0; justify-self: start; }
+  .stages > span:nth-child(3n) { color: var(--ink-3); font-size: 13px; }
+  @media (max-width: 640px) { .stages { grid-template-columns: max-content 1fr; } .stages > span:nth-child(3n) { grid-column: 2; margin-top: -6px; } }
   /* Model card: a popover under the button, next to the model select */
   /* What the switches do */
   .effect { display: flex; flex-wrap: wrap; gap: 2px 18px; padding: 7px 18px; border-bottom: 1px solid var(--paper-2); background: rgba(var(--shadow-rgb), .02); font-size: 12.5px; line-height: 1.5; color: var(--ink-3); }
@@ -773,19 +774,24 @@
   .sk-dlg h3 { margin: 0; font-size: 22px; font-weight: 600; }
   .sk-dlg h3 span { color: var(--ink-3); font-weight: 400; }
   .sk-ex { flex: none; border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; margin-top: 22px; background: var(--paper); }
-  .sk-ex .sk-ex-text { background: var(--field); }
-  .sk-break { border: 0; border-top: 1px dashed var(--line); margin: 22px 0 0; }
+  .sk-ex .sk-ex-text { background: var(--paper-2); }  /* read: light grey; Edit: a white box */
+  .sk-ex-panel { padding: 16px 20px; }
+  .sk-ex-panel .sk-ex { border: 0; border-radius: 0; padding: 0; margin: 0; background: none; }
   .sk-dlg > * { flex: none; } .sk-dlg > .bodybox { flex: 0 1 auto; }  /* only the instructions scroll */
   .sk-dlg:focus { outline: none; }
   .sk-ex-hd { display: flex; align-items: center; gap: 8px; font-size: 14px; }
   .sk-ex-hd span:not(.grow):not(.ic-row) { color: var(--ink-3); font-size: 13px; }
   .sk-ex-hd .grow { flex: 1; }
-  .sk-ex-text { margin-top: 10px; max-height: 140px; overflow: auto; white-space: pre-wrap; font-size: 13.5px; line-height: 1.5; color: var(--ink-2); background: var(--paper); border-radius: 8px; padding: 10px 12px; }
+  .sk-ex-text { margin-top: 10px; max-height: 140px; overflow: auto; white-space: pre-wrap; font-size: 13.5px; line-height: 1.5; color: var(--ink-2); background: var(--paper-2); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
   .sk-ex-none { margin-top: 8px; font-size: 13px; color: var(--ink-3); }
-  .sk-ex textarea { display: block; width: 100%; margin-top: 10px; font: 13.5px/1.5 var(--sans); padding: 10px 12px; resize: vertical; }
+  .sk-ex textarea { display: block; width: 100%; margin-top: 10px; font: 13.5px/1.5 var(--sans); padding: 10px 66px 10px 12px; resize: vertical; background: var(--input-bg); }
+  /* The sparkle sits in the top-right corner of the box, like the tools of the message box. */
+  .sk-ex-box { position: relative; }
+  .sk-ex-box #exGenBtn { position: absolute; top: 8px; right: 26px; }  /* left of the scroll bar of the box */
   .sk-ex-bar { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
   .sk-ex-bar .grow { flex: 1; }
   .sk-ex-st { font-size: 12.5px; color: var(--danger); }
+  .sk-ex-st.ok { color: var(--ink-3); }
   .sk-dlg .lead { color: var(--ink-2); font-size: 15px; margin: 0; }
   .sk-dlg .bodybox { overflow: auto; border: 1px solid var(--line); border-radius: 12px; padding: 16px 20px; min-height: 120px; background: var(--paper); }
   .btn.danger-soft { background: rgba(217, 48, 37, .1); color: var(--danger); border-color: transparent; box-shadow: none; }
@@ -805,7 +811,24 @@
   /* No squeeze: each label keeps its number on one line; when the row is too narrow, the stats go to a second line. */
   .stats > span { white-space: nowrap; }
   .stats-row .stats { margin-left: auto; }
-  .layer-tag { font: 500 11px var(--sans); padding: 1px 7px; border-radius: 9px; color: #fff; margin-left: 6px; }
+  /* The stage tags (Discovery, Activation, Execution): neutral, like the other badges of the page. */
+  .layer-tag { font: 500 11px var(--sans); padding: 0 7px; border: 1px solid var(--line); border-radius: 9px; background: var(--paper-2); color: var(--ink-2); margin-left: 6px; }
+  /* Create skill under an answer that has a SKILL.md */
+  .draft-bar { display: flex; align-items: center; gap: 10px; align-self: flex-start; max-width: 100%; margin: 2px 0 10px; padding: 8px 8px 8px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); }
+  .draft-ic svg { width: 18px; height: 18px; color: var(--ink-2); display: block; }
+  .draft-nm { display: grid; line-height: 1.25; min-width: 0; }
+  .draft-nm b { font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .draft-nm span { font-size: 12px; color: var(--ink-3); }
+  .draft-bar .btn { margin-left: 14px; }
+  /* The / menu: the skills that are on, above the message box, while you type /name. */
+  .slash-menu { position: absolute; left: 0; bottom: calc(100% + 10px); z-index: 30; width: min(460px, 100%); max-height: 300px; overflow-y: auto;
+    padding: 6px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); box-shadow: 0 12px 32px -8px rgba(0,0,0,.25); }
+  .slash-menu button { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: baseline; width: 100%; padding: 7px 10px; border: 0; border-radius: 8px;
+    background: transparent; color: var(--ink); font: 14px var(--sans); text-align: left; cursor: pointer; }
+  .slash-menu button[aria-selected="true"], .slash-menu button:hover { background: var(--paper); }
+  .slash-menu .nm { font-weight: 500; white-space: nowrap; }
+  .slash-menu .ds { color: var(--ink-3); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .slash-menu .none { padding: 8px 10px; font-size: 13px; color: var(--ink-3); }
 </style>
 <link rel="stylesheet" href="/theme.css">
 <link rel="stylesheet" href="/composer.css">
@@ -846,22 +869,21 @@
   </header>
 
   <section class="composer" aria-label="Settings">
-    <div class="lede">A playground for Agent Skills: folders of instructions that a model loads only when a task needs them. Turn skills on, send a message, and see each layer join the context.
+    <div class="lede">A playground for Agent Skills. Turn skills on, send a message, and watch each stage join the context.
       <details class="more"><summary>How it works</summary>
-        <p>A skill is a folder with a <code>SKILL.md</code> file: YAML frontmatter with a <code>name</code> and a <code>description</code>, then instructions in Markdown. It can also have other files: scripts, references, assets. The model does not get all of it at once. It gets more as it needs it: progressive disclosure, in three layers.</p>
+        <p><b>What is a skill?</b> A folder that teaches a model how to do one task your way, every time: the steps, the format, the checks. A model knows a lot, but not how your team writes meeting notes or release notes. A skill gives it that knowledge, with scripts and reference files when the task needs them.</p>
+        <p><b>Why three stages?</b> A model can have many skills on hand and pay only for the ones it uses. It reads the name and description of each skill, and loads the rest only when a task needs it:</p>
+        <div class="stages">
+          <span class="layer-tag L-1">Discovery</span><span>Name and description of each skill, in the system prompt</span><span>Always · ~100 tokens each</span>
+          <span class="layer-tag L-2">Activation</span><span>The body of <code>SKILL.md</code>: <code>load_skill</code>, or you type <code>/name</code></span><span>When a task fits · &lt; 5,000 tokens</span>
+          <span class="layer-tag L-3">Execution</span><span>A file or a script of the skill (a script asks you first)</span><span>When the instructions say so</span>
+        </div>
         <pre class="sk-tree">my-skill/
-<span class="br">├── </span>SKILL.md          <span class="cm"># Required: metadata + instructions</span>
-<span class="br">├── </span>scripts/          <span class="cm"># Optional: executable code · <b>resources</b></span>
-<span class="br">├── </span>references/       <span class="cm"># Optional: documentation, read when needed · <b>resources</b></span>
-<span class="br">├── </span>assets/           <span class="cm"># Optional: static resources: templates, images, data files · <b>resources</b></span>
-<span class="br">└── </span>...               <span class="cm"># Any additional files or directories · <b>resources</b></span></pre>
-        <p>Only <code>SKILL.md</code> is required. A skill can have any other files and directories; <code>scripts/</code>, <code>references/</code> and <code>assets/</code> are the recommended places for code, documentation and static resources. <code>SKILL.md</code> names each file with a relative path, one level deep, so the model knows when to load it.</p>
-        <ol class="how">
-          <li><b>Metadata</b> (~100 tokens) · <i>Discovery, always loaded</i>. The harness puts the <code>name</code> and <code>description</code> of each skill that is on into the system prompt. The model reads only this to decide if a skill fits the task.</li>
-          <li><b>Instructions</b> (&lt; 5,000 tokens recommended) · <i>Activation, loaded when activated</i>. The task matches a description, so the model calls <code>load_skill</code>. The harness adds the body of <code>SKILL.md</code> to the messages.</li>
-          <li><b>Resources</b> (as needed) · <i>Execution, loaded only when required</i>. The model follows the instructions. When they say so, it reads a file of the skill (<code>read_skill_file</code>) or runs a script (<code>run_skill_script</code>). A script runs on this computer, so the harness asks you first.</li>
-        </ol>
-        <p>Every token that joins the context competes for the attention of the model. The stats under the chat show the tokens of each layer. LM Trace is the harness here: LM Studio runs the model, and has no skills of its own.</p>
+<span class="br">├── </span>SKILL.md      <span class="cm"># Required · frontmatter: Discovery · body: Activation</span>
+<span class="br">├── </span>scripts/      <span class="cm"># Optional · code: Execution</span>
+<span class="br">├── </span>references/   <span class="cm"># Optional · docs: Execution</span>
+<span class="br">└── </span>assets/       <span class="cm"># Optional · templates, images, data: Execution</span></pre>
+        <p>LM Trace is the harness. LM Studio runs the model.</p>
       </details></div>
   </section>
 
@@ -891,7 +913,7 @@
     <!-- Skill list: layer 1, the name and description of each skill that is on, in the system prompt. -->
     <div class="opts sysrow">
       <details class="opt" id="optNote">
-        <summary><span class="chev"></span><span class="opt-title">Skill list</span><span class="opt-state" id="stNote"></span><span class="sum-ctl"><span class="info" tabindex="0" data-tip-title="Skill list" data-tip="Metadata (layer 1): what the model knows about the skills before it uses one. The harness adds the name and description of each skill that is on to the system prompt, and sends the three skill tools. Turn skills on and off on the Skills tab, or with + in the message box.">i</span></span></summary>
+        <summary><span class="chev"></span><span class="opt-title">Skill list</span><span class="layer-tag L-1">Discovery</span><span class="opt-state" id="stNote"></span><span class="sum-ctl"><span class="info" tabindex="0" data-tip-title="Skill list" data-tip="Discovery (Metadata layer): what the model knows about the skills before it uses one. The harness adds the name and description of each skill that is on to the system prompt, and sends the three skill tools. Turn skills on and off on the Skills tab, or with + in the message box.">i</span></span></summary>
         <div class="note-box" id="noteBox"></div>
       </details>
     </div>
@@ -938,7 +960,7 @@
   </section>
   <section class="panel sendbar" aria-label="Your message">
     <div class="cbox">
-      <div class="cbox-top"><textarea id="msg" class="cbox-input" rows="1" placeholder="Ask something, or select an example." title="Enter sends the message. Shift + Enter adds a line."></textarea><div class="input-tools"><button type="button" class="copy" id="saveMsg" title="Save as an example: it shows below the message box" aria-label="Save as an example"></button><button type="button" class="copy" id="copyMsg" title="Copy the message" aria-label="Copy the message"></button></div></div>
+      <div class="cbox-top"><textarea id="msg" class="cbox-input" rows="1" placeholder="Ask something, select an example, or type / for a skill." title="Enter sends the message. Shift + Enter adds a line. Type / at the start to activate a skill yourself." role="combobox" aria-autocomplete="list" aria-controls="slashMenu" aria-expanded="false"></textarea><div class="slash-menu" id="slashMenu" role="listbox" aria-label="Skills" hidden></div><div class="input-tools"><button type="button" class="copy" id="saveMsg" title="Save as an example: it shows below the message box" aria-label="Save as an example"></button><button type="button" class="copy" id="copyMsg" title="Copy the message" aria-label="Copy the message"></button></div></div>
       <div class="cbox-bar">
         <div class="perm-wrap plus-wrap"><button type="button" class="perm-btn" id="plusBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="plusMenu" title="Skills" aria-label="Skills"></button>
           <div class="perm-menu plus-menu" id="plusMenu" role="menu" aria-label="Add" hidden></div>
@@ -977,6 +999,8 @@
     <div class="sk-view" id="skillView" hidden></div>
     <div class="hint sk-foot">Saved in <code>skills/</code>, one folder per skill</div>
   </section>
+  <!-- The example message of the skill in Open: its own card, apart from the skill (LM Trace keeps it, not SKILL.md). -->
+  <section class="panel sk-ex-panel" id="exPanel" aria-label="Example message" hidden></section>
   </div>
   </div>
   </div>
@@ -984,6 +1008,8 @@
 
 <div class="sk-dlg-back" id="skDlg" hidden><div class="sk-dlg" role="dialog" aria-modal="true" aria-labelledby="skDlgTitle"></div></div>
 <script src="/composer.js"></script>
+<script src="/skill-slash.js"></script>
+<script src="/skill-draft.js"></script>
 <script>
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -1054,9 +1080,9 @@ const skillsOn = () => skills.filter(s => s.on && !s.errors.length);
 function skillTools() {
   const names = skillsOn().map(s => s.name), N = P("name", "string", true, "The name of the skill, as in the list of skills", { enum: names });
   return [
-    { name: "load_skill", on: true, description: "Load a skill: returns the instructions of its SKILL.md and the list of its other files. Call it first when the task matches the description of a skill, then follow the instructions.", params: [N] },
-    { name: "read_skill_file", on: true, description: "Read one file of a skill that you loaded, for example a format or a reference file that its instructions name. Returns the text of the file.", params: [N, P("path", "string", true, "The path of the file in the skill folder, as load_skill lists it, for example references/team-meeting.md")] },
-    { name: "run_skill_script", on: true, description: "Run one script of a skill that you loaded, when its instructions say so. The input goes to the script on stdin. Returns what the script prints. The user approves each run.", params: [N, P("path", "string", true, "The path of the script in the skill folder, for example scripts/extract_action_items.py"), P("input", "string", false, "Text for the script, on stdin, for example the transcript")] },
+    { name: "load_skill", on: true, description: "Load a skill: returns the instructions of its SKILL.md and the list of its other files. Call it first when the task matches the description of a skill, then follow the instructions. Do not call it for a skill whose <skill_content> block is already in the conversation.", params: [N] },
+    { name: "read_skill_file", on: true, description: "Read one file of a loaded skill (by load_skill, or a <skill_content> block in the conversation), for example a format or a reference file that its instructions name. Returns the text of the file.", params: [N, P("path", "string", true, "The path of the file in the skill folder, as load_skill lists it, for example references/team-meeting.md")] },
+    { name: "run_skill_script", on: true, description: "Run one script of a loaded skill (by load_skill, or a <skill_content> block in the conversation), when its instructions say so. The input goes to the script on stdin. Returns what the script prints. The user approves each run.", params: [N, P("path", "string", true, "The path of the script in the skill folder, for example scripts/extract_action_items.py"), P("input", "string", false, "Text for the script, on stdin, for example the transcript")] },
   ];
 }
 let tools = [];
@@ -1071,7 +1097,8 @@ const signature = t => `${t.name}(${t.params.map(p => `${p.name}${p.required ? "
 let noteText = "";
 // Metadata (layer 1), as text in the system prompt: the <available_skills> block in the format of skills-ref to-prompt
 // (the reference library of the Agent Skills specification): name, description and location of each skill, escaped.
-const SKILL_INTRO = "You have skills: folders of instructions for special tasks. When a task matches the description of a skill, call load_skill with its name first, then follow its instructions.";
+// The last sentence is for /name: the harness already put the instructions in the message, so no load_skill call is needed.
+const SKILL_INTRO = "You have skills: folders of instructions for special tasks. When a task matches the description of a skill, call load_skill with its name first, then follow its instructions. If a <skill_content> block with the skill is already in the conversation, the skill is loaded: do not call load_skill, follow the instructions in the block, and use read_skill_file and run_skill_script for its files.";
 const xmlEsc = t => String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#x27;");
 const skillEntry = x => `<skill>\n<name>\n${xmlEsc(x.name)}\n</name>\n<description>\n${xmlEsc(x.description)}\n</description>\n<location>\nskills/${x.name}/SKILL.md\n</location>\n</skill>`;
 function skillListText(list = skillsOn()) {
@@ -1386,6 +1413,7 @@ async function logEntry(kind, since, keepWaiting = () => false) {
 // ---- Chat state. chat = list of turns; each turn has the steps of the harness.
 // history = the messages that the harness sends to the model (the conversation memory of the book: the full history).
 let chat = [], history = [], busy = false, ctrl = null, pending = null;
+const inChat = SkillSlash.loadedSkills();  // the skills in this chat (/name, or load_skill that worked): no second load
 
 // ---- Context length: a load setting, as on the MCP page. The page unloads the model and loads it again with context_length.
 const CTX_STEPS = [4096, 8192, 16384, 32768, 65536, 131072, 262144];
@@ -1432,7 +1460,7 @@ const openKeys = new Set();  // the open ▸ sections, kept when the chat draws 
 let stats = { calls: 0, tools: 0, tokens: 0, ctx: 0 };
 // New chat: clear the chat, the history and the counts. The tools and the settings stay.
 function newChat() {
-  chat = []; history = []; stats = { calls: 0, tools: 0, tokens: 0, ctx: 0 }; openKeys.clear(); rawKeys.clear();
+  chat = []; history = []; inChat.clear(); stats = { calls: 0, tools: 0, tokens: 0, ctx: 0 }; openKeys.clear(); rawKeys.clear();
   chatId = null; viewing = null; renderViewBar();
 }
 
@@ -1487,6 +1515,7 @@ function chatMd() {
       const h = `Model call ${st.call ?? 1}`;
       if (h !== head) { out.push("", `### ${h}`); head = h; }
       const el = document.createElement("div"); el.innerHTML = rowHtml(st, `x${ti}.${si}`);
+      el.querySelectorAll(".layer-tag").forEach(tag => { tag.textContent = ` (${tag.textContent})`; });  // "Reading file: x (Resources)"
       el.querySelectorAll(".ev").forEach(ev => {
         const who = plain(ev.querySelector(".who")?.innerHTML), what = plain(ev.querySelector(".what")?.innerHTML), meta = plain(ev.querySelector(".meta")?.innerHTML);
         if (who || what) out.push("", `**${who}** · ${what}${meta ? ` · ${meta}` : ""}`);
@@ -1500,7 +1529,22 @@ function chatMd() {
   });
   return out.join("\n") + "\n";
 }
+// A SKILL.md in the answer (skill-creator-lite writes one): a button that opens Create skill with the text, or Edit
+// when you have a skill with that name. You check it and save; the page validates first.
+function draftBar(ti, answer) {
+  return SkillDraft.findSkillDrafts(answer).map((d, i) => {
+    const have = skills.some(x => x.name === d.name);
+    return `<div class="draft-bar"><span class="draft-ic" aria-hidden="true">${ICON_BOX}</span><span class="draft-nm"><b>${esc(d.name)}</b><span>SKILL.md · ${plural(d.text.split("\n").length - 1, "line")}</span></span>`
+      + `<button type="button" class="btn" data-draft="${ti}.${i}" title="${have ? `Open Edit for ${esc(d.name)} with this text. You check it and save.` : "Open Create skill with this text. You check it and save."}">${have ? "Update skill" : "Create skill"}</button></div>`;
+  }).join("");
+}
 $("log").addEventListener("click", e => {
+  const dr = e.target.closest("[data-draft]");
+  if (dr) {
+    const [ti, i] = dr.dataset.draft.split(".").map(Number), d = SkillDraft.findSkillDrafts(chat[ti]?.answer)[i];
+    if (d) openEditorSk(skills.some(x => x.name === d.name) ? d.name : null, d.text, SkillDraft.draftTest(chat[ti].answer, d.name));
+    return;
+  }
   const c = e.target.closest("[data-ans-copy]"); if (c) { Composer.copyAns(c, (chat[+c.dataset.ansCopy]?.answer || "").trim()); return; }
   if (e.target.closest("[data-ans-export]")) Composer.download(`skills-chat-${Composer.stamp()}.md`, chatMd());
 });
@@ -1554,7 +1598,7 @@ function renderViewBar() {
   const box = $("msg");
   setBusy();
   box.disabled = !!v; $("sendBtn").disabled = !!v && !busy;
-  box.placeholder = v ? "This chat is archived: read only. Click New to start a new chat." : "Ask something, or select an example.";
+  box.placeholder = v ? "This chat is archived: read only. Click New to start a new chat." : "Ask something, select an example, or type / for a skill.";
   document.querySelector(".cbox").classList.toggle("archived", !!v);
   document.querySelectorAll(".starter").forEach(b => b.disabled = !!v || busy);
   syncSave();
@@ -1669,19 +1713,47 @@ async function must(next, approve, force) {
 async function runTurn(text) {
   const model = $("chatModel").value;
   if (!model) throw new Error("Select a chat model.");
+  // /name at the start: you activate the skill, not the model. The harness puts its instructions before your
+  // message in a <skill_content> block (agentskills.io, "User-explicit activation"). Not again if it is already in the chat.
+  const loadedBefore = inChat.snapshot();
+  const slash = SkillSlash.parseSlash(text);
+  let content = text, act = null;
+  if (slash) {
+    const fail = m => Object.assign(new Error(m), { slash: true });
+    if (inChat.has(slash.name)) {
+      if (!slash.rest) throw fail(`The skill ${slash.name} is already active in this chat. Type your task after /${slash.name}.`);
+      content = slash.rest; act = { name: slash.name, dup: true };
+    } else {
+      let r;
+      try { r = await post("/skill-activate", { name: slash.name }, ctrl.signal); }
+      catch (e) { if (e.name === "AbortError") throw e; throw fail(e.message); }
+      content = SkillSlash.withSkill(r.result, slash.rest); act = { name: slash.name, result: r.result, files: r.files, rest: slash.rest };
+    }
+  }
   const turn = { user: text, steps: [], answer: null, done: false, t0: Date.now() };
   chat.push(turn);
   const before = history.length;
   // A new question: the thinking of the earlier turns is removed, as the chat templates of the models do.
   history.forEach(m => { delete m.reasoning_content; });
-  history.push({ role: "user", content: text });
+  history.push({ role: "user", content });
+  // Discovery: the skill list (name and description of each skill that is on) goes into the system prompt of each request.
+  const list = skillListText();
+  if (list) {
+    const d = step(turn, { type: "discover", call: 1, n: skillsOn().length, text: list });
+    countText(model, list).then(n => { d.tokens = n; renderChat(true); });
+  }
+  if (act && !act.dup) inChat.add(act.name);
+  if (act) {
+    const a = step(turn, { type: "activate", call: 1, ...act });
+    if (!act.dup) countText(model, act.result).then(n => { a.tokens = n; renderChat(true); });
+  }
   try {
     let lastResults = 0;
     for (let call = 1; ; call++) {
       if (call > S.maxCalls) { step(turn, { type: "stop", call: call - 1 }); break; }
       if (call > 1) await must({ call, who: "Harness", text: "Sending request" });
       const body = buildRequest();
-      const req = step(turn, { type: "request", call, body: clone(body), model, noteBy: S.noteBy, results: lastResults });
+      const req = step(turn, { type: "request", call, body: clone(body), model, noteBy: S.noteBy, results: lastResults, discRow: !!list });
       step(turn, { type: "template", call, req });  // LM Studio puts the request into the chat template of the model
       const t0 = Date.now() - 50;
       const reply = step(turn, { type: "reply", call, wait: true, model, noteBy: S.noteBy, t0: Date.now(), max: body.max_tokens });
@@ -1737,9 +1809,14 @@ async function runTurn(text) {
         if (!ok) { results.push({ call: c, ok: false, text: `The user denied the script ${ck.args.path}.` }); continue; }
         const run = step(turn, { type: "run", call, c, args: ck.args, wait: true });
         const tr = Date.now();
-        const r = await post("/skill-call", { tool: c.name, args: ck.args }, ctrl.signal);
+        // The skill is already in the conversation (from /name or an earlier load_skill): the harness does not add the
+        // instructions again (agentskills.io, "Deduplicate activations"). history without its last message: this call.
+        const dup = c.name === "load_skill" && inChat.has(ck.args.name);
+        const r = dup ? { ok: true, dup: true, result: `The skill ${ck.args.name} is already loaded: its instructions are earlier in this conversation. Follow them. Do not load it again.` }
+          : await post("/skill-call", { tool: c.name, args: ck.args }, ctrl.signal);
         r.ms = r.ms ?? Date.now() - tr;
-        r.request = c.name === "load_skill" ? `Read skills/${ck.args.name}/SKILL.md (the body, after the frontmatter) and list the other files.`
+        r.request = r.dup ? "Nothing to read: the skill is already in the conversation."
+          : c.name === "load_skill" ? `Read skills/${ck.args.name}/SKILL.md (the body, after the frontmatter) and list the other files.`
           : c.name === "read_skill_file" ? `Read skills/${ck.args.name}/${ck.args.path}`
           : `${r.cmd || ck.args.path}\nstdin: ${(ck.args.input || "").length.toLocaleString()} characters`;
         r.layer = c.name === "load_skill" ? 2 : 3;
@@ -1747,6 +1824,7 @@ async function runTurn(text) {
         stats.tools++;
         Object.assign(run, { wait: false, r });
         renderChat();
+        if (c.name === "load_skill" && r.ok && !r.dup) inChat.add(ck.args.name);
         results.push({ call: c, ok: r.ok, text: r.result });
       }
       await must({ call, who: "Harness", text: "Appending observation" });
@@ -1757,7 +1835,7 @@ async function runTurn(text) {
       lastResults = added.length;
     }
   } catch (e) {
-    history.length = before;  // a stopped or failed turn does not stay in the conversation
+    history.length = before; inChat.restore(loadedBefore);  // a stopped or failed turn does not stay in the conversation
     // Close the live rows: a step that still waits gets no result. This also ends the poll for the model log.
     const stopped = e.name === "AbortError";
     turn.steps.forEach(st => { if (st.wait) { st.wait = false; st.failed = stopped ? "Stopped" : "Failed"; } });
@@ -1811,6 +1889,13 @@ const argText = a => Object.entries(a || {}).map(([k, v]) => `${k}: ${JSON.strin
 const plural = (k, one, many = one + "s") => `${k} ${k === 1 ? one : many}`;
 const short = (t, max = 90) => { t = String(t ?? "").replace(/\s+/g, " ").trim(); return t.length > max ? t.slice(0, max - 1) + "…" : t; };
 const tipped = (label, text) => tipSpan(label, label, text);
+// The three stages of progressive disclosure (agentskills.io), with the layer that each one loads.
+const STAGE = {
+  1: ["Discovery", "Discovery · Metadata layer: the name and description of each skill that is on are in the system prompt of each request, so the model knows when a skill fits."],
+  2: ["Activation", "Activation · Instructions layer: the body of SKILL.md and the list of its files join the context."],
+  3: ["Execution", "Execution · Resources layer: the model follows the instructions and reads a file or runs a script of the skill, only when it needs it."],
+};
+const stageTag = L => `<span class="layer-tag L-${L}" tabindex="0" data-tip-title="${STAGE[L][0]}" data-tip="${esc(STAGE[L][1])}">${STAGE[L][0]}</span>`;
 const tipSpan = (label, title, tip) => `<span tabindex="0" data-tip-title="${esc(title)}" data-tip="${esc(tip)}">${esc(label)}</span>`;
 const KIND = {
   native: ["Native format", "Native tool use: the model learned tools in training. LM Studio puts the tools into its chat template, with the special tool tokens of the model. Click Details to see what the model gets."],
@@ -1834,7 +1919,9 @@ function rowHtml(s, k) {
     const body = det(k + "m", "Messages", msgRows(b.messages, b.messages.length - 1, k + "m"), `${b.messages.length}`)
       + (nt ? det(k + "t", "Tool list", `<pre class="pre">${esc(JSON.stringify(b.tools, null, 2))}</pre>`, plural(nt, "tool")) : "")
       + (() => { const { messages, tools, ...rest } = b; return det(k + "p", "Parameters", `<pre class="pre">${esc(JSON.stringify(rest, null, 2))}</pre>`, `${Object.keys(rest).length}`); })();
-    return row(k, "Harness", sentence, "", body);
+    // Chats from before the Discovery row: the tag goes on the first request.
+    const disc = s.call === 1 && !s.discRow && /<available_skills>/.test(b.messages[0]?.content || "") ? stageTag(1) : "";
+    return row(k, "Harness", sentence + disc, "", body);
   }
   if (s.type === "template") {
     const q = s.req, kind = KIND[q.kind] || KIND.unknown;
@@ -1872,14 +1959,27 @@ function rowHtml(s, k) {
   }
   if (s.type === "skip") return row(k, "Harness", tipped("Skipping tool", "The call has an error, so the tool does not run."), "", `<pre class="pre">${esc(s.text)}</pre>`, "bad");
   if (s.type === "decide") return row(k, s.auto ? "Harness" : "You", s.ok ? tipped("Allowed", "You allow the script, so it runs on this computer.") : tipped("Denied", (s.auto ? "Permissions is Deny all, so the harness denies the call." : "You deny the tool call.") + " The model gets: the tool was denied by the user."), "", "", s.ok ? "" : "bad");
+  if (s.type === "discover") {
+    const what = tipped("Adding skill list", `The harness adds the name and description of the ${plural(s.n, "skill")} that ${s.n === 1 ? "is" : "are"} on to the system prompt, in each model call. The model reads only this to decide if a skill fits the task.`) + stageTag(1);
+    return row(k, "Harness", what, s.tokens != null ? `${s.tokens.toLocaleString()} tokens` : "", `<pre class="pre">${esc(s.text)}</pre>`);
+  }
+  if (s.type === "activate") {
+    if (s.dup) return row(k, "You", tipped(`Activating skill: ${s.name}: already active`, "The skill is already in this chat, so the harness does not add it again. Only your message goes to the model."), "", "");
+    const what = tipped(`Activating skill: ${s.name}`, `You typed /${s.name}, so you activate the skill, not the model. The harness reads the body of SKILL.md and the list of the other files, and puts them before your message in a <skill_content> block. The model does not call load_skill.`)
+      + stageTag(2);
+    const body = `<p class="lbl">${tipped("Your message to the model", "The skill block, then the text you typed after the name.")} · ${plural(SkillSlash.withSkill(s.result, s.rest).length, "character")}</p>`
+      + `<pre class="pre">${esc(SkillSlash.withSkill(s.result, s.rest))}</pre>`;
+    return row(k, "You", what, s.tokens != null ? `${s.tokens.toLocaleString()} tokens` : "", body);
+  }
   if (s.type === "run") {
     const nm = s.c.name, a = s.args || {}, L = nm === "load_skill" ? 2 : 3;
-    const label = nm === "load_skill" ? `Activating skill: ${a.name}` : nm === "read_skill_file" ? `Reading file: ${a.path}` : `Running script: ${a.path}`;
+    const label = nm === "load_skill" ? `Activating skill: ${a.name}${s.r?.dup ? ": already loaded" : ""}` : nm === "read_skill_file" ? `Reading file: ${a.path}` : `Running script: ${a.path}`;
     if (s.wait) return row(k, "Skill", `<span class="busy-dot" aria-hidden="true"></span>${esc(label)}…`, "", "");
     const r = s.r;
-    const tip = L === 2 ? "Instructions: the harness reads the body of SKILL.md (the instructions) and the list of the other files. It goes to the model as the result of load_skill."
+    const tip = r.dup ? "The skill is already in the conversation, so the harness does not add its instructions again. The model gets a short note instead."
+      : L === 2 ? "Instructions: the harness reads the body of SKILL.md (the instructions) and the list of the other files. It goes to the model as the result of load_skill."
       : nm === "read_skill_file" ? "Resources: the harness reads one file of the skill. The model asked for it because the instructions name it." : "Resources: the server runs the script of the skill on this computer, with the input on stdin. Only what the script prints goes to the model, not its code.";
-    const what = tipped(r.ok ? label : `${label}: failed`, tip) + `<span class="layer-tag L-${L}">${L === 2 ? "Instructions" : "Resources"}</span>`;
+    const what = tipped(r.ok ? label : `${label}: failed`, tip) + (r.dup ? "" : stageTag(L));
     const meta = [r.tokens != null ? `${r.tokens.toLocaleString()} tokens` : "", `${r.ms} ms`].filter(Boolean).join(" · ");
     const body = `<p class="lbl">${tipped("Request", "What the server does.")}</p><pre class="pre">${esc(r.request || "")}</pre>`
       + `<p class="lbl">Result · ${plural(String(r.result).length, "character")}</p><pre class="pre">${esc(r.result)}</pre>`;
@@ -1933,7 +2033,7 @@ function renderChat(hold) {
     const live = !t.done && ti === last;
     let out = `<div class="bubble user">${esc(t.user)}</div>`;
     if (sent) out += `<div class="tok-meta user"><span tabindex="0" data-tip-title="Tokens sent" data-tip="What the harness sent in the first model call for this message: the system prompt, the tool definitions, the earlier messages and your message.">↑ ${fmtTok(sent)} tokens</span></div>`;
-    out += cards + ans;
+    out += cards + ans + (t.answer ? draftBar(ti, t.answer) : "");
     if (live) out += `<div class="tok-meta assistant" id="liveMeta">${liveText(t)}</div>`;
     else if (t.answer != null && t.t1) out += Composer.ansBar(ti, `<div class="tok-meta assistant"><span tabindex="0" data-tip-title="Time" data-tip="From Send to the answer: all the model calls and tool calls of this message. With Permissions set to Ask every time, it also counts the time the page waited for you.">${fmtSecs((t.t1 - t.t0) / 1000)}</span> · <span tabindex="0" data-tip-title="Tokens generated" data-tip="What the model wrote for this message, in all its model calls: ${used.length > 1 ? "the tool calls and the answer" : "the answer"}.${used.length > 1 ? ` The answer alone is ${(used.at(-1)?.completion_tokens || 0).toLocaleString()} tokens.` : ""}">↓ ${fmtTok(made)} tokens</span></div>`);
     return out;
@@ -1962,12 +2062,16 @@ const noteDet = (key, title, body) => `<details class="x nd" data-nkey="${key}"$
 document.addEventListener("toggle", e => { const k = e.target.dataset?.nkey; if (k) e.target.open ? noteClosed.delete(k) : noteClosed.add(k); }, true);
 // A click on the switch in the row header must not open or close the row.
 document.querySelector("#optNote > summary").addEventListener("click", e => { if (e.target.closest(".sum-ctl")) e.preventDefault(); });
+var listTok = { key: null, n: 0 };  // var: renderNote can run before this line
 function renderNote() {
   const on = skillsOn(), n = on.length;
-  const t1 = on.reduce((a, x) => a + (tokOf(x.name, "l1") || 0), 0);
+  // The tokens of the whole block that goes into the system prompt (the intro sentence and each entry), as the Discovery row shows them.
+  const lt = skillListText(), model = $("chatModel").value, key = model + "\n" + lt;
+  if (listTok.key !== key) { listTok = { key, n: 0 }; if (lt && model) countText(model, lt).then(c => { if (listTok.key === key) { listTok.n = c; renderNote(); } }); }
+  const t1 = listTok.n;
   $("stNote").textContent = `${n} skill${n === 1 ? "" : "s"} on${t1 ? ` · ~${t1.toLocaleString()} tokens` : ""}`;
   $("noteBox").innerHTML = n
-    ? `<div class="note">Metadata (layer 1). The harness adds this text to the system prompt, after the System prompt. The model reads only the name and description of each skill to decide if it needs one. It also gets the three skill tools in the <code>tools</code> parameter.</div>
+    ? `<div class="note">Discovery (Metadata layer). The harness adds this text to the system prompt, after the System prompt. The model reads only the name and description of each skill to decide if it needs one. It also gets the three skill tools in the <code>tools</code> parameter.</div>
        ${noteDet("note-list", "Skill list in the system prompt", `<pre class="pre gen" title="Auto-generated from the skills that are on. You cannot edit it.">${esc(skillListText())}</pre>`)}
        ${noteDet("note-json", "Skill tools (JSON schema)", `<pre class="pre json gen">${esc(JSON.stringify(active().map(schemaOf), null, 2))}</pre>`)}`
     : `<div class="hint-s inj">No skills are on. Turn one on in the Skills tab, or with the <button type="button" class="linkbtn" id="toPlus">+ button</button> in the message box. Without skills, the request has no skill list and no skill tools.</div>`;
@@ -2049,8 +2153,8 @@ function mdView(t) {
   }
   close(); return html;
 }
-const metaHtml = sk => `<div class="sk-meta"><div class="hd">Metadata · layer 1, always loaded</div>${Object.entries(sk.frontmatter || {}).map(([k, v]) => `<span class="k">${esc(k)}</span><span>${esc(typeof v === "object" ? Object.entries(v).map(([a, b]) => `${a}: ${b}`).join("\n") : v)}</span>`).join("").replace(/\n/g, "<br>")}</div>`;
-const layersLine = sk => { const t = skTok[sk.name], n = k => t ? t[k].toLocaleString() : "…"; return `<div class="sk-layers"><span>Metadata · always <b>${n("l1")}</b> tokens</span><span>Instructions · when activated <b>${n("l2")}</b> tokens</span><span>Resources · as needed <b>${n("l3")}</b> tokens in ${sk.files.length} file${sk.files.length === 1 ? "" : "s"}</span></div>`; };
+const metaHtml = sk => `<div class="sk-meta"><div class="hd">Discovery · Metadata, always loaded</div>${Object.entries(sk.frontmatter || {}).map(([k, v]) => `<span class="k">${esc(k)}</span><span>${esc(typeof v === "object" ? Object.entries(v).map(([a, b]) => `${a}: ${b}`).join("\n") : v)}</span>`).join("").replace(/\n/g, "<br>")}</div>`;
+const layersLine = sk => { const t = skTok[sk.name], n = k => t ? t[k].toLocaleString() : "…"; return `<div class="sk-layers"><span>Discovery · Metadata · always <b>${n("l1")}</b> tokens</span><span>Activation · Instructions · when activated <b>${n("l2")}</b> tokens</span><span>Execution · Resources · as needed <b>${n("l3")}</b> tokens in ${sk.files.length} file${sk.files.length === 1 ? "" : "s"}</span></div>`; };
 // Validation: the checks of skills-ref validate (the reference library of the specification), run by the server.
 // One line: the result, and an i with what it checks. The errors show only when the skill is not valid.
 const VALID_TIP = "skills-ref validate ./<skill>: the reference library of the Agent Skills specification. It checks the frontmatter of SKILL.md: only the allowed fields; the name (lowercase letters, digits and single hyphens, at most 64 characters, the same as the folder); the description (at most 1,024 characters); compatibility (at most 500). A skill that is not valid cannot be turned on.";
@@ -2116,11 +2220,11 @@ function treeHtml(sk, current) {
 // Open: the files of the skill in the tab, SKILL.md first (metadata + rendered body), like a file view.
 let viewSk = null, viewFile = "SKILL.md", viewSrc = false, viewText = null, viewBinary = false;
 function openView(name) { viewSk = name; viewFile = "SKILL.md"; viewSrc = false; exEdit = false; $("skillList").hidden = true; $("skillView").hidden = false; document.querySelector("#pane-skills .card-tools").hidden = true; renderView(); }
-function closeView() { viewSk = null; $("skillList").hidden = false; $("skillView").hidden = true; document.querySelector("#pane-skills .card-tools").hidden = false; renderSkills(); }
+function closeView() { viewSk = null; $("exPanel").hidden = true; $("skillList").hidden = false; $("skillView").hidden = true; document.querySelector("#pane-skills .card-tools").hidden = false; renderSkills(); }
 async function renderView() {
   const sk = skills.find(x => x.name === viewSk); if (!sk) return closeView();
   let body;
-  if (viewFile === "SKILL.md") body = viewSrc ? `<pre class="src-pre">${esc(sk.skillMd)}</pre>` : metaHtml(sk) + layersLine(sk) + lintHtml(sk) + `<div class="mdv">${mdView(sk.body)}</div><hr class="sk-break">` + exampleHtml(sk, true);
+  if (viewFile === "SKILL.md") body = viewSrc ? `<pre class="src-pre">${esc(sk.skillMd)}</pre>` : metaHtml(sk) + layersLine(sk) + lintHtml(sk) + `<div class="mdv">${mdView(sk.body)}</div>`;
   else {
     const t = await fetch(`/skill-file?name=${encodeURIComponent(sk.name)}&path=${encodeURIComponent(viewFile)}`).then(r => r.json()).catch(() => ({}));
     viewText = t.text ?? null; viewBinary = !!t.binary;
@@ -2135,6 +2239,8 @@ async function renderView() {
     + `<span class="ic-row">${iconBtn("skAddFile", "add", "Add files")}${/\.md$/i.test(viewFile) ? iconBtn("skSrc", viewSrc ? "eye" : "code", viewSrc ? "View rendered" : "View source") : ""}${viewFile !== "SKILL.md" && (sk.files.find(f => f.path === viewFile)?.binary || /^image\//.test(sk.files.find(f => f.path === viewFile)?.type || "")) ? "" : iconBtn("skEdit", "edit", `Edit ${viewFile}`)}`
     + `${iconBtn("skDown", "down", `Download ${viewFile}`)}${viewFile === "SKILL.md" ? "" : iconBtn("skDelFile", "trash", `Delete ${viewFile}`, " warn")}</span>${swHtml(sk, "view")}</div>`
     + treeHtml(sk, viewFile) + body;
+  const exOn = viewFile === "SKILL.md" && !viewSrc;
+  $("exPanel").hidden = !exOn; $("exPanel").innerHTML = exOn ? exampleHtml(sk, true) : "";
   wireExample(sk);
   $("skBack").onclick = closeView; if ($("skSrc")) $("skSrc").onclick = () => { viewSrc = !viewSrc; renderView(); };
   if ($("skEdit")) $("skEdit").onclick = () => viewFile === "SKILL.md" ? openEditorSk(sk.name) : openFileEditor(sk.name, viewFile);
@@ -2181,14 +2287,34 @@ const exampleOf = sk => sk.example ?? PRESETS.find(p => p.skill === sk.name)?.ms
 var exEdit = false;
 function exampleHtml(sk, inOpen) {
   const ex = exampleOf(sk), builtIn = PRESETS.some(p => p.skill === sk.name);
-  const head = `<div class="sk-ex-hd"><b>Example message</b><span>Not part of the skill: LM Trace keeps it. Try now puts it in the message box.</span><span class="grow"></span>`;
+  const head = `<div class="sk-ex-hd"><b>Example message</b><span class="grow"></span>`;
+  const gen = iconBtn("exGenBtn", "sparkle", `Write an example with the loaded model (${$("chatModel").value || "no model"})`);
   if (inOpen && exEdit) return `<div class="sk-ex">${head}</div>
-    <textarea id="exText" rows="6" placeholder="A message that needs this skill: a task in the words of a user.">${esc(ex)}</textarea>
+    <div class="sk-ex-box"><textarea id="exText" rows="6" placeholder="A message that needs this skill: a task in the words of a user.">${esc(ex)}</textarea>${gen}</div>
     <div class="sk-ex-bar"><span class="sk-ex-st" id="exSt"></span><span class="grow"></span>${builtIn && sk.example != null ? '<button type="button" class="btn ghost" id="exReset" title="Use the built-in example again">Reset</button>' : ""}<button type="button" class="btn ghost" id="exCancel">Cancel</button><button type="button" class="btn" id="exSave">Save</button></div></div>`;
-  return `<div class="sk-ex">${head}${iconBtn("exEditBtn", "edit", "Edit the example message")}</div>${ex ? `<div class="sk-ex-text">${esc(ex)}</div>` : `<div class="sk-ex-none">No example yet. Click Edit to write one.</div>`}</div>`;
+  return `<div class="sk-ex">${head}${iconBtn("exEditBtn", "edit", "Edit the example message")}</div>${ex ? `<div class="sk-ex-text">${esc(ex)}</div><div class="sk-ex-bar"><span class="grow"></span><button type="button" class="btn" id="exTryOpen" title="Put the example in the message box, on the Chat tab">Try now</button></div>` : `<div class="sk-ex-none">No example yet. Click Edit to write one.</div>`}</div>`;
+}
+// The sparkle: the loaded model reads SKILL.md and writes a message that needs the skill. It goes into the box;
+// you check it and save. Reasoning off and 1,024 tokens: a short message, quickly.
+async function genExample(sk) {
+  const model = $("chatModel").value;
+  if (!exEdit) { exEdit = true; await renderView(); }
+  const ta = $("exText"), st = $("exSt"), btn = $("exGenBtn");
+  if (!model) { st.textContent = "Select a chat model first."; return; }
+  ta.disabled = true; btn.disabled = true;
+  st.classList.add("ok"); st.innerHTML = `<span class="busy-dot" aria-hidden="true"></span>Writing an example with ${esc(model)}…`;
+  try {
+    const j = await post("/v1/chat/completions", { model, messages: SkillDraft.examplePrompt(sk.skillMd), temperature: 0.7, max_tokens: 1024, stream: false, reasoning_effort: "none" });
+    const text = SkillDraft.cleanExample(cleanText(j.choices?.[0]?.message?.content || ""), sk.name);
+    if (!text) throw new Error(j.choices?.[0]?.finish_reason === "length" ? "The model used all 1,024 tokens and wrote no message. Try again." : "The model wrote no message. Try again.");
+    ta.value = text; st.textContent = `Written by ${model}. Check it, then Save.`;
+  } catch (e) { st.classList.remove("ok"); st.textContent = e.message; }
+  finally { ta.disabled = false; btn.disabled = false; ta.focus(); }
 }
 function wireExample(sk) {
   if ($("exEditBtn")) $("exEditBtn").onclick = () => { exEdit = true; renderView().then(() => $("exText")?.focus()); };
+  if ($("exTryOpen")) $("exTryOpen").onclick = () => tryNow(skills.find(x => x.name === sk.name) || sk);
+  if ($("exGenBtn")) $("exGenBtn").onclick = () => genExample(skills.find(x => x.name === sk.name) || sk);
   if (!$("exText")) return;
   const store = async example => {
     try { await post("/skill-example", { name: sk.name, example }); exEdit = false; await loadSkills(); await renderView(); }
@@ -2202,11 +2328,12 @@ document.addEventListener("change", e => { if (e.target.dataset?.where === "dlg"
 
 // Create and Edit: SKILL.md in one text box, with the name and description checked as you type.
 const SK_TEMPLATE = n => `---\nname: ${n}\ndescription: What the skill does. Use this skill when … (the tasks and words that should activate it).\n---\n\n# ${titleOf(n)}\n\n1. Steps the model must follow: only what it cannot know.\n\n## Gotchas\n\n- Mistakes the model makes without this skill.\n`;
-function openEditorSk(name) {
+// draft: SKILL.md text from an answer (the Create skill button under it). With the name of a skill you have, it is Edit.
+function openEditorSk(name, draft, example) {
   dlgSkill = null;
   const sk = name && skills.find(x => x.name === name);
   let n = 1; while (!sk && skills.some(x => x.name === `my-skill-${n}`)) n++;
-  const text = sk ? sk.skillMd : SK_TEMPLATE(`my-skill-${n}`);
+  const text = draft ?? (sk ? sk.skillMd : SK_TEMPLATE(`my-skill-${n}`));
   dlg(`<div class="sk-dlg-top"><h3 id="skDlgTitle">${sk ? `Edit ${esc(titleOf(sk.name))}` : "Create skill"}</h3><span class="grow"></span><button type="button" class="x-btn" data-dlg-close aria-label="Close">${ICON_X}</button></div>
     <p class="lead" style="font-size:13.5px">SKILL.md: YAML frontmatter between <code>---</code> lines (name, description), then the instructions. Other files (scripts/, references/, assets/, or any other) can be added in <code>skills/${esc(sk ? sk.name : "<name>")}/</code>.</p>
     <div class="sk-edit"><span>SKILL.md</span><div><textarea class="field" id="skMd" rows="18" spellcheck="false">${esc(text)}</textarea><div class="cnt" id="skCnt"></div></div></div>
@@ -2230,7 +2357,13 @@ function openEditorSk(name) {
   $("skValidate").onclick = () => validate().catch(e => { $("skEditErr").textContent = e.message; });
   $("skSave").onclick = async () => {  // validates first: a skill that is not valid is not saved
     $("skEditErr").textContent = "";
-    try { if (!(await validate())) return; const r = await post("/skill-save", { skillMd: ta.value, old: sk ? sk.name : null }); closeDlg(); await loadSkills(); renderAll(); if (viewSk) { viewSk = r.name; renderView(); } }
+    try {
+      if (!(await validate())) return;
+      const r = await post("/skill-save", { skillMd: ta.value, old: sk ? sk.name : null });
+      // From an answer: the test message of the model becomes the example (Try now), if the skill has none yet.
+      if (example && !(sk && sk.example)) await post("/skill-example", { name: r.name, example }).catch(() => {});
+      closeDlg(); await loadSkills(); renderAll(); if (viewSk) { viewSk = r.name; renderView(); }
+    }
     catch (e) { $("skEditErr").textContent = e.message; }
   };
 }
@@ -2242,6 +2375,7 @@ const IC_SK = {
   add: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></svg>',
   code: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 18 6-6-6-6M8 6l-6 6 6 6"/></svg>',
   eye: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>',
+  sparkle: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.94 15.5A2 2 0 0 0 8.5 14.06l-6.13-1.58a.5.5 0 0 1 0-.96L8.5 9.94A2 2 0 0 0 9.94 8.5l1.58-6.13a.5.5 0 0 1 .96 0L14.06 8.5A2 2 0 0 0 15.5 9.94l6.13 1.58a.5.5 0 0 1 0 .96L15.5 14.06a2 2 0 0 0-1.44 1.44l-1.58 6.13a.5.5 0 0 1-.96 0z"/><path d="M20 3v4M22 5h-4M4 17v2M5 18H3"/></svg>',
   edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
   down: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></svg>',
   trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/></svg>',
@@ -2398,6 +2532,7 @@ const PRESETS = [
   { name: "Meeting notes", skill: "meeting-notes", msg: "Clean up the notes of our weekly team meeting:\n\nAna: The demo on Friday went well, the client liked the new dashboard.\nBen: I will fix the login bug by Wednesday.\nAna: Chen, can you send the slides to the client?\nChen: Yes, tomorrow morning.\nAna: We decided to move the release to December 3.\nBen: Who updates the roadmap? Nobody knows yet.", tip: "Metadata, instructions and resources: the model loads meeting-notes, reads the team-meeting format in references/, and runs the script (you allow it)." },
   { name: "Release notes", skill: "release-notes", msg: "Write release notes for version 2.4.0, released today, from these changes:\n- feat: dark mode for the dashboard (ABC-412)\n- fix: export to CSV lost the last row\n- chore: update dependencies\n- refactor: split the API client\n- feat: favorite reports, by Maria", tip: "Instructions only: the skill has no other files. Look for the rules the model cannot know: no ticket numbers, no names, no chores, Canadian spelling." },
   { name: "Good vs. bad skill", skill: "release-notes-verbose", msg: "Write release notes for version 2.4.0, released today, from these changes:\n- feat: dark mode for the dashboard (ABC-412)\n- fix: export to CSV lost the last row\n- chore: update dependencies\n- refactor: split the API client\n- feat: favorite reports, by Maria", tip: "Turn release-notes off and release-notes-verbose on, then send. Compare the tokens of the instructions and the answer: the rules hide in a reference file, and the description is vague." },
+  { name: "Create a skill", skill: "skill-creator-lite", msg: "/skill-creator-lite Make a skill that writes my daily standup update from rough notes. Output: three headings, Yesterday, Today, Blockers, with short bullets. Use it when I ask for a standup or a daily update. Without it, the model writes long paragraphs and invents blockers.\n\nExample notes: fixed login bug, reviewed PR 12, today the export feature, waiting on API keys from Sam.", tip: "Set Max tokens to 4,096: a thinking model can use more than 1,500 tokens before it writes the skill, and the reply is cut." },
   { name: "No skill needed", msg: "What is the capital of Canada?", tip: "The model should answer without loading a skill: the metadata is the only cost." },
 ];
 // Examples: one chip per example, below the message box, then your saved prompts. A click puts the message
@@ -2610,8 +2745,13 @@ async function send(text) {
     if (t && e.name === "AbortError") t.stopped = true;  // a failed request shows its red row and the error, not "Stopped."
     if (e.name === "AbortError") setStatus("Stopped.");
     else $("error").textContent = contextError(String(e.message || e));
+    if (e.slash && !$("msg").value) { $("msg").value = text; fit($("msg")); syncSave(); }  // a / error: nothing was sent, so you keep your message
     return false;
-  } finally { busy = false; ctrl = null; setBusy(); renderChat(); saveChat(); }
+  } finally {
+    // LM Studio can load the model at the run (JIT): read its loaded context length again before the meter and the archive use it.
+    await Composer.load().catch(() => {});
+    busy = false; ctrl = null; setBusy(); renderChat(); saveChat();
+  }
 }
 // LM Studio refuses a prompt that is longer than the loaded context length. Say it in plain words, then LM Studio's text.
 function contextError(msg) {
@@ -2638,9 +2778,46 @@ $("sendBtn").onclick = () => {
   if (busy) { stop(); return; }
   const text = $("msg").value.trim();
   if (!text) return;
-  $("msg").value = ""; fit($("msg")); syncSave(); setStatus("");
+  $("msg").value = ""; fit($("msg")); syncSave(); setStatus(""); renderSlash();
   send(text);
 };
+// ---- The / menu: type / at the start of the message to pick a skill that is on. ↑ ↓ move, Enter or Tab picks, Esc closes.
+let slashSel = 0, slashQ = null, slashOff = false, slashList = [];
+function renderSlash() {
+  const box = $("msg"), menu = $("slashMenu");
+  const q = busy || viewing || slashOff || document.activeElement !== box ? null : SkillSlash.slashQuery(box.value, box.selectionStart);
+  if (q !== slashQ) slashSel = 0;
+  slashQ = q;
+  if (q === null) { menu.hidden = true; slashList = []; box.setAttribute("aria-expanded", "false"); box.removeAttribute("aria-activedescendant"); return; }
+  slashList = SkillSlash.slashMatches(q, skillsOn());
+  menu.innerHTML = slashList.length
+    ? slashList.map((sk, i) => `<button type="button" role="option" id="slashOpt${i}" tabindex="-1" aria-selected="${i === slashSel}" data-slash="${esc(sk.name)}" title="${esc(sk.description)}"><span class="nm">/${esc(sk.name)}</span><span class="ds">${esc(sk.description)}</span></button>`).join("")
+    : `<div class="none">${skillsOn().length ? `No skill that is on matches /${esc(q)}.` : "No skills are on. Turn one on with + › Skills."}</div>`;
+  menu.hidden = false; box.setAttribute("aria-expanded", "true");
+  if (slashList.length) { box.setAttribute("aria-activedescendant", `slashOpt${slashSel}`); $(`slashOpt${slashSel}`).scrollIntoView({ block: "nearest" }); }
+  else box.removeAttribute("aria-activedescendant");
+}
+function pickSlash(name) {
+  const box = $("msg");
+  box.value = SkillSlash.pickSkill(box.value, name);
+  box.focus(); box.setSelectionRange(box.value.length, box.value.length);
+  fit(box); syncSave(); renderSlash();
+}
+$("msg").addEventListener("keydown", e => {
+  if ($("slashMenu").hidden || e.isComposing) return;
+  const n = slashList.length;
+  if ((e.key === "ArrowDown" || e.key === "ArrowUp") && n) { e.preventDefault(); slashSel = (slashSel + (e.key === "ArrowDown" ? 1 : n - 1)) % n; renderSlash(); }
+  // Enter on a name that you typed in full sends the message; otherwise Enter and Tab complete the name.
+  else if (((e.key === "Enter" && !e.shiftKey) || e.key === "Tab") && n && !(e.key === "Enter" && slashList[slashSel].name === slashQ)) {
+    e.preventDefault(); e.stopImmediatePropagation(); pickSlash(slashList[slashSel].name);
+  }
+  else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); slashOff = true; renderSlash(); }
+});
+$("msg").addEventListener("input", () => { slashOff = false; renderSlash(); });
+["click", "focus", "blur"].forEach(ev => $("msg").addEventListener(ev, () => setTimeout(renderSlash)));
+$("msg").addEventListener("keyup", e => { if (["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) renderSlash(); });
+$("slashMenu").addEventListener("mousedown", e => e.preventDefault());  // keep the focus in the message box
+$("slashMenu").onclick = e => { const b = e.target.closest("[data-slash]"); if (b) pickSlash(b.dataset.slash); };
 $("msg").addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); $("sendBtn").click(); } });
 $("msg").addEventListener("input", () => fit($("msg")));
 $("newChat").onclick = () => { if (busy) return; newChat(); renderChat(); setStatus(""); };

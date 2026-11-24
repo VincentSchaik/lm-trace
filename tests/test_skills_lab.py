@@ -15,7 +15,8 @@ class SaveSkill(unittest.TestCase):
     def setUp(self):
         self.root = tempfile.mkdtemp()
         self.p = [mock.patch.object(sl, "SKILLS", os.path.join(self.root, "skills")),
-                  mock.patch.object(sl, "META", os.path.join(self.root, "skills-meta.json"))]
+                  mock.patch.object(sl, "META", os.path.join(self.root, "skills-meta.json")),
+                  mock.patch.object(sl, "STARTERS", os.path.join(self.root, "no-starters"))]  # no seeding
         for p in self.p:
             p.start()
         os.makedirs(sl.SKILLS)
