@@ -1,12 +1,20 @@
 #!/bin/sh
 # LM Trace: start, stop or restart the server in the background. The output goes to lm-trace.log.
 #   ./lmt start | stop | restart | status | log
+# start also starts the LM Studio server (lms server start). stop leaves LM Studio as it is.
 # The server runs with uv, so it uses the packages of pyproject.toml (the LM Studio SDK and Chroma).
 cd "$(dirname "$0")" || exit 1
 PORT="${PORT:-8765}"
 pid() { lsof -tiTCP:"$PORT" -sTCP:LISTEN 2>/dev/null; }
+LMS_CLI="$(command -v lms || echo "$HOME/.lmstudio/bin/lms")"
+
+lmstudio() {
+  if [ ! -x "$LMS_CLI" ]; then echo "LM Studio: lms CLI not found. Start the LM Studio server yourself."; return; fi
+  "$LMS_CLI" server start >/dev/null 2>&1 && echo "LM Studio: Running" || echo "LM Studio: did not start (run: lms server start)"
+}
 
 start() {
+  lmstudio
   if [ -n "$(pid)" ]; then echo "LM Trace already runs on http://localhost:$PORT"; return; fi
   PORT="$PORT" nohup uv run server.py > lm-trace.log 2>&1 &
   i=0; while [ -z "$(pid)" ] && [ $i -lt 30 ]; do sleep 0.5; i=$((i + 1)); done

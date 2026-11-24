@@ -2712,5 +2712,6 @@ renderFlow();
 })();
 addEventListener("focus", async () => { await Promise.all([loadConfig(), loadTools(), loadToken()]); if (S.tab === "servers" && view.mode === "list") renderServers(); renderChat(); });
 </script>
+<script src="/lms-status.js"></script>
 </body>
 </html>

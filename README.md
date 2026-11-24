@@ -142,14 +142,14 @@ uv sync --extra embeddings --extra memory   # LM Studio SDK and Chroma
 **Start, stop or restart** the server with the `lmt` script. It runs the server in the background with `uv run`, and writes the output to `lm-trace.log`:
 
 ```sh
-./lmt start      # start the server
+./lmt start      # start the server, and the LM Studio server (lms server start)
 ./lmt stop       # stop the server
 ./lmt restart    # stop, then start: do this after you change server.py
 ./lmt status     # does it run?
 ./lmt log        # follow lm-trace.log (Ctrl+C stops following)
 ```
 
-Open http://localhost:8765 in your browser. A change to a page (`.html`, `.js`, `.css`) needs only a reload of the page.
+Open http://localhost:8765 in your browser. The **Status** control at the top of each page shows whether the LM Studio server runs (green: Running, grey: Stopped). Click it to start or stop the LM Studio server. A change to a page (`.html`, `.js`, `.css`) needs only a reload of the page.
 
 Or start it in the terminal instead (`Ctrl+C` stops it):
 

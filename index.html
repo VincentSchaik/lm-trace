@@ -1466,5 +1466,6 @@ function setTheme(v, save) {
 document.querySelectorAll("#theme button").forEach(b => { b.onmousedown = e => e.preventDefault(); b.onclick = () => setTheme(b.dataset.theme, true); });
 setTheme(document.documentElement.dataset.theme, false);
 </script>
+<script src="/lms-status.js"></script>
 </body>
 </html>

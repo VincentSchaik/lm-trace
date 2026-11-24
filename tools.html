@@ -1648,6 +1648,11 @@ async function runTurn(text) {
     }
   } catch (e) {
     history.length = before;  // a stopped or failed turn does not stay in the conversation
+    // Close the live rows: a step that still waits gets no result. This also ends the poll for the model log.
+    const stopped = e.name === "AbortError";
+    turn.steps.forEach(st => { if (st.wait) { st.wait = false; st.failed = stopped ? "Stopped" : "Failed"; } });
+    // No reply at all: LM Studio did not apply the chat template, so that row goes.
+    if (!stopped) turn.steps = turn.steps.filter(st => !(st.type === "template" && turn.steps.some(r => r.type === "reply" && r.call === st.call && r.failed)));
     throw e;
   } finally { turn.done = true; turn.t1 = Date.now(); pending = null; renderChat(); }
 }
@@ -1712,6 +1717,7 @@ function jsonOf(s) {
 }
 // One row per step, in the order of the steps. Present tense: the rows describe the workflow.
 function rowHtml(s, k) {
+  if (s.failed) return row(k, s.type === "run" ? "Tool" : "Model", s.type === "run" ? `Executing tool: ${s.failed.toLowerCase()}` : `No reply: ${s.failed.toLowerCase()}`, "", "", "bad");
   if (s.type === "request") {
     const b = s.body, nt = b.tools?.length || 0;
     const sentence = tipped("Sending request", nt ? "The harness sends the messages and the tool definitions to LM Studio (POST /v1/chat/completions). It sends them again in each model call." : "The harness sends the messages to LM Studio (POST /v1/chat/completions). No tools are on.");
@@ -2160,7 +2166,7 @@ async function send(text) {
   try { await runTurn(text); setStatus(""); return true; }
   catch (e) {
     const t = chat.filter(x => x.user).at(-1);
-    if (t) t.stopped = true;
+    if (t && e.name === "AbortError") t.stopped = true;  // a failed request shows its red row and the error, not "Stopped."
     if (e.name === "AbortError") setStatus("Stopped.");
     else $("error").textContent = contextError(String(e.message || e));
     return false;
@@ -2395,5 +2401,6 @@ loadFormats().then(renderChat);
 addEventListener("focus", () => loadFormats().then(() => renderChat(true)));
 function renderAll() { renderTools(); renderChat(); }
 </script>
+<script src="/lms-status.js"></script>
 </body>
 </html>
