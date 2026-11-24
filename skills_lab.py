@@ -306,7 +306,7 @@ def list_skills():
         fm, body, err = parse_skill_md(text)
         errors, hints = lint(folder, fm, body, err, [x["path"] for x in files_of(d)])
         m = meta.get(folder, {})
-        out.append({"name": folder, "description": fm.get("description") if isinstance(fm.get("description"), str) else "",
+        out.append({"name": folder, "file": os.path.basename(f), "description": fm.get("description") if isinstance(fm.get("description"), str) else "",
                     "frontmatter": fm, "body": body, "skillMd": text, "files": files_of(d),
                     "on": m.get("on", True), "source": m.get("source", "Created"), "url": m.get("url"),
                     "errors": errors, "hints": hints})

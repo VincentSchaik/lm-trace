@@ -2069,7 +2069,9 @@ function validHtml(errors) {
     + (n ? `<ul>${errors.map(x => `<li title="skills-ref: ${esc(x)}">${esc(crisp(x))}</li>`).join("")}</ul>` : "") + `</div>`;
 }
 const hintsHtml = hints => hints.length ? `<div class="sk-lint hint"><b>Best practices</b><ul>${hints.map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>` : "";
-const lintHtml = sk => validHtml(sk.errors) + hintsHtml(sk.hints);
+// The spec recommends fewer than 5,000 tokens of instructions; the page counts them with the tokenizer of the model.
+const tokHint = sk => { const n = skTok[sk.name]?.l2; return n > 5000 ? [`Instructions: ${n.toLocaleString()} tokens: keep them under 5,000; move details to resource files.`] : []; };
+const lintHtml = sk => validHtml(sk.errors) + hintsHtml([...sk.hints, ...tokHint(sk)]);
 
 // The file tree of a skill, as in the Agent Skills specification: SKILL.md (required), then the recommended directories
 // scripts/, references/ and assets/, then any other files and directories (allowed: the directories are conventions,
@@ -2082,7 +2084,7 @@ function treeHtml(sk, current) {
   ["scripts/", "references/", "assets/"].forEach(k => { if (!top.has(k)) top.set(k, []); });  // the recommended folders show also when empty
   // A click on any folder opens Add files with that folder chosen.
   const order = [...top.keys()].sort((a, b) => { const r = x => ["scripts/", "references/", "assets/"].indexOf(x); const ra = r(a), rb = r(b); return (ra < 0) - (rb < 0) || ra - rb || a.localeCompare(b); });
-  const rows = [["", "SKILL.md", "SKILL.md", "Required: metadata + instructions", ""]];
+  const rows = [["", sk.file || "SKILL.md", "SKILL.md", "Required: metadata + instructions", ""]];  // skill.md in lowercase is accepted too
   order.forEach((k, ki) => {
     const last = ki === order.length - 1, dir = k.endsWith("/");
     rows.push([last ? "└── " : "├── ", k, dir ? null : k, dir ? (TREE_NOTE[k.slice(0, -1)] || "Any additional directory") : "Any additional file", "resources", dir && !top.get(k).length]);
@@ -2117,7 +2119,7 @@ async function renderView() {
     else if (t.binary) body = `<div class="sk-bin sk-bin-none">${IC_SK.down}<span>A binary file: LM Trace cannot show it.</span><button type="button" class="btn ghost small" id="skBinDown">Download</button></div>` + info;
     else body = /\.md$/i.test(viewFile) && !viewSrc ? `<div class="mdv">${mdView(t.text ?? "")}</div>` : `<pre class="src-pre">${esc(t.text ?? "(cannot show this file)")}</pre>`;
   }
-  $("skillView").innerHTML = `<div class="sk-crumbs"><button type="button" class="btn ghost small" id="skBack">← Skills</button><span class="sk-path">skills / ${esc(sk.name)} / <b>${esc(viewFile)}</b></span><span class="grow" style="flex:1"></span>`
+  $("skillView").innerHTML = `<div class="sk-crumbs"><button type="button" class="btn ghost small" id="skBack">← Skills</button><span class="sk-path">skills / ${esc(sk.name)} / <b>${esc(viewFile === "SKILL.md" ? sk.file || "SKILL.md" : viewFile)}</b></span><span class="grow" style="flex:1"></span>`
     + `<span class="ic-row">${iconBtn("skAddFile", "add", "Add files")}${/\.md$/i.test(viewFile) ? iconBtn("skSrc", viewSrc ? "eye" : "code", viewSrc ? "View rendered" : "View source") : ""}${viewFile !== "SKILL.md" && (sk.files.find(f => f.path === viewFile)?.binary || /^image\//.test(sk.files.find(f => f.path === viewFile)?.type || "")) ? "" : iconBtn("skEdit", "edit", `Edit ${viewFile}`)}`
     + `${iconBtn("skDown", "down", `Download ${viewFile}`)}${viewFile === "SKILL.md" ? "" : iconBtn("skDelFile", "trash", `Delete ${viewFile}`, " warn")}</span>${swHtml(sk, "view")}</div>`
     + treeHtml(sk, viewFile) + body;
