@@ -32,7 +32,8 @@ lock = threading.Lock()
 
 def parse_skill_md(text):
     """Split SKILL.md into (frontmatter dict, body, error). A small YAML reader for the fields of the spec:
-    key: value, quoted values, block values (> and |), and one level of nested keys (metadata)."""
+    key: value, quoted values, plain values that go on over indented lines, block values (> and |), comments (#),
+    and one level of nested keys (metadata). A key twice is an error, as in strictyaml (used by skills-ref)."""
     m = re.match(r"^---[ \t]*\r?\n(.*?)\r?\n---[ \t]*(?:\r?\n|$)(.*)$", text, re.S)
     if not m:
         return {}, text, "SKILL.md must start with YAML frontmatter (---)" if not text.startswith("---") else "SKILL.md frontmatter not properly closed with ---"
@@ -48,6 +49,8 @@ def parse_skill_md(text):
             if not km:
                 return data, body, f"Invalid YAML in frontmatter: line {i} is not 'key: value': {line.strip()[:60]}"
             key, val = km.group(1), km.group(2).strip()
+            if key in data:
+                return data, body, f"Invalid YAML in frontmatter: duplicate key '{key}'"
             if val in (">", "|", ">-", "|-", ">+", "|+"):
                 block = []
                 while i < len(lines) and (not lines[i].strip() or lines[i].startswith((" ", "\t"))):
@@ -59,14 +62,26 @@ def parse_skill_md(text):
                 while i < len(lines) and lines[i].startswith((" ", "\t")) and lines[i].strip():
                     sm = re.match(r"^\s+([A-Za-z0-9_.-]+):\s*(.*)$", lines[i])
                     if sm:
-                        sub[sm.group(1)] = unquote(sm.group(2).strip())
+                        sub[sm.group(1)] = scalar(sm.group(2))
                     i += 1
                 data[key] = sub
             else:
-                data[key] = unquote(val)
+                # A plain or quoted value can go on over the next indented lines (folded into one line with spaces).
+                while i < len(lines) and lines[i].startswith((" ", "\t")) and lines[i].strip():
+                    val += " " + lines[i].strip()
+                    i += 1
+                data[key] = scalar(val)
     except Exception as e:  # never fail the whole list for one bad file
         return data, body, f"Invalid YAML in frontmatter: {e}"
     return data, body, None
+
+
+def scalar(v):
+    """A YAML scalar: quotes removed; a comment (space, then #) removed from a value without quotes."""
+    v = v.strip()
+    if v[:1] in "\"'":
+        return unquote(v)
+    return re.sub(r"\s+#.*$", "", v)
 
 
 def unquote(v):
@@ -128,9 +143,21 @@ def validate(folder, fm, err):
     return errors
 
 
-def lint(folder, fm, body, err):
+REF_RE = re.compile(r"(?<![\w/.:-])((?:[\w.-]+/)+[\w.-]+\.[A-Za-z0-9]{1,6})(?![\w/])")
+
+
+def lint(folder, fm, body, err, files=None):
     """Errors: skills-ref validate. Hints: best practices of agentskills.io (not part of the validation)."""
     errors, hints = validate(folder, fm, err), []
+    if files is not None:  # File references: relative paths from the skill root, and say when to load each file
+        named = {m for m in REF_RE.findall(body) if not m.startswith(("http", "www.", "skills/"))}
+        missing = sorted(x for x in named if x not in files)
+        if missing:
+            hints.append("SKILL.md names files that the skill does not have: " + ", ".join(missing) + ".")
+        text = body + " " + json.dumps(fm)  # a file can be named in the frontmatter too (license: … LICENSE.txt)
+        unnamed = [x for x in files if x not in named and os.path.basename(x) not in text]
+        if unnamed:
+            hints.append("SKILL.md does not name " + ", ".join(unnamed) + ": say when to use " + ("it" if len(unnamed) == 1 else "each one") + ".")
     desc = fm.get("description")
     if isinstance(desc, str) and desc.strip():
         if not re.search(r"\b(use|when)\b", desc, re.I):
@@ -190,12 +217,28 @@ def write_meta(meta):
     os.replace(tmp, META)
 
 
+def skill_md(d):
+    """The SKILL.md file of a folder: SKILL.md first, else skill.md (as skills-ref accepts it), else None."""
+    for n in ("SKILL.md", "skill.md"):
+        if os.path.isfile(os.path.join(d, n)) and n in os.listdir(d):  # listdir: the exact case, also on macOS
+            return os.path.join(d, n)
+    return None
+
+
+def folder_of(name):
+    """A folder in skills/ by name (with or without SKILL.md), or None. No paths, no hidden names."""
+    if not isinstance(name, str) or not name or len(name) > 100 or "/" in name or "\\" in name or name.startswith(".") or "\x00" in name:
+        return None
+    d = os.path.join(SKILLS, name)
+    return d if os.path.isdir(d) else None
+
+
 def skill_dir(name):
     """The folder of a skill, or None: the name must be a plain folder name in skills/."""
     if not isinstance(name, str) or not name or len(name) > 100 or "/" in name or "\\" in name or name.startswith(".") or "\x00" in name:
         return None
-    d = os.path.join(SKILLS, name)
-    return d if os.path.isfile(os.path.join(d, "SKILL.md")) else None
+    d = folder_of(name)
+    return d if d and skill_md(d) else None
 
 
 def safe_path(d, rel):
@@ -229,6 +272,7 @@ def mime_of(p):
 
 
 def files_of(d):
+    main = os.path.basename(skill_md(d) or "SKILL.md")
     out = []
     for base, dirs, names in os.walk(d):
         dirs[:] = sorted(x for x in dirs if not x.startswith(".") and x != "__pycache__")
@@ -236,7 +280,7 @@ def files_of(d):
             if n.startswith("."):
                 continue
             rel = os.path.relpath(os.path.join(base, n), d).replace(os.sep, "/")
-            if rel != "SKILL.md":
+            if rel != main:
                 full = os.path.join(base, n)
                 out.append({"path": rel, "size": os.path.getsize(full), "binary": is_binary(full), "type": mime_of(full)})
     return out
@@ -250,12 +294,17 @@ def list_skills():
         return out
     for folder in sorted(os.listdir(SKILLS)):
         d = os.path.join(SKILLS, folder)
-        f = os.path.join(d, "SKILL.md")
-        if not os.path.isfile(f):
+        if folder.startswith(".") or not os.path.isdir(d):
+            continue
+        f = skill_md(d)
+        if not f:  # as skills-ref validate reports it; the folder can be uninstalled
+            out.append({"name": folder, "description": "", "frontmatter": {}, "body": "", "skillMd": "", "files": files_of(d),
+                        "on": False, "source": meta.get(folder, {}).get("source", "Created"), "url": None,
+                        "errors": ["Missing required file: SKILL.md"], "hints": []})
             continue
         text = open(f, encoding="utf-8", errors="replace").read()
         fm, body, err = parse_skill_md(text)
-        errors, hints = lint(folder, fm, body, err)
+        errors, hints = lint(folder, fm, body, err, [x["path"] for x in files_of(d)])
         m = meta.get(folder, {})
         out.append({"name": folder, "description": fm.get("description") if isinstance(fm.get("description"), str) else "",
                     "frontmatter": fm, "body": body, "skillMd": text, "files": files_of(d),
@@ -297,7 +346,7 @@ def save_skill(name, skill_md, old=None):
         elif not old and os.path.exists(d):
             return 409, {"error": {"message": f"A skill named {new} already exists."}}
         os.makedirs(d, exist_ok=True)
-        with open(os.path.join(d, "SKILL.md"), "w", encoding="utf-8") as f:
+        with open(skill_md(d) or os.path.join(d, "SKILL.md"), "w", encoding="utf-8") as f:
             f.write(skill_md)
         meta.setdefault(new, {"source": "Created", "on": True})
         write_meta(meta)
@@ -340,7 +389,7 @@ def save_file(name, rel, text=None, b64=None):
 def delete_file(name, rel):
     d = skill_dir(name)
     p = d and safe_path(d, rel)
-    if not p or os.path.basename(p) == "SKILL.md" and os.path.dirname(p) == os.path.realpath(d):
+    if not p or os.path.dirname(p) == os.path.realpath(d) and os.path.basename(p).lower() == "skill.md":
         return 404, {"error": {"message": "No such file (SKILL.md cannot be deleted)."}}
     with lock:
         os.remove(p)
@@ -357,14 +406,14 @@ def zip_skill(name):
     d = skill_dir(name)
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
-        z.write(os.path.join(d, "SKILL.md"), f"{name}/SKILL.md")
+        z.write(skill_md(d), f"{name}/{os.path.basename(skill_md(d))}")
         for f in files_of(d):
             z.write(os.path.join(d, f["path"]), f"{name}/{f['path']}")
     return buf.getvalue()
 
 
 def delete_skill(name):
-    d = skill_dir(name)
+    d = folder_of(name)  # also a folder without SKILL.md (not valid)
     if not d:
         return 404, {"error": {"message": f"No skill named {name}."}}
     with lock:
@@ -405,7 +454,7 @@ def call(tool, args):
         names = [s["name"] for s in list_skills() if s["on"]]
         return {"ok": False, "result": f"Error: there is no skill named {name!r}. The skills are: {', '.join(names) or 'none'}."}
     if tool == "load_skill":
-        text = open(os.path.join(d, "SKILL.md"), encoding="utf-8", errors="replace").read()
+        text = open(skill_md(d), encoding="utf-8", errors="replace").read()
         _, body, _ = parse_skill_md(text)
         files = [f["path"] for f in files_of(d)]
         result = body.strip() + f"\n\nSkill folder: skills/{name}\nFiles: " + (", ".join(files) if files else "none")
@@ -501,7 +550,7 @@ def import_github(url):
         return 502, {"error": {"message": f"GitHub: {e.code} {e.reason}" + (" (the address may be wrong)" if e.code == 404 else "")}}
     except (urllib.error.URLError, ValueError, OSError) as e:
         return 502, {"error": {"message": f"Import: {e}"}}
-    if "SKILL.md" not in files:
+    if "SKILL.md" not in files and "skill.md" not in files:
         return 400, {"error": {"message": "That folder has no SKILL.md, so it is not a skill."}}
     with lock:
         d = os.path.join(SKILLS, folder)
