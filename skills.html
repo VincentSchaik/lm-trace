@@ -693,6 +693,8 @@
   .sk-tree button:hover { background: var(--line); }
   .sk-tree button[aria-current="true"] { background: var(--primary); color: var(--on-primary); }
   .sk-tree .dir { color: var(--ink); }
+  .sk-tree button.tree-empty { color: var(--ink-3); }
+  .sk-tree button.tree-empty:hover { color: var(--ink); }
   .sk-meta { background: var(--paper-2); border: 1px solid var(--line); border-radius: 10px; padding: 12px 16px; font: 13px var(--mono); display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 6px 16px; margin-bottom: 14px; }
   .sk-meta .k { color: var(--ink-3); }
   .sk-meta .hd { grid-column: 1 / -1; font: 500 12px var(--sans); color: var(--ink-3); }
@@ -2082,17 +2084,21 @@ function treeHtml(sk, current) {
   const pad = (txt, w) => txt + " ".repeat(Math.max(2, w - txt.length));
   const top = new Map();  // first part of the path -> [rest paths] ("" for a file at the root)
   sk.files.forEach(f => { const i = f.path.indexOf("/"), k = i < 0 ? f.path : f.path.slice(0, i) + "/"; if (!top.has(k)) top.set(k, []); if (i >= 0) top.get(k).push(f.path); });
+  ["scripts/", "references/", "assets/"].forEach(k => { if (!top.has(k)) top.set(k, []); });  // the recommended folders show also when empty
   const order = [...top.keys()].sort((a, b) => { const r = x => ["scripts/", "references/", "assets/"].indexOf(x); const ra = r(a), rb = r(b); return (ra < 0) - (rb < 0) || ra - rb || a.localeCompare(b); });
   const rows = [["", "SKILL.md", "SKILL.md", "Required: metadata + instructions", ""]];
   order.forEach((k, ki) => {
     const last = ki === order.length - 1, dir = k.endsWith("/");
-    rows.push([last ? "└── " : "├── ", k, dir ? null : k, dir ? (TREE_NOTE[k.slice(0, -1)] || "Any additional directory") : "Any additional file", "resources"]);
+    rows.push([last ? "└── " : "├── ", k, dir ? null : k, dir ? (TREE_NOTE[k.slice(0, -1)] || "Any additional directory") : "Any additional file", "resources", dir && !top.get(k).length]);
     if (dir) top.get(k).forEach((f, fi, arr) => rows.push([(last ? "    " : "│   ") + (fi === arr.length - 1 ? "└── " : "├── "), f.slice(k.length), f, "", ""]));
   });
   rows[0][0] = order.length ? "├── " : "└── ";
   const w = Math.max(...rows.map(r => (r[0] + r[1]).length)) + 4;
-  const line = ([br, label, path, note, layer]) => {
-    const name = path ? `<button type="button" data-sk-file="${esc(path)}"${path === current ? ' aria-current="true"' : ""}>${esc(label)}</button>` : `<span class="dir">${esc(label)}</span>`;
+  const line = ([br, label, path, note, layer, empty]) => {
+    const name = path ? `<button type="button" data-sk-file="${esc(path)}"${path === current ? ' aria-current="true"' : ""}>${esc(label)}</button>`
+      : empty ? `<button type="button" class="tree-empty" data-sk-adddir="${esc(label)}" title="Empty: click to add files to ${esc(label)}">${esc(label)}</button>`
+      : `<span class="dir">${esc(label)}</span>`;
+    if (empty) note = `${note} (empty)`;
     const gap = " ".repeat(Math.max(2, w - (br + label).length));
     return `<span class="br">${br}</span>${name}${note ? `${gap}<span class="cm"># ${esc(note)}${layer ? ` · <b>${layer}</b>` : ""}</span>` : ""}`;
   };
@@ -2127,6 +2133,7 @@ async function renderView() {
   $("skDown").onclick = () => { location.href = `/skill-raw?name=${encodeURIComponent(sk.name)}&path=${encodeURIComponent(viewFile)}`; };
   if ($("skDelFile")) $("skDelFile").onclick = () => deleteFile(sk.name, viewFile);
   $("skillView").querySelectorAll("[data-sk-file]").forEach(b => b.onclick = () => { viewFile = b.dataset.skFile; renderView(); });
+  $("skillView").querySelectorAll("[data-sk-adddir]").forEach(b => b.onclick = () => openFileEditor(sk.name, null, null, b.dataset.skAdddir));
 }
 
 // Details: a dialog with the switch, the description, the instructions, Delete and Try now.
@@ -2224,7 +2231,7 @@ async function droppedFiles(dt) {
   for (const e of entries) await walk(e, "");
   return out;
 }
-function openFileEditor(name, path, dropped) {
+function openFileEditor(name, path, dropped, dir) {
   dlgSkill = null;
   if (path) return openTextEditor(name, path);
   let items = [];  // {file, rel, inFolder, path, state, pct, msg}
@@ -2266,6 +2273,7 @@ function openFileEditor(name, path, dropped) {
   ["dragenter", "dragover"].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.add("over"); }));
   ["dragleave", "drop"].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.remove("over"); }));
   drop.addEventListener("drop", async e => add(await droppedFiles(e.dataTransfer)));
+  if (dir != null) $("upDir").value = dir;  // opened from an empty folder of the tree
   if (dropped?.length) add(dropped);
   // One request per file, with its progress (XMLHttpRequest upload events). The server checks each path.
   const upload = it => new Promise(async done => {
