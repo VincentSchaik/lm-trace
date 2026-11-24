@@ -1,7 +1,7 @@
 // Tests for skill-slash.js: the / command of the Skills page. Run: node --test tests/
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { parseSlash, slashQuery, slashMatches, pickSkill, withSkill, skillInHistory } = require("../skill-slash.js");
+const { parseSlash, slashQuery, slashMatches, pickSkill, withSkill, loadedSkills } = require("../skill-slash.js");
 
 test("parseSlash: name and the rest of the message", () => {
   assert.deepEqual(parseSlash("/meeting-notes"), { name: "meeting-notes", rest: "" });
@@ -49,41 +49,25 @@ test("withSkill: the skill block, then your message", () => {
   assert.equal(withSkill("BLOCK", ""), "BLOCK");
 });
 
-test("skillInHistory: from /name or from load_skill that worked", () => {
-  const user = { role: "user", content: '<skill_content name="meeting-notes">\nX\n</skill_content>\n\nHi' };
-  let n = 0;
-  const call = (name, result) => {
-    const id = String(++n);
-    const msgs = [{ role: "assistant", content: "", tool_calls: [{ id, type: "function", function: { name: "load_skill", arguments: JSON.stringify({ name }) } }] }];
-    if (result != null) msgs.push({ role: "tool", tool_call_id: id, content: result });
-    return msgs;
-  };
-  assert.equal(skillInHistory([], "meeting-notes"), false);
-  assert.equal(skillInHistory(undefined, "meeting-notes"), false);
-  assert.equal(skillInHistory([user], "meeting-notes"), true);
-  assert.equal(skillInHistory([user], "meeting"), false);  // not a prefix match
-  assert.equal(skillInHistory(call("meeting-notes", "# Meeting notes\n1. …"), "meeting-notes"), true);
-  assert.equal(skillInHistory(call("release-notes", "# Release notes"), "meeting-notes"), false);
-  // The tag in an answer or a tool result is not an activation.
-  assert.equal(skillInHistory([{ role: "assistant", content: user.content }, { role: "tool", content: user.content }], "meeting-notes"), false);
-  // Bad JSON in the arguments: no crash.
-  assert.equal(skillInHistory([{ role: "assistant", tool_calls: [{ id: "x", function: { name: "load_skill", arguments: "{bad" } }] }], "x"), false);
+test("loadedSkills: the skills in the chat, apart from the messages", () => {
+  const t = loadedSkills();
+  assert.equal(t.has("meeting-notes"), false);
+  t.add("meeting-notes");
+  assert.equal(t.has("meeting-notes"), true);
+  assert.equal(t.has("meeting"), false);  // not a prefix match
+  t.add("meeting-notes");
+  assert.deepEqual(t.list(), ["meeting-notes"]);
+  t.clear();
+  assert.deepEqual(t.list(), []);
 });
 
-test("skillInHistory: a failed load_skill call is not an activation", () => {
-  const call = (id, result) => [
-    { role: "assistant", content: "", tool_calls: [{ id, type: "function", function: { name: "load_skill", arguments: '{"name":"meeting-notes"}' } }] },
-    ...(result == null ? [] : [{ role: "tool", tool_call_id: id, content: result }]),
-  ];
-  // The server said no (a skill that is off, or a name that does not exist), or the harness skipped the call.
-  assert.equal(skillInHistory(call("1", "Error: there is no skill named 'meeting-notes'. The skills are: none."), "meeting-notes"), false);
-  assert.equal(skillInHistory(call("2", "Error: name: not one of the allowed values."), "meeting-notes"), false);
-  // No result for the call (yet): not loaded.
-  assert.equal(skillInHistory(call("3"), "meeting-notes"), false);
-  // A result for another call does not count.
-  assert.equal(skillInHistory([...call("4"), { role: "tool", tool_call_id: "5", content: "# Meeting notes" }], "meeting-notes"), false);
-  // A failed call, then a call that worked: loaded.
-  assert.equal(skillInHistory([...call("6", "Error: x"), ...call("7", "# Meeting notes")], "meeting-notes"), true);
-  // The "already loaded" note of the harness is not an error: the skill is in the chat.
-  assert.equal(skillInHistory(call("8", "The skill meeting-notes is already loaded: its instructions are earlier in this conversation."), "meeting-notes"), true);
+test("loadedSkills: a stopped turn goes back to the list before it", () => {
+  const t = loadedSkills();
+  t.add("release-notes");
+  const before = t.snapshot();
+  t.add("meeting-notes");  // loaded in a turn that is then stopped
+  t.restore(before);
+  assert.deepEqual(t.list(), ["release-notes"]);
+  before.add("x");  // the snapshot is a copy: changing it later changes nothing
+  assert.equal(t.has("x"), false);
 });

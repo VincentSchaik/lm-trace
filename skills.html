@@ -1413,6 +1413,7 @@ async function logEntry(kind, since, keepWaiting = () => false) {
 // ---- Chat state. chat = list of turns; each turn has the steps of the harness.
 // history = the messages that the harness sends to the model (the conversation memory of the book: the full history).
 let chat = [], history = [], busy = false, ctrl = null, pending = null;
+const inChat = SkillSlash.loadedSkills();  // the skills in this chat (/name, or load_skill that worked): no second load
 
 // ---- Context length: a load setting, as on the MCP page. The page unloads the model and loads it again with context_length.
 const CTX_STEPS = [4096, 8192, 16384, 32768, 65536, 131072, 262144];
@@ -1459,7 +1460,7 @@ const openKeys = new Set();  // the open ▸ sections, kept when the chat draws 
 let stats = { calls: 0, tools: 0, tokens: 0, ctx: 0 };
 // New chat: clear the chat, the history and the counts. The tools and the settings stay.
 function newChat() {
-  chat = []; history = []; stats = { calls: 0, tools: 0, tokens: 0, ctx: 0 }; openKeys.clear(); rawKeys.clear();
+  chat = []; history = []; inChat.clear(); stats = { calls: 0, tools: 0, tokens: 0, ctx: 0 }; openKeys.clear(); rawKeys.clear();
   chatId = null; viewing = null; renderViewBar();
 }
 
@@ -1714,11 +1715,12 @@ async function runTurn(text) {
   if (!model) throw new Error("Select a chat model.");
   // /name at the start: you activate the skill, not the model. The harness puts its instructions before your
   // message in a <skill_content> block (agentskills.io, "User-explicit activation"). Not again if it is already in the chat.
+  const loadedBefore = inChat.snapshot();
   const slash = SkillSlash.parseSlash(text);
   let content = text, act = null;
   if (slash) {
     const fail = m => Object.assign(new Error(m), { slash: true });
-    if (SkillSlash.skillInHistory(history, slash.name)) {
+    if (inChat.has(slash.name)) {
       if (!slash.rest) throw fail(`The skill ${slash.name} is already active in this chat. Type your task after /${slash.name}.`);
       content = slash.rest; act = { name: slash.name, dup: true };
     } else {
@@ -1740,6 +1742,7 @@ async function runTurn(text) {
     const d = step(turn, { type: "discover", call: 1, n: skillsOn().length, text: list });
     countText(model, list).then(n => { d.tokens = n; renderChat(true); });
   }
+  if (act && !act.dup) inChat.add(act.name);
   if (act) {
     const a = step(turn, { type: "activate", call: 1, ...act });
     if (!act.dup) countText(model, act.result).then(n => { a.tokens = n; renderChat(true); });
@@ -1808,7 +1811,7 @@ async function runTurn(text) {
         const tr = Date.now();
         // The skill is already in the conversation (from /name or an earlier load_skill): the harness does not add the
         // instructions again (agentskills.io, "Deduplicate activations"). history without its last message: this call.
-        const dup = c.name === "load_skill" && SkillSlash.skillInHistory(history.slice(0, -1), ck.args.name);
+        const dup = c.name === "load_skill" && inChat.has(ck.args.name);
         const r = dup ? { ok: true, dup: true, result: `The skill ${ck.args.name} is already loaded: its instructions are earlier in this conversation. Follow them. Do not load it again.` }
           : await post("/skill-call", { tool: c.name, args: ck.args }, ctrl.signal);
         r.ms = r.ms ?? Date.now() - tr;
@@ -1821,6 +1824,7 @@ async function runTurn(text) {
         stats.tools++;
         Object.assign(run, { wait: false, r });
         renderChat();
+        if (c.name === "load_skill" && r.ok && !r.dup) inChat.add(ck.args.name);
         results.push({ call: c, ok: r.ok, text: r.result });
       }
       await must({ call, who: "Harness", text: "Appending observation" });
@@ -1831,7 +1835,7 @@ async function runTurn(text) {
       lastResults = added.length;
     }
   } catch (e) {
-    history.length = before;  // a stopped or failed turn does not stay in the conversation
+    history.length = before; inChat.restore(loadedBefore);  // a stopped or failed turn does not stay in the conversation
     // Close the live rows: a step that still waits gets no result. This also ends the poll for the model log.
     const stopped = e.name === "AbortError";
     turn.steps.forEach(st => { if (st.wait) { st.wait = false; st.failed = stopped ? "Stopped" : "Failed"; } });
